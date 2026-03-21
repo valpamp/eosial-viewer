@@ -182,6 +182,26 @@
             }
         });
 
+        // ── Query Point
+        var btnQueryPt = _tbBtn(wrap, '',
+            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3" stroke-width="2"/></svg>',
+            'Query point timeseries');
+        btnQueryPt.id = 'btn-draw-point';
+        btnQueryPt.addEventListener('click', function () {
+            dropdown.classList.remove('open');
+            geocoderWrap.classList.remove('open');
+        });
+
+        // ── Query Polygon
+        var btnQueryPoly = _tbBtn(wrap, '',
+            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h6v6H9z" stroke-dasharray="2,2"/></svg>',
+            'Query polygon timeseries');
+        btnQueryPoly.id = 'btn-draw-polygon';
+        btnQueryPoly.addEventListener('click', function () {
+            dropdown.classList.remove('open');
+            geocoderWrap.classList.remove('open');
+        });
+
         // ── Dark mode toggle
         var btnDark = _tbBtn(wrap, '',
             '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>',
@@ -245,7 +265,13 @@
         if (measureActive) {
             // Cancel point query if active
             pointQueryActive = false;
-            document.getElementById('btn-draw-point').classList.remove('bg-blue-100', 'text-blue-700');
+            document.getElementById('btn-draw-point').classList.remove('active');
+            // Cancel polygon mode if active
+            if (drawControl) {
+                map.removeControl(drawControl);
+                drawControl = null;
+                document.getElementById('btn-draw-polygon').classList.remove('active');
+            }
             map.doubleClickZoom.disable();
             clearMeasure();
         } else {
@@ -365,26 +391,28 @@
 
     document.getElementById('btn-draw-point').addEventListener('click', function () {
         pointQueryActive = !pointQueryActive;
-        this.classList.toggle('bg-blue-100', pointQueryActive);
-        this.classList.toggle('text-blue-700', pointQueryActive);
+        this.classList.toggle('active', pointQueryActive);
         document.body.classList.toggle('querying', pointQueryActive);
         // Cancel polygon mode
         if (pointQueryActive && drawControl) {
             map.removeControl(drawControl);
             drawControl = null;
+            document.getElementById('btn-draw-polygon').classList.remove('active');
         }
         // Cancel measure mode
         if (pointQueryActive && measureActive) {
             measureActive = false;
-            var activeBtn = document.querySelector('.map-toolbar .toolbar-btn.active');
-            if (activeBtn) activeBtn.classList.remove('active');
+            document.querySelector('#btn-measure, .map-toolbar .toolbar-btn.active') &&
+                document.querySelectorAll('.map-toolbar .toolbar-btn.active').forEach(function (b) {
+                    if (b.id !== 'btn-draw-point') b.classList.remove('active');
+                });
         }
     });
 
     map.on('click', function (e) {
         if (!pointQueryActive || measureActive) return;
         pointQueryActive = false;
-        document.getElementById('btn-draw-point').classList.remove('bg-blue-100', 'text-blue-700');
+        document.getElementById('btn-draw-point').classList.remove('active');
         document.body.classList.remove('querying');
 
         // Query the active raster layer
@@ -412,18 +440,25 @@
     document.getElementById('btn-draw-polygon').addEventListener('click', function () {
         if (pointQueryActive) {
             pointQueryActive = false;
-            document.getElementById('btn-draw-point').classList.remove('bg-blue-100', 'text-blue-700');
+            document.getElementById('btn-draw-point').classList.remove('active');
+        }
+        // Cancel measure mode
+        if (measureActive) {
+            measureActive = false;
+            document.querySelectorAll('.map-toolbar .toolbar-btn.active').forEach(function (b) {
+                if (b.id !== 'btn-draw-polygon') b.classList.remove('active');
+            });
         }
 
         if (drawControl) {
             map.removeControl(drawControl);
             drawControl = null;
-            this.classList.remove('bg-blue-100', 'text-blue-700');
+            this.classList.remove('active');
             document.body.classList.remove('querying');
             return;
         }
 
-        this.classList.add('bg-blue-100', 'text-blue-700');
+        this.classList.add('active');
         document.body.classList.add('querying');
 
         drawControl = new L.Control.Draw({
@@ -444,7 +479,7 @@
             map.removeControl(drawControl);
             drawControl = null;
         }
-        document.getElementById('btn-draw-polygon').classList.remove('bg-blue-100', 'text-blue-700');
+        document.getElementById('btn-draw-polygon').classList.remove('active');
         document.body.classList.remove('querying');
 
         var bounds = e.layer.getBounds();

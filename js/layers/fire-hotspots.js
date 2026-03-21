@@ -150,25 +150,6 @@
 
     /* ── Filtering ─────────────────────────────────────────────── */
 
-    function getTimeRange() {
-        var activeBtn = document.querySelector('.fire-time-btn.active');
-        if (activeBtn) {
-            var hours = parseInt(activeBtn.getAttribute('data-hours'));
-            var end = new Date();
-            var start = new Date(end.getTime() - hours * 3600000);
-            return { start: start, end: end };
-        }
-        // Custom dates
-        var s = document.getElementById('fire-start-time');
-        var e = document.getElementById('fire-end-time');
-        if (s && e && s.value && e.value) {
-            return { start: new Date(s.value), end: new Date(e.value) };
-        }
-        // Default: 24h
-        var now = new Date();
-        return { start: new Date(now.getTime() - 24 * 3600000), end: now };
-    }
-
     function applyFilters() {
         var range = getTimeRange();
 
@@ -429,16 +410,20 @@
             var hours = parseInt(activeBtn.getAttribute('data-hours'));
             if (hours === 0) {
                 // "All" — no time restriction
-                return { start: new Date(2000, 0, 1), end: new Date() };
+                return { start: new Date(Date.UTC(2000, 0, 1)), end: new Date() };
             }
             var end = new Date();
             var start = new Date(end.getTime() - hours * 3600000);
             return { start: start, end: end };
         }
+        // Custom dates — parse as UTC to match feature dates
         var s = document.getElementById('fire-start-time');
         var e = document.getElementById('fire-end-time');
         if (s && e && s.value && e.value) {
-            return { start: new Date(s.value), end: new Date(e.value) };
+            return {
+                start: new Date(s.value + 'Z'),
+                end:   new Date(e.value + 'Z')
+            };
         }
         var now = new Date();
         return { start: new Date(now.getTime() - 24 * 3600000), end: now };
@@ -521,6 +506,19 @@
                     return loadArchive();
                 }
             }).then(function () {
+                // If archive was loaded (72h empty), switch default to "All"
+                if (yearLoaded) {
+                    var btns = document.querySelectorAll('.fire-time-btn');
+                    btns.forEach(function (b) {
+                        b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
+                        b.classList.add('bg-gray-100', 'text-gray-700');
+                    });
+                    var allBtn = document.querySelector('.fire-time-btn[data-hours="0"]');
+                    if (allBtn) {
+                        allBtn.classList.add('active', 'bg-blue-100', 'text-blue-700');
+                        allBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                    }
+                }
                 populateSatelliteFilters();
                 applyFilters();
             }).catch(function () {
