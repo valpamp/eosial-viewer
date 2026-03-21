@@ -110,6 +110,9 @@ body.querying .leaflet-container { cursor: crosshair !important; }
 /* ── Fire marker ─────────────────────────────────────────────── */
 .fire-marker-icon { background: none !important; border: none !important; }
 
+/* Stack legends vertically with spacing */
+.fire-legend { margin-top: 8px !important; }
+
 /* ── Unified right toolbar ────────────────────────────────────── */
 .leaflet-top.leaflet-right {
     display: flex;
