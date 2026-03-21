@@ -21,13 +21,14 @@ keywords:
   - web GIS
   - cloud optimized geotiff
 date-released: "2026-03-21"
-
 preferred-citation:
-@inproceedings{pampanoni2024using,
-  title={Using prosail look-up tables to train random forests regressors for fast live fuel moisture retrieval},
-  author={},
-  booktitle={IGARSS 2024-2024 IEEE International Geoscience and Remote Sensing Symposium},
-  pages={4526--4530},
-  year={2024},
-  organization={IEEE}
-}
+  type: conference-paper
+  title: "Using PROSAIL Look-Up Tables to Train Random Forests Regressors for Fast Live Fuel Moisture Retrieval"
+  authors:
+    - family-names: Pampanoni
+      given-names: Valerio
+  collection-title: "IGARSS 2024 — 2024 IEEE International Geoscience and Remote Sensing Symposium"
+  pages: "4526-4530"
+  year: 2024
+  publisher:
+    name: IEEE

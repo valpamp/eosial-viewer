@@ -2,7 +2,7 @@
 
 Interactive web viewer for satellite-derived environmental variables, developed at the **EOSIAL Laboratory** (Earth Observation Satellite Images Applications Lab), Sapienza University of Rome.
 
-**Live demo:** *coming soon — see [Publishing](#publishing) below*
+**Live demo:** [https://valpamp.github.io/eosial-viewer](https://valpamp.github.io/eosial-viewer)
 
 ## Features
 
@@ -21,7 +21,7 @@ The viewer is a static site — no build step or server required.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/eosial-viewer.git
+   git clone https://github.com/valpamp/eosial-viewer.git
    cd eosial-viewer
    ```
 
@@ -50,9 +50,11 @@ eosial-viewer/
 │       ├── lfmc.js             # LFMC raster layer (COG loading + rendering)
 │       └── fire-hotspots.js    # Fire detection markers
 ├── data/
-│   └── lfmc/
-│       ├── manifest.json       # Index of available AOIs, polygons, dates
-│       └── cogs/               # Cloud Optimized GeoTIFFs (uint8, DEFLATE)
+│   ├── lfmc/
+│   │   ├── manifest.json       # Index of available AOIs, polygons, dates
+│   │   └── cogs/               # Cloud Optimized GeoTIFFs (uint8, DEFLATE)
+│   └── fire/
+│       └── sfide_aggregate_72h.geojson   # Fire hotspot detections
 ├── scripts/
 │   ├── convert_to_cog.py       # Convert LFMC inference TIFs → COGs
 │   └── generate_manifest.py    # Scan COGs directory → manifest.json
@@ -62,7 +64,9 @@ eosial-viewer/
 
 ## Data pipeline
 
-1. **Run LFMC inference** (external) to produce GeoTIFF outputs.
+### LFMC
+
+1. Run LFMC inference (external) to produce GeoTIFF outputs.
 2. **Convert to COGs:**
    ```bash
    python scripts/convert_to_cog.py
@@ -73,6 +77,19 @@ eosial-viewer/
    python scripts/generate_manifest.py
    ```
    Scans `data/lfmc/cogs/` and writes `data/lfmc/manifest.json`.
+
+### Fire hotspots
+
+Place a GeoJSON file at `data/fire/sfide_aggregate_72h.geojson`. The file should contain a `FeatureCollection` of Point features with the following properties:
+
+| Property | Description |
+|----------|-------------|
+| `DATETIME` | Detection timestamp (UTC) |
+| `SATELLITE` | Source satellite (e.g. MSG, MTG) |
+| `CONFIDENCE` | Detection confidence (%) |
+| `FRP_WOOSTER` or `FRP_MODIS` | Fire Radiative Power (MW) |
+
+The layer loads this file on init and renders points as clustered markers. To update the data, replace the GeoJSON and redeploy.
 
 ## Dependencies
 
@@ -91,13 +108,9 @@ Python scripts require **rasterio** and **numpy** (`pip install rasterio numpy`)
 
 ## Publishing
 
-The simplest option is **GitHub Pages**:
+Hosted on **GitHub Pages** — every push to `main` triggers an automatic redeploy.
 
-1. Push to a public GitHub repository.
-2. Go to **Settings → Pages → Source: Deploy from branch → main / root**.
-3. The site goes live at `https://YOUR_USERNAME.github.io/eosial-viewer/`.
-
-COG data files must be committed to the repository. Current total is ~33 MB (12 dates, Iberia AOI). If the dataset grows beyond ~500 MB, consider hosting COGs on external object storage and updating `DATA_BASE` in `js/app.js`.
+To self-host or fork: serve the repository root with any static file server. COG data files must be included. If the dataset grows beyond ~500 MB, consider hosting COGs on external object storage and updating `DATA_BASE` in `js/app.js`.
 
 ## Citation
 
