@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""
+Convert LFMC inference GeoTIFFs to Cloud Optimized GeoTIFFs (COGs).
+
+Reads the LFMC inference output directory structure, rounds values to
+nearest integer, reprojects to EPSG:4326, and writes compressed COGs
+into the web data directory.
+
+Usage:
+    python convert_to_cog.py
+
+Configure the paths below before running.
+"""
+
+import os
+import re
+import sys
+import shutil
+import numpy as np
+
+try:
+    import rasterio
+    from rasterio.enums import Resampling
+    from rasterio.warp import calculate_default_transform, reproject
+except ImportError:
+    sys.exit("ERROR: rasterio is required.  pip install rasterio")
+
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+
+# Path to the LFMC inference run directory
+LFMC_RUN_DIR = r"F:\Valerio\lfmc\lfmc_inference_output\viirs_Iberia"
+
+# AOI identifier (used in output path)
+AOI_NAME = "Iberia"
+
+# Output root inside the web project's data\lfmc\cogs\ folder
+COG_OUTPUT_DIR = r"F:\Valerio\eosial-viewer\data\lfmc\cogs"
+
+# Nodata value used in the source LFMC TIFs
+NODATA = -9999
+
+# Nodata value for the uint8 output COGs (255 reserved as nodata)
+NODATA_OUT = 255
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+_DATE_RE = re.compile(r'(\d{4})-?(\d{2})-?(\d{2})')
+_MERGED_RE = re.compile(r'_merged\.tif$', re.IGNORECASE)
+
+def detect_layout(run_dir):
+    """Return (is_multi, poly_names) — same logic as inference script."""
+    top = [d for d in os.listdir(run_dir)
+           if os.path.isdir(os.path.join(run_dir, d))]
+    is_multi = any(not (len(d) == 4 and d.isdigit()) for d in top
+                   if d not in ('visualize', 'viz'))
+    if is_multi:
+        polys = sorted(d for d in top if d not in ('visualize', 'viz'))
+    else:
+        polys = ['']
+    return is_multi, polys
+
+
+def best_tif_per_date(poly_dir):
+    """Return {date_str: tif_path} — prefer merged, else single."""
+    tifs_by_date = {}      # date -> list of paths
+    merged_by_date = {}    # date -> merged path
+
+    for fname in os.listdir(poly_dir):
+        if not fname.lower().endswith('.tif'):
+            continue
+        m = _DATE_RE.search(fname)
+        if not m:
+            continue
+        d = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+        fpath = os.path.join(poly_dir, fname)
+        if _MERGED_RE.search(fname):
+            merged_by_date[d] = fpath
+        else:
+            tifs_by_date.setdefault(d, []).append(fpath)
+
+    # Also check year subdirs  (poly_dir/2025/...)
+    for sub in os.listdir(poly_dir):
+        sub_path = os.path.join(poly_dir, sub)
+        if not os.path.isdir(sub_path):
+            continue
+        if not (len(sub) == 4 and sub.isdigit()):
+            continue
+        for fname in os.listdir(sub_path):
+            if not fname.lower().endswith('.tif'):
+                continue
+            m = _DATE_RE.search(fname)
+            if not m:
+                continue
+            d = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+            fpath = os.path.join(sub_path, fname)
+            if _MERGED_RE.search(fname):
+                merged_by_date[d] = fpath
+            else:
+                tifs_by_date.setdefault(d, []).append(fpath)
+
+    result = {}
+    all_dates = sorted(set(list(tifs_by_date.keys()) + list(merged_by_date.keys())))
+    for d in all_dates:
+        if d in merged_by_date:
+            result[d] = merged_by_date[d]
+        elif d in tifs_by_date:
+            result[d] = tifs_by_date[d][0]
+    return result
+
+
+def convert_one(src_path, dst_path):
+    """Convert a single LFMC TIF to a COG (EPSG:4326, uint8, DEFLATE)."""
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+
+    with rasterio.open(src_path) as src:
+        # Calculate transform for EPSG:4326
+        dst_crs = 'EPSG:4326'
+        transform, width, height = calculate_default_transform(
+            src.crs, dst_crs, src.width, src.height, *src.bounds)
+
+        profile = src.profile.copy()
+        profile.update(
+            driver='GTiff',
+            crs=dst_crs,
+            transform=transform,
+            width=width,
+            height=height,
+            dtype='uint8',
+            nodata=NODATA_OUT,
+            compress='deflate',
+            tiled=True,
+            blockxsize=256,
+            blockysize=256,
+        )
+
+        # Write to a temp file first, then build overviews
+        tmp_path = dst_path + '.tmp.tif'
+        with rasterio.open(tmp_path, 'w', **profile) as dst:
+            for band in range(1, src.count + 1):
+                data = np.empty((height, width), dtype=np.float32)
+                reproject(
+                    source=rasterio.band(src, band),
+                    destination=data,
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=transform,
+                    dst_crs=dst_crs,
+                    resampling=Resampling.nearest,
+                )
+                # Round to nearest integer, clamp to 0-254 (255 = nodata)
+                valid = (data != NODATA) & np.isfinite(data)
+                out = np.full((height, width), NODATA_OUT, dtype=np.uint8)
+                out[valid] = np.clip(np.round(data[valid]), 0, 254).astype(np.uint8)
+                dst.write(out, band)
+
+        # Add overviews for COG performance
+        with rasterio.open(tmp_path, 'r+') as dst:
+            overview_levels = [2, 4, 8, 16]
+            dst.build_overviews(overview_levels, Resampling.nearest)
+            dst.update_tags(ns='rio_overview', resampling='nearest')
+
+        # Copy with COG layout (internal tiling + overview interleaving)
+        # rasterio's copy with driver='COG' handles this if available
+        try:
+            with rasterio.open(tmp_path) as src2:
+                rasterio.shutil.copy(src2, dst_path, driver='COG',
+                                     compress='deflate')
+            os.remove(tmp_path)
+        except Exception:
+            # If COG driver not available, the tiled DEFLATE TIF is fine
+            shutil.move(tmp_path, dst_path)
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    run_dir = LFMC_RUN_DIR
+    if not os.path.isdir(run_dir):
+        sys.exit(f"ERROR: directory not found: {run_dir}")
+
+    is_multi, polys = detect_layout(run_dir)
+    print(f"[COG] Run dir: {run_dir}")
+    print(f"[COG] Layout: {'multi-polygon' if is_multi else 'single'}")
+    print(f"[COG] Polygons: {polys}")
+
+    total = 0
+    skipped = 0
+
+    for poly in polys:
+        poly_dir = os.path.join(run_dir, poly) if poly else run_dir
+        date_tifs = best_tif_per_date(poly_dir)
+
+        poly_label = poly or 'single'
+        print(f"\n  Polygon '{poly_label}': {len(date_tifs)} dates")
+
+        for date_str, src_path in sorted(date_tifs.items()):
+            out_dir = os.path.join(COG_OUTPUT_DIR, AOI_NAME, poly_label)
+            out_path = os.path.join(out_dir, date_str + '.tif')
+
+            if os.path.exists(out_path):
+                skipped += 1
+                continue
+
+            print(f"    {date_str} → {os.path.relpath(out_path, COG_OUTPUT_DIR)}")
+            try:
+                convert_one(src_path, out_path)
+                total += 1
+            except Exception as e:
+                print(f"    [ERROR] {e}")
+
+    print(f"\n[COG] Done. Converted: {total}, Skipped (existing): {skipped}")
+
+
+if __name__ == '__main__':
+    main()

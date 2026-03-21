@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "EOSIAL Viewer: Interactive Satellite-Derived Environmental Maps"
+message: "If you use this software or data, please cite it as below."
+type: software
+authors:
+  - family-names: Pampanoni
+    given-names: Valerio
+    email: valerio.pampanoni@uniroma1.it
+    affiliation: "EOSIAL Laboratory, School of Aerospace Engineering, Sapienza University of Rome"
+    orcid: "https://orcid.org/0000-0002-9946-1303"
+repository-code: "https://github.com/valpamp/eosial-viewer"
+url: "https://valpamp.github.io/eosial-viewer"
+license: MIT
+license-url: "https://opensource.org/licenses/MIT"
+keywords:
+  - live fuel moisture content
+  - LFMC
+  - remote sensing
+  - wildfire
+  - earth observation
+  - web GIS
+  - cloud optimized geotiff
+date-released: "2026-03-21"
+
+preferred-citation:
+@inproceedings{pampanoni2024using,
+  title={Using prosail look-up tables to train random forests regressors for fast live fuel moisture retrieval},
+  author={},
+  booktitle={IGARSS 2024-2024 IEEE International Geoscience and Remote Sensing Symposium},
+  pages={4526--4530},
+  year={2024},
+  organization={IEEE}
+}

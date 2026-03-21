@@ -1,0 +1,25 @@
+{
+  "aois": {
+    "Iberia": {
+      "label": "Iberia",
+      "polygons": {
+        "single": {
+          "dates": {
+            "2025-06-02": "lfmc/cogs/Iberia/single/2025-06-02.tif",
+            "2025-06-10": "lfmc/cogs/Iberia/single/2025-06-10.tif",
+            "2025-06-18": "lfmc/cogs/Iberia/single/2025-06-18.tif",
+            "2025-06-26": "lfmc/cogs/Iberia/single/2025-06-26.tif",
+            "2025-07-04": "lfmc/cogs/Iberia/single/2025-07-04.tif",
+            "2025-07-12": "lfmc/cogs/Iberia/single/2025-07-12.tif",
+            "2025-07-20": "lfmc/cogs/Iberia/single/2025-07-20.tif",
+            "2025-07-28": "lfmc/cogs/Iberia/single/2025-07-28.tif",
+            "2025-08-05": "lfmc/cogs/Iberia/single/2025-08-05.tif",
+            "2025-08-13": "lfmc/cogs/Iberia/single/2025-08-13.tif",
+            "2025-08-21": "lfmc/cogs/Iberia/single/2025-08-21.tif",
+            "2025-08-29": "lfmc/cogs/Iberia/single/2025-08-29.tif"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+# Fire data (symlinked or copied from SFIDE repo)
+data/fire/*.geojson
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp

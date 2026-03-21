@@ -1,0 +1,441 @@
+/* ── Base ─────────────────────────────────────────────────────── */
+body {
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    transition: background-color 0.3s;
+}
+body.dark {
+    background-color: #111;
+}
+#map {
+    height: 100vh;
+    width: 100vw;
+    z-index: 10;
+    transition: margin-left 0.3s ease-in-out;
+}
+
+/* ── Sidebar scrollbar ───────────────────────────────────────── */
+#control-panel-content {
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af #e5e7eb;
+}
+#control-panel-content::-webkit-scrollbar { width: 8px; }
+#control-panel-content::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 4px; }
+#control-panel-content::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; }
+#control-panel-content::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+/* ── Popup ────────────────────────────────────────────────────── */
+.leaflet-popup-content { font-size: 13px; }
+.leaflet-popup-content h3 {
+    font-size: 15px; font-weight: 600;
+    margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;
+}
+.leaflet-popup-content table { width: 100%; border-collapse: collapse; }
+.leaflet-popup-content th {
+    text-align: left; padding: 3px 8px 3px 0; font-weight: 500;
+    color: #374151; vertical-align: top; width: 110px;
+}
+.leaflet-popup-content td { text-align: left; padding: 3px 0; color: #1f293d; }
+.leaflet-popup-content tr:nth-child(even) { background-color: #f9fafb; }
+
+/* ── Legend control ───────────────────────────────────────────── */
+.legend {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(5px);
+    padding: 10px 14px 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    line-height: 1.4;
+    font-size: 12px;
+    min-width: 220px;
+}
+.legend h4 { font-weight: 600; margin-bottom: 6px; font-size: 13px; text-align: center; }
+.legend-gradient {
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid #bbb;
+}
+.legend-labels {
+    display: flex; justify-content: space-between;
+    font-size: 11px; margin-top: 3px; color: #444;
+    font-weight: 500;
+}
+
+/* ── Layer toggle switches ────────────────────────────────────── */
+.layer-toggle {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 6px;
+    cursor: pointer; user-select: none;
+    transition: background 0.15s;
+}
+.layer-toggle:hover { background: #f3f4f6; }
+.layer-toggle input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: #2563eb;
+}
+.layer-toggle .layer-name { font-size: 13px; font-weight: 500; color: #374151; }
+
+/* ── Opacity slider ──────────────────────────────────────────── */
+.opacity-slider {
+    width: 100%;
+    accent-color: #2563eb;
+}
+
+/* ── Date slider ─────────────────────────────────────────────── */
+#lfmc-date-slider {
+    width: 100%;
+    accent-color: #2563eb;
+}
+.date-label {
+    font-size: 13px; font-weight: 600; color: #1f2937;
+    text-align: center; margin-top: 4px;
+}
+
+/* ── Drawing mode cursor ─────────────────────────────────────── */
+body.querying .leaflet-container { cursor: crosshair !important; }
+
+/* ── MarkerCluster (fire) ─────────────────────────────────────── */
+.marker-cluster-small { background-color: rgba(241,128,23,0.6); }
+.marker-cluster-small div { background-color: rgba(240,128,23,0.8); }
+.marker-cluster-medium { background-color: rgba(240,59,32,0.6); }
+.marker-cluster-medium div { background-color: rgba(240,59,32,0.8); }
+.marker-cluster-large { background-color: rgba(200,32,32,0.6); }
+.marker-cluster-large div { background-color: rgba(200,32,32,0.8); }
+.marker-cluster div {
+    width: 30px; height: 30px; margin-left: 5px; margin-top: 5px;
+    text-align: center; border-radius: 15px;
+    font: 12px 'Inter', sans-serif; color: #fff;
+}
+.marker-cluster span { line-height: 30px; }
+
+/* ── Fire marker ─────────────────────────────────────────────── */
+.fire-marker-icon { background: none !important; border: none !important; }
+
+/* ── Unified right toolbar ────────────────────────────────────── */
+.leaflet-top.leaflet-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.map-toolbar {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(5px);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    overflow: visible;
+    margin: 10px 10px 0 0 !important;
+}
+
+.map-toolbar .toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #374151;
+    font-size: 18px;
+    transition: background 0.15s;
+    position: relative;
+}
+.map-toolbar .toolbar-btn:hover {
+    background: #f3f4f6;
+}
+/* First button: round top corners */
+.map-toolbar > :first-child > .toolbar-btn,
+.map-toolbar > .toolbar-btn:first-child {
+    border-radius: 8px 8px 0 0;
+}
+/* Last button: round bottom corners */
+.map-toolbar > :last-child > .toolbar-btn,
+.map-toolbar > .toolbar-btn:last-child {
+    border-radius: 0 0 8px 8px;
+}
+/* Separator lines */
+.map-toolbar > * + * > .toolbar-btn,
+.map-toolbar > .toolbar-btn + .toolbar-btn {
+    border-top: 1px solid #e5e7eb;
+}
+.map-toolbar .toolbar-btn svg {
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+}
+
+/* Basemap dropdown */
+.basemap-dropdown {
+    display: none;
+    position: absolute;
+    right: 42px;
+    top: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(5px);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 4px 0;
+    white-space: nowrap;
+    z-index: 1000;
+}
+.basemap-dropdown.open {
+    display: block;
+}
+.basemap-dropdown .basemap-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #374151;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.basemap-dropdown .basemap-option:hover {
+    background: #f3f4f6;
+}
+.basemap-dropdown .basemap-option.active {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+/* Geocoder in toolbar */
+.toolbar-geocoder {
+    display: none;
+    position: absolute;
+    right: 42px;
+    top: 0;
+    z-index: 1000;
+}
+.toolbar-geocoder.open {
+    display: block;
+}
+.toolbar-geocoder input {
+    width: 220px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(5px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    outline: none;
+    color: #1f2937;
+}
+.toolbar-geocoder input::placeholder {
+    color: #9ca3af;
+}
+.toolbar-geocoder .geocoder-results {
+    background: rgba(255,255,255,0.95);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    max-height: 200px;
+    overflow-y: auto;
+}
+.toolbar-geocoder .geocoder-result {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.toolbar-geocoder .geocoder-result:hover {
+    background: #f3f4f6;
+}
+
+/* Toolbar button active state */
+.map-toolbar .toolbar-btn.active {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+/* Measure tooltip on map */
+.measure-tooltip {
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    padding: 3px 8px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    font: 12px/1.3 'Inter', sans-serif;
+    color: #1f2937;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.measure-tooltip::before {
+    display: none;
+}
+
+/* Hide default Leaflet controls that we replace */
+.leaflet-top.leaflet-right .leaflet-control-zoom,
+.leaflet-top.leaflet-right .leaflet-control-layers,
+.leaflet-top.leaflet-right .leaflet-control-geocoder {
+    display: none !important;
+}
+
+/* ── Coordinate / hover info bar ──────────────────────────────── */
+#map-info-bar {
+    font-family: 'Inter', monospace;
+    letter-spacing: 0.02em;
+    height: 24px;
+}
+
+/* ── Loading skeleton shimmer ────────────────────────────────── */
+.skeleton-shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(59,130,246,0.06) 40%,
+        rgba(59,130,246,0.12) 50%,
+        rgba(59,130,246,0.06) 60%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+}
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Dark mode ───────────────────────────────────────────────── */
+body.dark #map-info-bar {
+    background: rgba(30,30,30,0.9);
+    color: #a1a1aa;
+    border-color: #374151;
+}
+body.dark #control-panel {
+    background: #1e1e1e;
+    color: #d4d4d8;
+}
+body.dark #control-panel h1,
+body.dark #control-panel h2,
+body.dark #control-panel h3 {
+    color: #e4e4e7;
+}
+body.dark #control-panel p,
+body.dark #control-panel label,
+body.dark #control-panel .layer-name,
+body.dark #control-panel .date-label {
+    color: #a1a1aa;
+}
+body.dark #control-panel select,
+body.dark #control-panel input[type="range"] {
+    background: #2a2a2e;
+    color: #d4d4d8;
+    border-color: #4b5563;
+}
+body.dark #control-panel button {
+    background: #2a2a2e;
+    color: #d4d4d8;
+}
+body.dark #control-panel button:hover {
+    background: #3a3a3e;
+}
+body.dark #control-panel .border-t {
+    border-color: #374151;
+}
+body.dark #control-panel-content {
+    scrollbar-color: #4b5563 #1e1e1e;
+}
+body.dark #control-panel-content::-webkit-scrollbar-track { background: #1e1e1e; }
+body.dark #control-panel-content::-webkit-scrollbar-thumb { background: #4b5563; }
+body.dark .layer-toggle:hover { background: #2a2a2e; }
+
+body.dark #toggle-panel-btn {
+    background: #1e1e1e;
+    color: #a1a1aa;
+}
+
+body.dark .legend {
+    background: rgba(30,30,30,0.95);
+    color: #d4d4d8;
+}
+body.dark .legend h4 { color: #e4e4e7; }
+body.dark .legend-labels { color: #a1a1aa; }
+body.dark .legend-gradient { border-color: #555; }
+
+body.dark .map-toolbar {
+    background: rgba(30,30,30,0.95);
+}
+body.dark .map-toolbar .toolbar-btn {
+    color: #d4d4d8;
+}
+body.dark .map-toolbar .toolbar-btn:hover {
+    background: #3a3a3e;
+}
+body.dark .map-toolbar .toolbar-btn.active {
+    background: #1e3a5f;
+    color: #60a5fa;
+}
+body.dark .map-toolbar > * + * > .toolbar-btn,
+body.dark .map-toolbar > .toolbar-btn + .toolbar-btn {
+    border-top-color: #374151;
+}
+
+body.dark .basemap-dropdown {
+    background: rgba(30,30,30,0.95);
+}
+body.dark .basemap-dropdown .basemap-option {
+    color: #d4d4d8;
+}
+body.dark .basemap-dropdown .basemap-option:hover {
+    background: #3a3a3e;
+}
+body.dark .basemap-dropdown .basemap-option.active {
+    color: #60a5fa;
+}
+
+body.dark .toolbar-geocoder input {
+    background: rgba(30,30,30,0.95);
+    color: #d4d4d8;
+}
+body.dark .toolbar-geocoder .geocoder-results {
+    background: rgba(30,30,30,0.95);
+}
+body.dark .toolbar-geocoder .geocoder-result {
+    color: #d4d4d8;
+}
+body.dark .toolbar-geocoder .geocoder-result:hover {
+    background: #3a3a3e;
+}
+
+body.dark .measure-tooltip {
+    background: rgba(30,30,30,0.9);
+    color: #d4d4d8;
+}
+
+body.dark #loading-indicator {
+    background: #1e1e1e;
+}
+body.dark #loading-indicator span {
+    color: #d4d4d8;
+}
+
+body.dark #ts-modal > div,
+body.dark #about-modal > div {
+    background: #1e1e1e;
+    color: #d4d4d8;
+}
+body.dark #ts-modal .border-b,
+body.dark #ts-modal .border-t,
+body.dark #about-modal .border-b {
+    border-color: #374151;
+}
+body.dark #ts-modal h3,
+body.dark #about-modal h3 {
+    color: #e4e4e7;
+}
+
+/* ── Area of Interest selector ────────────────────────────────── */
+.aoi-item {
+    padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; color: #374151;
+    transition: background 0.15s;
+}
+.aoi-item:hover { background: #f3f4f6; }
+.aoi-item.active { background: #dbeafe; color: #1e40af; font-weight: 500; }
