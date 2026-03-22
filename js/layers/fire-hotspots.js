@@ -259,7 +259,44 @@
         html += '<tr><th>Bright TIR</th><td>' + (p.BRIGHT_TIR != null ? p.BRIGHT_TIR.toFixed(1) + ' K' : 'N/A') + '</td></tr>';
         html += '<tr><th>Lat, Lon</th><td>' + p.LATITUDE.toFixed(4) + ', ' + p.LONGITUDE.toFixed(4) + '</td></tr>';
         html += '</table>';
+        html += '<div style="text-align:center;margin-top:6px;">' +
+                '<a href="#" class="fire-ts-link text-xs" style="color:#2563eb;cursor:pointer;" ' +
+                'data-lat="' + p.LATITUDE + '" data-lon="' + p.LONGITUDE + '">' +
+                'Show FRP timeseries at this location</a></div>';
         return html;
+    }
+
+    /**
+     * Collect all detections at a given lat/lon and show an FRP timeseries chart.
+     */
+    function showFRPTimeseries(lat, lon) {
+        var tolerance = 0.001; // ~100m for geostationary pixel matching
+        var colocated = allFeatures.filter(function (f) {
+            var p = f.properties;
+            return Math.abs(p.LATITUDE - lat) < tolerance &&
+                   Math.abs(p.LONGITUDE - lon) < tolerance;
+        });
+
+        // Build series sorted by date
+        var series = colocated.map(function (f) {
+            var p = f.properties;
+            var d = parseFeatureDate(p);
+            return { date: d, value: p.FRP_WOOSTER || 0, sat: p.SATELLITE };
+        }).filter(function (s) { return s.date !== null; })
+          .sort(function (a, b) { return a.date - b.date; });
+
+        if (!series.length) {
+            alert('No FRP data at this location.');
+            return;
+        }
+
+        var infoHtml = 'Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4) +
+                       '<br>Detections: ' + series.length;
+        EV.showTimeseries(
+            'FRP Timeseries',
+            series,
+            { unit: 'MW', label: 'FRP (MW)', color: '#dc2626', info: infoHtml, timeUnit: 'hour' }
+        );
     }
 
     /* ── Dynamic satellite filter population ───────────────────── */
@@ -498,7 +535,19 @@
 
             clusterGroup = L.markerClusterGroup({
                 maxClusterRadius: 40,
-                disableClusteringAtZoom: 12,
+                spiderfyOnMaxZoom: true,
+                zoomToBoundsOnClick: true,
+                spiderfyDistanceMultiplier: 1.5,
+            });
+
+            // Delegate clicks on FRP timeseries links inside popups
+            document.addEventListener('click', function (e) {
+                var link = e.target.closest('.fire-ts-link');
+                if (!link) return;
+                e.preventDefault();
+                var lat = parseFloat(link.getAttribute('data-lat'));
+                var lon = parseFloat(link.getAttribute('data-lon'));
+                if (!isNaN(lat) && !isNaN(lon)) showFRPTimeseries(lat, lon);
             });
 
             return load72h().then(function () {

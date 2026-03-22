@@ -59,7 +59,10 @@
                 scales: {
                     x: {
                         type: 'time',
-                        time: { unit: 'day', tooltipFormat: 'yyyy-MM-dd' },
+                        time: {
+                            tooltipFormat: opts.timeUnit === 'hour' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd',
+                            unit: opts.timeUnit || 'day',
+                        },
                         title: { display: true, text: 'Date' }
                     },
                     y: {

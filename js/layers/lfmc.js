@@ -34,7 +34,7 @@
     var rasterLayer    = null;   // active GeoRasterLayer on the map
     var activeGeoraster = null;  // currently displayed georaster
     var georasterCache = {};     // url → parsed georaster
-    var opacity        = 0.85;
+    var opacity        = 1.0;
     var visible        = true;
 
     /* ── Manifest loading ──────────────────────────────────────── */
@@ -270,7 +270,7 @@
             /* Opacity */
             '<div class="mb-2">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Opacity</label>' +
-            '  <input type="range" id="lfmc-opacity" min="0" max="100" value="85" class="opacity-slider">' +
+            '  <input type="range" id="lfmc-opacity" min="0" max="100" value="100" class="opacity-slider">' +
             '</div>';
 
         container.appendChild(section);
