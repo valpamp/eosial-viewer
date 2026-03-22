@@ -352,9 +352,9 @@
             /* Custom date range */
             '<div class="mb-3">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Custom Range</label>' +
-            '  <div class="flex gap-1 mb-1">' +
-            '    <input type="datetime-local" id="fire-start-time" class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded">' +
-            '    <input type="datetime-local" id="fire-end-time" class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded">' +
+            '  <div class="space-y-1 mb-1">' +
+            '    <input type="datetime-local" id="fire-start-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="Start">' +
+            '    <input type="datetime-local" id="fire-end-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="End">' +
             '  </div>' +
             '  <button id="fire-apply-custom" class="w-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Apply Custom Range</button>' +
             '</div>' +
@@ -376,7 +376,7 @@
             /* Advanced: confidence + FRP */
             '<div class="mb-3">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Min. Confidence (%)</label>' +
-            '  <input type="number" id="fire-min-conf" min="0" max="100" value="0" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
+            '  <input type="number" id="fire-min-conf" min="0" max="100" value="40" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
             '</div>' +
             '<div class="mb-3">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Min. FRP (MW) <span class="text-gray-400">— blank = per-satellite default</span></label>' +
@@ -519,6 +519,51 @@
         }
     }
 
+    /**
+     * Query all fire detections within a bounding box and show FRP timeseries.
+     */
+    function queryPolygon(bounds) {
+        var sw = bounds.getSouthWest();
+        var ne = bounds.getNorthEast();
+        var inside = allFeatures.filter(function (f) {
+            var p = f.properties;
+            return p.LATITUDE >= sw.lat && p.LATITUDE <= ne.lat &&
+                   p.LONGITUDE >= sw.lng && p.LONGITUDE <= ne.lng;
+        });
+
+        // Also apply current filters (time, satellite, type, confidence, FRP)
+        var range = getTimeRange();
+        var activeSats = getCheckedValues('.fire-sat-filter');
+        var activeTypes = getCheckedValues('.fire-type-filter').map(Number);
+        var minConf = parseFloat(document.getElementById('fire-min-conf').value) || 0;
+        var minFrpStr = document.getElementById('fire-min-frp').value;
+
+        var filtered = inside.filter(function (f) {
+            var p = f.properties;
+            var d = parseFeatureDate(p);
+            if (!d || d < range.start || d > range.end) return false;
+            if (activeSats.length > 0 && activeSats.indexOf(p.SATELLITE) === -1) return false;
+            if (activeTypes.length > 0 && activeTypes.indexOf(p.TYPE) === -1) return false;
+            if ((p.CONFIDENCE || 0) < minConf) return false;
+            var frp = p.FRP_WOOSTER || 0;
+            if (minFrpStr === '' || minFrpStr === undefined) {
+                var defMin = DEFAULT_MIN_FRP[p.SATELLITE] || 0;
+                if (frp < defMin) return false;
+            } else {
+                if (frp < parseFloat(minFrpStr)) return false;
+            }
+            return true;
+        });
+
+        var series = filtered.map(function (f) {
+            var p = f.properties;
+            return { date: parseFeatureDate(p), value: p.FRP_WOOSTER || 0 };
+        }).filter(function (s) { return s.date !== null; })
+          .sort(function (a, b) { return a.date - b.date; });
+
+        return series;
+    }
+
     /* ── Public API ────────────────────────────────────────────── */
 
     EV.fireHotspots = {
@@ -576,6 +621,7 @@
         },
 
         setVisible: setVisible,
+        queryPolygon: queryPolygon,
     };
 
 })();

@@ -485,24 +485,49 @@
         var bounds = e.layer.getBounds();
         drawnItems.addLayer(e.layer);
 
-        if (EV.lfmc && EV.lfmc.getDates().length) {
+        var area = bounds.getSouthWest().distanceTo(bounds.getSouthEast()) *
+                   bounds.getSouthWest().distanceTo(bounds.getNorthWest()) / 1e6;
+
+        // Check which layers are active and query accordingly
+        var lfmcActive = EV.lfmc && EV.lfmc.getDates().length;
+        var fireActive = EV.fireHotspots && document.getElementById('fire-controls') &&
+                         !document.getElementById('fire-controls').classList.contains('hidden');
+
+        if (fireActive) {
+            var fireSeries = EV.fireHotspots.queryPolygon(bounds);
+            if (fireSeries.length) {
+                drawnItems.removeLayer(e.layer);
+                var infoHtml = 'Area: ~' + area.toFixed(2) + ' km&sup2;' +
+                               '<br>Detections in area: ' + fireSeries.length;
+                EV.showTimeseries(
+                    'FRP — Polygon',
+                    fireSeries,
+                    { unit: 'MW', label: 'FRP (MW)', color: '#dc2626', info: infoHtml, timeUnit: 'hour' }
+                );
+                return;
+            }
+        }
+
+        if (lfmcActive) {
             EV.lfmc.queryPolygon(bounds, map).then(function (series) {
                 drawnItems.removeLayer(e.layer);
                 if (!series.length) {
                     alert('No LFMC data in this area.');
                     return;
                 }
-                var area = bounds.getSouthWest().distanceTo(bounds.getSouthEast()) *
-                           bounds.getSouthWest().distanceTo(bounds.getNorthWest()) / 1e6;
                 var infoHtml = 'Area: ~' + area.toFixed(2) + ' km&sup2;' +
                                '<br>Dates with data: ' + series.length;
                 EV.showTimeseries(
-                    'LFMC — Polygon Mean',
+                    'LFMC — Polygon Statistics',
                     series,
-                    { unit: '%', label: 'LFMC (%)', color: '#059669', info: infoHtml }
+                    { unit: '%', label: 'LFMC (%)', info: infoHtml }
                 );
             });
+            return;
         }
+
+        drawnItems.removeLayer(e.layer);
+        alert('No active queryable layer.');
     });
 
     /* ── Copy shareable link ───────────────────────────────────── */

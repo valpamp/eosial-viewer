@@ -197,17 +197,29 @@
                     var v = getPixelValue(gr, samplePts[k]);
                     if (v !== null && v !== NODATA && v !== NODATA_U8 && !isNaN(v)) vals.push(v);
                 }
-                if (vals.length === 0) return { date: new Date(d), value: null };
+                if (vals.length === 0) return { date: new Date(d), mean: null, median: null, q25: null, q75: null };
+                vals.sort(function (a, b) { return a - b; });
                 var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
-                return { date: new Date(d), value: Math.round(mean * 10) / 10 };
+                var median = vals.length % 2 === 0
+                    ? (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2
+                    : vals[Math.floor(vals.length / 2)];
+                var q25 = vals[Math.floor(vals.length * 0.25)];
+                var q75 = vals[Math.floor(vals.length * 0.75)];
+                return {
+                    date: new Date(d),
+                    mean:   Math.round(mean * 10) / 10,
+                    median: Math.round(median * 10) / 10,
+                    q25:    Math.round(q25 * 10) / 10,
+                    q75:    Math.round(q75 * 10) / 10
+                };
             }).catch(function () {
-                return { date: new Date(d), value: null };
+                return { date: new Date(d), mean: null, median: null, q25: null, q75: null };
             });
         });
 
         return Promise.all(promises).then(function (results) {
             EV.hideLoading();
-            return results.filter(function (r) { return r.value !== null; });
+            return results.filter(function (r) { return r.mean !== null; });
         });
     }
 
