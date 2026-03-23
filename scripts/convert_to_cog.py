@@ -29,10 +29,10 @@ except ImportError:
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 # Path to the LFMC inference run directory
-LFMC_RUN_DIR = r"F:\Valerio\lfmc\lfmc_inference_output\viirs_Iberia"
+LFMC_RUN_DIR = r"F:\Valerio\lfmc\lfmc_inference_output\viirs_Europe"
 
 # AOI identifier (used in output path)
-AOI_NAME = "Iberia"
+AOI_NAME = "Europe"
 
 # Output root inside the web project's data\lfmc\cogs\ folder
 COG_OUTPUT_DIR = r"F:\Valerio\eosial-viewer\data\lfmc\cogs"
