@@ -41,7 +41,9 @@
 
     function loadManifest(url) {
         EV.showLoading('Loading LFMC manifest...');
-        return fetch(url)
+        // Cache-bust the manifest so stale CDN copies are never used
+        var bust = url + '?v=' + Date.now();
+        return fetch(bust)
             .then(function (r) {
                 if (!r.ok) throw new Error('Manifest fetch failed: ' + r.status);
                 return r.json();
