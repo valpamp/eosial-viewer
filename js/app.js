@@ -230,10 +230,88 @@
             geocoderWrap.classList.remove('open');
         });
 
+        // ── Screenshot
+        var ssWrap = document.createElement('div');
+        ssWrap.style.position = 'relative';
+        wrap.appendChild(ssWrap);
+
+        var btnScreenshot = _tbBtn(ssWrap, '',
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>' +
+            '<circle cx="12" cy="13" r="4"/></svg>',
+            'Take screenshot');
+
+        var ssDropdown = document.createElement('div');
+        ssDropdown.className = 'ss-dropdown';
+        ssWrap.appendChild(ssDropdown);
+
+        // Title input
+        var ssTitleWrap = document.createElement('div');
+        ssTitleWrap.className = 'ss-field';
+        ssTitleWrap.innerHTML = '<div class="ss-field-label">Title (optional)</div>';
+        var ssTitleInput = document.createElement('input');
+        ssTitleInput.type = 'text';
+        ssTitleInput.className = 'ss-title-input';
+        ssTitleInput.placeholder = 'Map title\u2026';
+        ssTitleWrap.appendChild(ssTitleInput);
+        ssDropdown.appendChild(ssTitleWrap);
+
+        // Scale buttons
+        var ssScaleWrap = document.createElement('div');
+        ssScaleWrap.className = 'ss-field';
+        ssScaleWrap.innerHTML = '<div class="ss-field-label">Resolution</div>';
+        var ssScaleRow = document.createElement('div');
+        ssScaleRow.className = 'ss-scale-row';
+        ssScaleWrap.appendChild(ssScaleRow);
+        ssDropdown.appendChild(ssScaleWrap);
+
+        var ssScale = 1;
+        [1, 2, 3].forEach(function (n) {
+            var btn = document.createElement('button');
+            btn.className = 'ss-scale-btn' + (n === 1 ? ' active' : '');
+            btn.textContent = n + '\xd7';
+            btn.addEventListener('click', function () {
+                ssScale = n;
+                ssScaleRow.querySelectorAll('.ss-scale-btn').forEach(function (b) {
+                    b.classList.toggle('active', b === btn);
+                });
+            });
+            ssScaleRow.appendChild(btn);
+        });
+
+        // Divider
+        var ssDivider = document.createElement('div');
+        ssDivider.className = 'ss-divider';
+        ssDropdown.appendChild(ssDivider);
+
+        var btnSSFull = document.createElement('button');
+        btnSSFull.className = 'ss-option';
+        btnSSFull.textContent = 'Download map view';
+        btnSSFull.addEventListener('click', function () {
+            ssDropdown.classList.remove('open');
+            captureMapScreenshot(null, { title: ssTitleInput.value.trim(), scale: ssScale });
+        });
+        ssDropdown.appendChild(btnSSFull);
+
+        var btnSSArea = document.createElement('button');
+        btnSSArea.className = 'ss-option';
+        btnSSArea.textContent = 'Select area\u2026';
+        btnSSArea.addEventListener('click', function () {
+            activateScreenshotSelect(ssDropdown, { title: ssTitleInput.value.trim(), scale: ssScale });
+        });
+        ssDropdown.appendChild(btnSSArea);
+
+        btnScreenshot.addEventListener('click', function () {
+            ssDropdown.classList.toggle('open');
+            dropdown.classList.remove('open');
+            geocoderWrap.classList.remove('open');
+        });
+
         // Close dropdowns when clicking elsewhere on the map
         map.on('click', function () {
             dropdown.classList.remove('open');
             geocoderWrap.classList.remove('open');
+            ssDropdown.classList.remove('open');
         });
 
         return wrap;
@@ -352,6 +430,215 @@
         var btn = document.querySelector('.map-toolbar .toolbar-btn.active');
         if (btn) btn.classList.remove('active');
     });
+
+    /* ── Screenshot tool ───────────────────────────────────────── */
+
+    var ssSelecting = false;
+    var ssStartX = 0, ssStartY = 0;
+    var ssOverlay = document.getElementById('screenshot-overlay');
+    var ssSel     = document.getElementById('screenshot-sel');
+
+    function _niceTickStep(range) {
+        var steps = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 45, 60, 90];
+        var target = range / 5;
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i] >= target) return steps[i];
+        }
+        return 90;
+    }
+
+    function _fmtLat(v) {
+        var n = Math.abs(v);
+        return (n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)) + '\u00b0' + (v >= 0 ? 'N' : 'S');
+    }
+
+    function _fmtLon(v) {
+        var n = Math.abs(v);
+        return (n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)) + '\u00b0' + (v >= 0 ? 'E' : 'W');
+    }
+
+    function _addTicksToCanvas(srcCanvas, bounds, cropOffX, cropOffY, scale, title) {
+        cropOffX = cropOffX || 0;
+        cropOffY = cropOffY || 0;
+        scale    = scale    || 1;
+        title    = title    || '';
+
+        // All margin/font values are in output-canvas pixels (already scaled by html2canvas)
+        var s  = scale;
+        var ML = Math.round(54 * s), MB = Math.round(26 * s);
+        var MR = Math.round(4  * s), MT = Math.round(6  * s);
+        var TH = title ? Math.round(32 * s) : 0;   // title bar height
+
+        var w = srcCanvas.width, h = srcCanvas.height;
+        var dst = document.createElement('canvas');
+        dst.width  = w + ML + MR;
+        dst.height = h + MT + MB + TH;
+        var ctx = dst.getContext('2d');
+
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, dst.width, dst.height);
+
+        // Optional title
+        if (title) {
+            ctx.fillStyle   = '#1f2937';
+            ctx.font        = 'bold ' + Math.round(13 * s) + 'px Arial, sans-serif';
+            ctx.textAlign   = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(title, dst.width / 2, TH / 2);
+        }
+
+        // Map image
+        ctx.drawImage(srcCanvas, ML, TH + MT);
+
+        // Border
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth   = Math.max(1, s);
+        ctx.strokeRect(ML + 0.5, TH + MT + 0.5, w, h);
+
+        ctx.font        = Math.round(10 * s) + 'px Arial, sans-serif';
+        ctx.strokeStyle = '#555';
+        ctx.fillStyle   = '#222';
+        ctx.lineWidth   = Math.max(1, s);
+
+        var latRange = bounds.getNorth() - bounds.getSouth();
+        var lonRange = bounds.getEast()  - bounds.getWest();
+        var latStep  = _niceTickStep(latRange);
+        var lonStep  = _niceTickStep(lonRange);
+
+        // Latitude ticks — left margin
+        var latStart = Math.ceil(bounds.getSouth() / latStep) * latStep;
+        for (var lat = latStart; lat <= bounds.getNorth() + 1e-9; lat += latStep) {
+            var lpt = map.latLngToContainerPoint([lat, bounds.getWest()]);
+            var py  = (lpt.y - cropOffY) * s + TH + MT;
+            if (py < TH + MT || py > TH + MT + h) continue;
+            ctx.beginPath();
+            ctx.moveTo(ML, py); ctx.lineTo(ML - 5 * s, py); ctx.stroke();
+            ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+            ctx.fillText(_fmtLat(lat), ML - 7 * s, py);
+        }
+
+        // Longitude ticks — bottom margin
+        var lonStart = Math.ceil(bounds.getWest() / lonStep) * lonStep;
+        for (var lon = lonStart; lon <= bounds.getEast() + 1e-9; lon += lonStep) {
+            var opt = map.latLngToContainerPoint([bounds.getSouth(), lon]);
+            var px  = (opt.x - cropOffX) * s + ML;
+            if (px < ML || px > ML + w) continue;
+            ctx.beginPath();
+            ctx.moveTo(px, TH + MT + h); ctx.lineTo(px, TH + MT + h + 5 * s); ctx.stroke();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            ctx.fillText(_fmtLon(lon), px, TH + MT + h + 6 * s);
+        }
+
+        // Watermark
+        ctx.fillStyle    = '#aaa';
+        ctx.font         = Math.round(8 * s) + 'px Arial, sans-serif';
+        ctx.textAlign    = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('EOSIAL Viewer \u2014 ' + new Date().toISOString().substring(0, 10),
+                     ML + 4 * s, TH + MT + h - 3 * s);
+
+        return dst;
+    }
+
+    function captureMapScreenshot(cropRect, opts) {
+        opts = opts || {};
+        var scale = opts.scale || 1;
+        var title = opts.title || '';
+
+        var mapEl = document.getElementById('map');
+        var currentBounds = map.getBounds();
+
+        html2canvas(mapEl, {
+            useCORS:    true,
+            allowTaint: false,
+            scale:      scale,
+            backgroundColor: null,
+            logging:    false,
+            onclone: function (clonedDoc) {
+                var tb = clonedDoc.querySelector('.map-toolbar');
+                if (tb) tb.style.display = 'none';
+            }
+        }).then(function (canvas) {
+            var srcCanvas, finalBounds, offX, offY;
+
+            if (cropRect) {
+                // Crop: the html2canvas output is at `scale` pixels per CSS pixel
+                var c = document.createElement('canvas');
+                c.width  = cropRect.w * scale;
+                c.height = cropRect.h * scale;
+                c.getContext('2d').drawImage(canvas, -cropRect.x * scale, -cropRect.y * scale);
+                srcCanvas   = c;
+                var sw = map.containerPointToLatLng([cropRect.x,              cropRect.y + cropRect.h]);
+                var ne = map.containerPointToLatLng([cropRect.x + cropRect.w, cropRect.y]);
+                finalBounds = L.latLngBounds(sw, ne);
+                offX = cropRect.x;
+                offY = cropRect.y;
+            } else {
+                srcCanvas   = canvas;
+                finalBounds = currentBounds;
+                offX = 0;
+                offY = 0;
+            }
+
+            var out = _addTicksToCanvas(srcCanvas, finalBounds, offX, offY, scale, title);
+            var a = document.createElement('a');
+            a.href     = out.toDataURL('image/png');
+            a.download = 'eosial-map-' + new Date().toISOString().substring(0, 10) + '.png';
+            a.click();
+        }).catch(function (err) {
+            console.error('[SCREENSHOT]', err);
+            alert('Screenshot failed. Some tile layers may not support cross-origin capture.');
+        });
+    }
+
+    function activateScreenshotSelect(ssDropdown, opts) {
+        ssDropdown.classList.remove('open');
+        ssSelecting = false;
+        ssOverlay.classList.remove('hidden');
+        ssSel.classList.add('hidden');
+
+        function onDown(e) {
+            ssSelecting = true;
+            var r = ssOverlay.getBoundingClientRect();
+            ssStartX = e.clientX - r.left;
+            ssStartY = e.clientY - r.top;
+            ssSel.style.left   = ssStartX + 'px';
+            ssSel.style.top    = ssStartY + 'px';
+            ssSel.style.width  = '0px';
+            ssSel.style.height = '0px';
+            ssSel.classList.remove('hidden');
+        }
+        function onMove(e) {
+            if (!ssSelecting) return;
+            var r = ssOverlay.getBoundingClientRect();
+            var x = e.clientX - r.left, y = e.clientY - r.top;
+            ssSel.style.left   = Math.min(x, ssStartX) + 'px';
+            ssSel.style.top    = Math.min(y, ssStartY) + 'px';
+            ssSel.style.width  = Math.abs(x - ssStartX) + 'px';
+            ssSel.style.height = Math.abs(y - ssStartY) + 'px';
+        }
+        function onUp(e) {
+            if (!ssSelecting) return;
+            ssSelecting = false;
+            ssOverlay.classList.add('hidden');
+            ssSel.classList.add('hidden');
+            ssOverlay.removeEventListener('mousedown', onDown);
+            ssOverlay.removeEventListener('mousemove', onMove);
+            ssOverlay.removeEventListener('mouseup',   onUp);
+            var r = ssOverlay.getBoundingClientRect();
+            var x = e.clientX - r.left, y = e.clientY - r.top;
+            var cropX = Math.round(Math.min(x, ssStartX));
+            var cropY = Math.round(Math.min(y, ssStartY));
+            var cropW = Math.round(Math.abs(x - ssStartX));
+            var cropH = Math.round(Math.abs(y - ssStartY));
+            if (cropW < 30 || cropH < 30) return; // too small — ignore
+            captureMapScreenshot({ x: cropX, y: cropY, w: cropW, h: cropH }, opts);
+        }
+
+        ssOverlay.addEventListener('mousedown', onDown);
+        ssOverlay.addEventListener('mousemove', onMove);
+        ssOverlay.addEventListener('mouseup',   onUp);
+    }
 
     /* ── Layer registration ────────────────────────────────────── */
 
@@ -642,10 +929,12 @@
     // Register layers
     registerLayer(EV.lfmc);
     registerLayer(EV.fireHotspots);
+    registerLayer(EV.adminL0);
     buildLayerToggles();
 
     // Initialise layers
     EV.lfmc.init(map, DATA_BASE);
     EV.fireHotspots.init(map, DATA_BASE);
+    EV.adminL0.init(map);
 
 })();

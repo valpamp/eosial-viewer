@@ -442,3 +442,98 @@ body.dark #about-modal h3 {
 }
 .aoi-item:hover { background: #f3f4f6; }
 .aoi-item.active { background: #dbeafe; color: #1e40af; font-weight: 500; }
+
+/* ── Screenshot selection rectangle ─────────────────────────── */
+#screenshot-sel {
+    border: 2px solid #2563eb;
+    background: rgba(37, 99, 235, 0.1);
+}
+
+/* ── Screenshot dropdown ─────────────────────────────────────── */
+.ss-dropdown {
+    display: none;
+    position: absolute;
+    right: 42px;
+    top: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(5px);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 4px 0;
+    white-space: nowrap;
+    z-index: 1000;
+    min-width: 160px;
+}
+.ss-dropdown.open { display: block; }
+.ss-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #374151;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.ss-option:hover { background: #f3f4f6; }
+
+body.dark .ss-dropdown {
+    background: rgba(30,30,30,0.95);
+}
+body.dark .ss-option { color: #d4d4d8; }
+body.dark .ss-option:hover { background: #3a3a3e; }
+
+.ss-field { padding: 6px 10px 2px; }
+.ss-field-label { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+.ss-title-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    outline: none;
+    color: #1f2937;
+    background: #fff;
+}
+.ss-title-input:focus { border-color: #2563eb; }
+.ss-scale-row { display: flex; gap: 4px; }
+.ss-scale-btn {
+    flex: 1;
+    padding: 3px 0;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #f9fafb;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.ss-scale-btn:hover { background: #f3f4f6; }
+.ss-scale-btn.active {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+.ss-divider { border-top: 1px solid #e5e7eb; margin: 6px 0 2px; }
+
+body.dark .ss-title-input {
+    background: #2a2a2e;
+    border-color: #4b5563;
+    color: #d4d4d8;
+}
+body.dark .ss-scale-btn {
+    background: #2a2a2e;
+    border-color: #4b5563;
+    color: #d4d4d8;
+}
+body.dark .ss-scale-btn.active {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #60a5fa;
+}
+body.dark .ss-divider { border-color: #374151; }
+body.dark .ss-field-label { color: #9ca3af; }

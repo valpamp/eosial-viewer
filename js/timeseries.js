@@ -171,6 +171,42 @@
         if (chart) { chart.destroy(); chart = null; }
     }
 
+    function downloadCSV() {
+        if (!chart) return;
+        var datasets = chart.data.datasets;
+        var labels   = chart.data.labels;
+        // Collect visible datasets; skip the internal Q25 fill-target series
+        var visible = [];
+        for (var i = 0; i < datasets.length; i++) {
+            if (datasets[i].label !== 'Q25' && !chart.getDatasetMeta(i).hidden) {
+                visible.push({ label: datasets[i].label, data: datasets[i].data });
+            }
+        }
+        if (!visible.length) return;
+        var header = ['Date'].concat(visible.map(function (ds) { return ds.label; }));
+        var rows = [header.join(',')];
+        for (var j = 0; j < labels.length; j++) {
+            var d = labels[j];
+            var dateStr = (d instanceof Date)
+                ? d.toISOString().substring(0, 16).replace('T', ' ')
+                : String(d);
+            var row = ['"' + dateStr + '"'];
+            for (var k = 0; k < visible.length; k++) {
+                var v = visible[k].data[j];
+                row.push(v != null ? String(Math.round(v * 100) / 100) : '');
+            }
+            rows.push(row.join(','));
+        }
+        var csv  = rows.join('\r\n');
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'timeseries.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
     // Wire close button
     document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('ts-modal-close').addEventListener('click', closeModal);
@@ -184,6 +220,7 @@
             a.download = 'timeseries.png';
             a.click();
         });
+        document.getElementById('ts-save-csv').addEventListener('click', downloadCSV);
     });
 
     // Public API

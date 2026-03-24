@@ -37,6 +37,9 @@
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
+    <!-- TopoJSON client (for admin boundaries) -->
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+
     <!-- Inter Font -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
@@ -138,6 +141,10 @@
                 <div id="ts-info" class="mt-3 text-sm text-gray-600"></div>
             </div>
             <div class="p-3 border-t flex justify-end gap-2">
+                <button id="ts-save-csv"
+                        class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700">
+                    Download CSV
+                </button>
                 <button id="ts-save-png"
                         class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                     Save as PNG
@@ -180,6 +187,11 @@
         <span id="cursor-value"></span>
     </div>
 
+    <!-- Screenshot selection overlay -->
+    <div id="screenshot-overlay" class="hidden fixed inset-0 select-none" style="z-index:25;cursor:crosshair;">
+        <div id="screenshot-sel" class="hidden absolute pointer-events-none"></div>
+    </div>
+
     <!-- Loading skeleton overlay -->
     <div id="loading-skeleton" class="hidden fixed inset-0 z-40 pointer-events-none">
         <div class="skeleton-shimmer"></div>
@@ -201,6 +213,7 @@
     <script src="js/timeseries.js"></script>
     <script src="js/layers/lfmc.js"></script>
     <script src="js/layers/fire-hotspots.js"></script>
+    <script src="js/layers/admin-boundaries.js"></script>
     <script src="js/app.js"></script>
 
 </body>
