@@ -27,15 +27,16 @@
     var NODATA_U8 = 255;
 
     // State
-    var manifest       = null;   // loaded manifest object
-    var currentAoi     = null;   // e.g. "BA-ESP-AUG25"
-    var currentPoly    = null;   // e.g. "15" or "" for single-polygon AOIs
-    var currentDate    = null;   // e.g. "2025-06-01"
-    var rasterLayer    = null;   // active GeoRasterLayer on the map
-    var activeGeoraster = null;  // currently displayed georaster
-    var georasterCache = {};     // url → parsed georaster
-    var opacity        = 1.0;
-    var visible        = true;
+    var manifest        = null;   // loaded manifest object
+    var currentAoi      = null;
+    var currentPoly     = null;
+    var currentDate     = null;
+    var currentUrl      = null;   // URL of the currently displayed COG
+    var rasterLayer     = null;   // active GeoRasterLayer on the map
+    var activeGeoraster = null;   // georaster for hover/query; populated lazily
+    var georasterCache  = {};     // url → fully-parsed georaster (for timeseries queries)
+    var opacity         = 1.0;
+    var visible         = true;
 
     /* ── Manifest loading ──────────────────────────────────────── */
 
@@ -61,17 +62,20 @@
 
     /* ── COG loading ───────────────────────────────────────────── */
 
+    // Full download — used only for timeseries queries, never for display.
+    // Results are cached so repeat queries on the same date are instant,
+    // and hover tooltip becomes available for any date that has been queried.
     function loadCOG(url) {
         if (georasterCache[url]) return Promise.resolve(georasterCache[url]);
         EV.showLoading('Loading LFMC raster...');
         return fetch(url)
             .then(function (r) { return r.arrayBuffer(); })
-            .then(function (buf) {
-                return parseGeoraster(buf);   // global from georaster lib
-            })
+            .then(function (buf) { return parseGeoraster(buf); })
             .then(function (gr) {
                 georasterCache[url] = gr;
                 EV.hideLoading();
+                // If this is the currently displayed date, enable hover now
+                if (url === currentUrl) activeGeoraster = gr;
                 return gr;
             })
             .catch(function (err) {
@@ -81,32 +85,23 @@
             });
     }
 
-    /* ── Rendering ─────────────────────────────────────────────── */
+    /* ── Pixel-value color function (shared) ──────────────────── */
 
-    function renderCOG(georaster, map) {
-        if (rasterLayer) {
-            map.removeLayer(rasterLayer);
-            rasterLayer = null;
-        }
-
-        rasterLayer = new GeoRasterLayer({
-            georaster: georaster,
-            opacity: opacity,
-            resolution: 256,
-            pixelValuesToColorFn: function (vals) {
-                var v = vals[0];
-                if (v === NODATA || v === NODATA_U8 || v === null || v === undefined) return null;
-                var rgba = EV.lfmcColor(v, NODATA);
-                return 'rgba(' + rgba[0] + ',' + rgba[1] + ',' + rgba[2] + ',' + (rgba[3] / 255) + ')';
-            }
-        });
-
-        if (visible) rasterLayer.addTo(map);
-        return rasterLayer;
+    function _pixelToColor(vals) {
+        var v = vals[0];
+        if (v === NODATA || v === NODATA_U8 || v === null || v === undefined) return null;
+        var rgba = EV.lfmcColor(v, NODATA);
+        return 'rgba(' + rgba[0] + ',' + rgba[1] + ',' + rgba[2] + ',' + (rgba[3] / 255) + ')';
     }
 
     /* ── Switch date ───────────────────────────────────────────── */
-
+    /*
+     * Display uses GeoRasterLayer's built-in URL mode, which sends HTTP
+     * Range requests and fetches only the tiles visible in the current
+     * viewport (using COG overviews at lower zoom levels).  This means
+     * the full file is never downloaded just for rendering — only for
+     * timeseries queries, which are on-demand and cache the result.
+     */
     function showDate(dateStr, map, fitBounds) {
         if (!manifest || !currentAoi || currentPoly === null) return;
         var aoi = manifest.aois[currentAoi];
@@ -116,21 +111,54 @@
 
         currentDate = dateStr;
         var url = poly.dates[dateStr];
-        // Resolve relative URLs against manifest location
         if (url && !url.match(/^https?:\/\//)) {
             url = EV.dataBaseUrl + '/' + url;
         }
+        currentUrl = url;
 
-        loadCOG(url).then(function (gr) {
-            activeGeoraster = gr;
-            renderCOG(gr, map);
-            if (fitBounds) {
-                var bounds = rasterLayer.getBounds();
-                if (bounds) map.fitBounds(bounds, { padding: [30, 30] });
-            }
-            updateDateLabel();
-            EV.emit('lfmc:dateChanged', { date: dateStr });
-        });
+        // Remove old layer
+        if (rasterLayer) { map.removeLayer(rasterLayer); rasterLayer = null; }
+
+        // If this date was already fully loaded for a query, reuse that georaster
+        // (gives hover tooltip for free; also avoids even the Range-request overhead)
+        if (georasterCache[url]) {
+            activeGeoraster = georasterCache[url];
+            rasterLayer = new GeoRasterLayer({   // eslint-disable-line no-undef
+                georaster: activeGeoraster,
+                opacity: opacity,
+                resolution: 256,
+                pixelValuesToColorFn: _pixelToColor
+            });
+        } else {
+            // Fast path: URL-based loading with HTTP Range requests
+            activeGeoraster = null;
+            rasterLayer = new GeoRasterLayer({   // eslint-disable-line no-undef
+                url: url,
+                opacity: opacity,
+                resolution: 256,
+                pixelValuesToColorFn: _pixelToColor
+            });
+            // Once the layer has read the COG header, expose its georaster for hover
+            rasterLayer.once('load', function () {
+                if (rasterLayer && rasterLayer.georaster && !georasterCache[url]) {
+                    activeGeoraster = rasterLayer.georaster;
+                }
+            });
+        }
+
+        if (visible) rasterLayer.addTo(map);
+
+        if (fitBounds) {
+            rasterLayer.once('load', function () {
+                try {
+                    var b = rasterLayer.getBounds();
+                    if (b && b.isValid()) map.fitBounds(b, { padding: [30, 30] });
+                } catch (e) { /* ignore */ }
+            });
+        }
+
+        updateDateLabel();
+        EV.emit('lfmc:dateChanged', { date: dateStr });
     }
 
     /* ── Pixel query ───────────────────────────────────────────── */
@@ -228,12 +256,12 @@
     /* ── Pixel value extraction ────────────────────────────────── */
 
     function getPixelValue(georaster, latlng) {
-        // georaster coordinates: xmin, ymax, pixelWidth, pixelHeight
+        // georaster may come from URL-based loading and not have values pre-loaded
+        if (!georaster || !georaster.values || !georaster.values[0]) return null;
         var x = Math.floor((latlng.lng - georaster.xmin) / georaster.pixelWidth);
         var y = Math.floor((georaster.ymax - latlng.lat) / georaster.pixelHeight);
         if (x < 0 || y < 0 || x >= georaster.width || y >= georaster.height) return null;
-        var val = georaster.values[0][y][x];
-        return val;
+        return georaster.values[0][y][x];
     }
 
     /* ── Sidebar controls ──────────────────────────────────────── */
