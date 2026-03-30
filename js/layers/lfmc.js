@@ -27,18 +27,21 @@
     var NODATA_U8 = 255;
 
     // State
-    var manifest        = null;   // loaded manifest object
-    var currentAoi      = null;
-    var currentPoly     = null;
-    var currentDate     = null;
-    var currentUrl      = null;   // URL of the currently displayed COG
-    var rasterLayer     = null;   // active GeoRasterLayer on the map
-    var activeGeoraster = null;   // georaster for hover/query; populated lazily
-    var georasterCache  = {};     // url → fully-parsed georaster (for timeseries queries)
-    var opacity         = 1.0;
-    var visible         = true;
+    var manifest          = null;   // loaded manifest object
+    var precomputedStats  = null;   // loaded stats.json {aoi: {poly: {date: {mean,median,q25,q75}}}}
+    var currentAoi        = null;
+    var currentPoly       = null;
+    var currentDate       = null;
+    var currentUrl        = null;   // URL of the currently displayed COG
+    var rasterLayer       = null;   // active GeoRasterLayer on the map
+    var activeGeoraster   = null;   // georaster for hover/query; populated lazily
+    var georasterCache    = {};     // url → fully-parsed georaster (for point queries on small AOIs)
+    var currentAbort      = null;   // AbortController for the in-flight display COG fetch
+    var showGeneration    = 0;      // incremented each showDate call; guards against stale renders
+    var opacity           = 1.0;
+    var visible           = true;
 
-    /* ── Manifest loading ──────────────────────────────────────── */
+    /* ── Manifest + stats loading ─────────────────────────────── */
 
     function loadManifest(url) {
         EV.showLoading('Loading LFMC manifest...');
@@ -60,25 +63,34 @@
             });
     }
 
+    // stats.json is optional — silently ignored if absent (small/legacy AOIs use COG fallback)
+    function loadStats(url) {
+        var bust = url + '?v=' + Date.now();
+        return fetch(bust)
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) { precomputedStats = data; return data; })
+            .catch(function () { precomputedStats = null; });
+    }
+
     /* ── COG loading ───────────────────────────────────────────── */
 
-    // Full download — used only for timeseries queries, never for display.
+    // Full download — used only for point timeseries queries on small AOIs.
     // Results are cached so repeat queries on the same date are instant,
     // and hover tooltip becomes available for any date that has been queried.
-    function loadCOG(url) {
+    function loadCOG(url, signal) {
         if (georasterCache[url]) return Promise.resolve(georasterCache[url]);
         EV.showLoading('Loading LFMC raster...');
-        return fetch(url)
+        return fetch(url, signal ? { signal: signal } : {})
             .then(function (r) { return r.arrayBuffer(); })
             .then(function (buf) { return parseGeoraster(buf); })
             .then(function (gr) {
                 georasterCache[url] = gr;
                 EV.hideLoading();
-                // If this is the currently displayed date, enable hover now
                 if (url === currentUrl) activeGeoraster = gr;
                 return gr;
             })
             .catch(function (err) {
+                if (err.name === 'AbortError') { EV.hideLoading(); return null; }
                 console.error('[LFMC] COG load error:', err);
                 EV.hideLoading();
                 throw err;
@@ -105,13 +117,28 @@
 
         currentDate = dateStr;
         var url = poly.dates[dateStr];
-        if (url && !url.match(/^https?:\/\//)) {
-            url = EV.dataBaseUrl + '/' + url;
-        }
+        if (url && !url.match(/^https?:\/\//)) url = EV.dataBaseUrl + '/' + url;
         currentUrl = url;
 
-        loadCOG(url).then(function (gr) {
+        // Update UI immediately — don't wait for the async tile load
+        updateDateLabel();
+        EV.emit('lfmc:dateChanged', { date: dateStr });
+
+        // Cancel any in-flight COG download and guard against stale renders
+        if (currentAbort) { currentAbort.abort(); }
+        currentAbort = new AbortController();
+        var signal = currentAbort.signal;
+        var myGen = ++showGeneration;
+
+        if (rasterLayer) { map.removeLayer(rasterLayer); rasterLayer = null; }
+        activeGeoraster = null;
+
+        loadCOG(url, signal).then(function (gr) {
+            if (myGen !== showGeneration) return; // a newer showDate already ran
+            if (!gr) return; // aborted
+            currentAbort = null;
             activeGeoraster = gr;
+            // Remove any layer added by a racing callback since the sync removal above
             if (rasterLayer) { map.removeLayer(rasterLayer); rasterLayer = null; }
             rasterLayer = new GeoRasterLayer({   // eslint-disable-line no-undef
                 georaster: gr,
@@ -124,8 +151,8 @@
                 var b = rasterLayer.getBounds();
                 if (b && b.isValid()) map.fitBounds(b, { padding: [30, 30] });
             }
-            updateDateLabel();
-            EV.emit('lfmc:dateChanged', { date: dateStr });
+        }).catch(function (err) {
+            console.error('[LFMC] COG load error:', err);
         });
     }
 
@@ -162,8 +189,10 @@
     }
 
     /**
-     * Query the LFMC mean within a polygon (L.LatLngBounds) for every date.
-     * Simplified: samples a grid of points within the bounds.
+     * Query LFMC statistics within a polygon for every available date.
+     *
+     * If stats.json was loaded, returns whole-AOI pre-computed stats instantly.
+     * Falls back to sampling a grid of pixels from downloaded COGs for small AOIs.
      */
     function queryPolygon(bounds, map) {
         if (!manifest || !currentAoi || currentPoly === null) return Promise.resolve([]);
@@ -171,7 +200,28 @@
         var poly = aoi.polygons[currentPoly];
         if (!poly) return Promise.resolve([]);
 
-        // Build sample grid (max ~400 points)
+        var dates = Object.keys(poly.dates).sort();
+
+        // Fast path: use pre-computed whole-AOI statistics
+        if (precomputedStats &&
+            precomputedStats[currentAoi] &&
+            precomputedStats[currentAoi][currentPoly]) {
+            var aoiStats = precomputedStats[currentAoi][currentPoly];
+            var series = dates.map(function (d) {
+                var s = aoiStats[d];
+                if (!s) return null;
+                return {
+                    date:   new Date(d),
+                    mean:   Math.round(s.mean   * 10) / 10,
+                    median: Math.round(s.median * 10) / 10,
+                    q25:    Math.round(s.q25    * 10) / 10,
+                    q75:    Math.round(s.q75    * 10) / 10
+                };
+            }).filter(Boolean);
+            return Promise.resolve(series);
+        }
+
+        // Fallback: sample a grid of pixels from downloaded COGs (small AOIs only)
         var sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
         var nLat = 20, nLng = 20;
         var dLat = (ne.lat - sw.lat) / nLat;
@@ -183,7 +233,6 @@
             }
         }
 
-        var dates = Object.keys(poly.dates).sort();
         EV.showLoading('Querying polygon (' + dates.length + ' dates)...');
 
         var promises = dates.map(function (d) {
@@ -204,11 +253,11 @@
                 var q25 = vals[Math.floor(vals.length * 0.25)];
                 var q75 = vals[Math.floor(vals.length * 0.75)];
                 return {
-                    date: new Date(d),
-                    mean:   Math.round(mean * 10) / 10,
+                    date:   new Date(d),
+                    mean:   Math.round(mean   * 10) / 10,
                     median: Math.round(median * 10) / 10,
-                    q25:    Math.round(q25 * 10) / 10,
-                    q75:    Math.round(q75 * 10) / 10
+                    q25:    Math.round(q25    * 10) / 10,
+                    q75:    Math.round(q75    * 10) / 10
                 };
             }).catch(function () {
                 return { date: new Date(d), mean: null, median: null, q25: null, q75: null };
@@ -257,11 +306,11 @@
             '  <select id="lfmc-poly-select" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md"></select>' +
             '</div>' +
 
-            /* Date slider */
+            /* Date selector + slider */
             '<div class="mb-3">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Date</label>' +
+            '  <select id="lfmc-date-select" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md mb-2"></select>' +
             '  <input type="range" id="lfmc-date-slider" min="0" max="0" value="0" class="w-full">' +
-            '  <div id="lfmc-date-label" class="date-label">—</div>' +
             '</div>' +
 
             /* Previous / Play / Next buttons */
@@ -292,9 +341,18 @@
         document.getElementById('lfmc-poly-select').addEventListener('change', function () {
             selectPolygon(this.value, map, true);
         });
+        document.getElementById('lfmc-date-select').addEventListener('change', function () {
+            var idx = +this.value;
+            var dates = getDates();
+            if (!dates.length) return;
+            document.getElementById('lfmc-date-slider').value = idx;
+            showDate(dates[idx], map, false);
+        });
         document.getElementById('lfmc-date-slider').addEventListener('input', function () {
             var dates = getDates();
-            if (dates.length) showDate(dates[+this.value], map, false);
+            if (!dates.length) return;
+            document.getElementById('lfmc-date-select').value = this.value;
+            showDate(dates[+this.value], map, false);
         });
         document.getElementById('lfmc-prev').addEventListener('click', function () {
             stepDate(-1, map);
@@ -310,24 +368,60 @@
         // Playback
         var playTimer = null;
         var playBtn = document.getElementById('lfmc-play');
-        playBtn.addEventListener('click', function () {
-            if (playTimer) {
-                clearInterval(playTimer);
-                playTimer = null;
-                playBtn.innerHTML = '&#9654;';
-                playBtn.classList.remove('bg-blue-100', 'text-blue-700');
-                return;
-            }
-            playBtn.innerHTML = '&#9646;&#9646;';
-            playBtn.classList.add('bg-blue-100', 'text-blue-700');
+
+        function startPlayTimer() {
             playTimer = setInterval(function () {
                 var slider = document.getElementById('lfmc-date-slider');
                 var next = +slider.value + 1;
-                if (next > +slider.max) next = 0; // loop
+                if (next > +slider.max) next = 0;
                 slider.value = next;
+                document.getElementById('lfmc-date-select').value = String(next);
                 var dates = getDates();
                 if (dates.length) showDate(dates[next], map, false);
             }, 1000);
+        }
+
+        function stopPlay() {
+            clearInterval(playTimer);
+            playTimer = null;
+            playBtn.innerHTML = '&#9654;';
+            playBtn.classList.remove('bg-blue-100', 'text-blue-700');
+        }
+
+        playBtn.addEventListener('click', function () {
+            if (playTimer) { stopPlay(); return; }
+
+            playBtn.innerHTML = '&#9646;&#9646;';
+            playBtn.classList.add('bg-blue-100', 'text-blue-700');
+
+            // Pre-load all dates sequentially so animation plays from cache
+            var dates = getDates();
+            var poly = manifest.aois[currentAoi].polygons[currentPoly];
+            var i = 0;
+            function loadNext() {
+                if (!playTimer && i > 0) return; // stopped before preload finished
+                if (i >= dates.length) { startPlayTimer(); return; }
+                var url = poly.dates[dates[i]];
+                if (url && !url.match(/^https?:\/\//)) url = EV.dataBaseUrl + '/' + url;
+                i++;
+                EV.showLoading('Pre-loading ' + i + ' / ' + dates.length + '...');
+                // Skip abort signal so preload fetches aren't cancelled by showDate
+                var p = georasterCache[url]
+                    ? Promise.resolve(georasterCache[url])
+                    : fetch(url).then(function (r) { return r.arrayBuffer(); })
+                               .then(function (buf) { return parseGeoraster(buf); })
+                               .then(function (gr) { georasterCache[url] = gr; return gr; });
+                p.then(loadNext).catch(loadNext); // skip errors, keep going
+            }
+
+            // If already preloaded (all in cache), start immediately
+            var allCached = dates.every(function (d) {
+                var u = poly.dates[d];
+                if (u && !u.match(/^https?:\/\//)) u = EV.dataBaseUrl + '/' + u;
+                return !!georasterCache[u];
+            });
+            if (allCached) { EV.hideLoading(); startPlayTimer(); }
+            else { playTimer = true; loadNext(); } // set truthy so stopPlay check works
         });
 
         // Populate colormap dropdown
@@ -386,11 +480,23 @@
     function selectPolygon(polyKey, map, fit) {
         currentPoly = polyKey;
         var dates = getDates();
+
+        // Populate date dropdown
+        var sel = document.getElementById('lfmc-date-select');
+        sel.innerHTML = '';
+        dates.forEach(function (d, i) {
+            var opt = document.createElement('option');
+            opt.value = String(i);
+            opt.textContent = d;
+            sel.appendChild(opt);
+        });
+
         var slider = document.getElementById('lfmc-date-slider');
         slider.max = Math.max(0, dates.length - 1);
-        slider.value = dates.length - 1;  // latest date
+        slider.value = dates.length - 1;
+        if (sel.options.length) sel.value = String(dates.length - 1);
+
         if (dates.length) showDate(dates[dates.length - 1], map, fit);
-        else updateDateLabel();
     }
 
     function getDates() {
@@ -411,11 +517,14 @@
     }
 
     function updateDateLabel() {
-        var lbl = document.getElementById('lfmc-date-label');
-        if (!currentDate) { lbl.textContent = '—'; return; }
         var dates = getDates();
-        var idx = dates.indexOf(currentDate);
-        lbl.textContent = currentDate + '  (' + (idx + 1) + ' / ' + dates.length + ')';
+        var idx = currentDate ? dates.indexOf(currentDate) : -1;
+        // Sync dropdown
+        var sel = document.getElementById('lfmc-date-select');
+        if (sel && idx >= 0) sel.value = String(idx);
+        // Sync slider
+        var slider = document.getElementById('lfmc-date-slider');
+        if (slider && idx >= 0) slider.value = String(idx);
     }
 
     /* ── Legend ─────────────────────────────────────────────────── */
@@ -469,9 +578,12 @@
         init: function (map, dataBaseUrl) {
             EV.dataBaseUrl = dataBaseUrl;
             buildControls(map);
-            var legend = buildLegend(map);
+            buildLegend(map);
 
-            return loadManifest(dataBaseUrl + '/lfmc/manifest.json').then(function () {
+            return Promise.all([
+                loadManifest(dataBaseUrl + '/lfmc/manifest.json'),
+                loadStats(dataBaseUrl + '/lfmc/stats.json')
+            ]).then(function () {
                 if (!manifest) return;
                 var firstAoi = populateAoiSelect();
                 // Restore AOI from URL if valid
