@@ -25,9 +25,9 @@
 
     var SATELLITE_PRODUCTS = {
         'MTG-1': 'MTG-FCI',
-        'MET-11': 'MSG-HRIT',
+        'MET-11': 'MSG-RSS',
         'MET-10': 'MSG-HRIT',
-        'MET-09': 'MSG-HRIT',
+        'MET-09': 'MSG-IODC',
         'MET-08': 'MSG-HRIT'
     };
 
@@ -150,6 +150,55 @@
             parts.push('rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ') ' + pct + '%');
         }
         return 'linear-gradient(to right, ' + parts.join(', ') + ')';
+    }
+
+    function paletteSample(satellite) {
+        var stops = getPalette(satellite);
+        var c = stops[Math.min(3, stops.length - 1)].c;
+        return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+    }
+
+    function clusterIconCreate(cluster) {
+        var markers = cluster.getAllChildMarkers();
+        var counts = {};
+        markers.forEach(function (marker) {
+            var sat = marker.options.satellite || 'Unknown';
+            counts[sat] = (counts[sat] || 0) + 1;
+        });
+
+        var total = markers.length;
+        var start = 0;
+        var satellites = Object.keys(counts).sort();
+        var segments = satellites.map(function (sat) {
+            var pct = counts[sat] / total * 100;
+            var end = start + pct;
+            var color = paletteSample(sat);
+            var segment = color + ' ' + start.toFixed(2) + '% ' + end.toFixed(2) + '%';
+            start = end;
+            return segment;
+        });
+
+        var size = total < 10 ? 34 : total < 100 ? 40 : 48;
+        var bg = segments.length > 1 ? 'conic-gradient(' + segments.join(',') + ')' : paletteSample(satellites[0]);
+        var html =
+            '<div style="' +
+            'width:' + size + 'px;height:' + size + 'px;border-radius:50%;' +
+            'background:' + bg + ';border:2px solid rgba(17,24,39,0.8);' +
+            'box-shadow:0 2px 8px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;' +
+            '">' +
+            '<span style="' +
+            'min-width:22px;height:22px;border-radius:999px;background:rgba(255,255,255,0.88);' +
+            'display:flex;align-items:center;justify-content:center;padding:0 4px;' +
+            'font-size:11px;font-weight:700;color:#111827;line-height:1;' +
+            '">' + total + '</span>' +
+            '</div>';
+
+        return L.divIcon({
+            html: html,
+            className: 'fire-cluster-icon',
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2]
+        });
     }
 
     /* ── Date parsing ──────────────────────────────────────────── */
@@ -567,7 +616,7 @@
                 iconAnchor: [6, 6]
             });
 
-            var marker = L.marker(latlng, { icon: icon });
+            var marker = L.marker(latlng, { icon: icon, satellite: p.SATELLITE });
             marker.bindPopup(buildPopup(p));
             markers.push(marker);
         }
@@ -956,6 +1005,7 @@
                 spiderfyOnMaxZoom: true,
                 zoomToBoundsOnClick: true,
                 spiderfyDistanceMultiplier: 1.5,
+                iconCreateFunction: clusterIconCreate
             });
             clusterGroup.addTo(map);
 
