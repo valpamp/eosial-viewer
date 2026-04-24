@@ -3,7 +3,7 @@
  *
  * Loads SFIDE GeoJSON fire detections and renders as clustered markers
  * with full filtering: time window, satellite, fire type, confidence, FRP.
- * FRP-based color scale (yellow → orange → red → deep red) with log/linear toggle.
+ * FRP-based color scales with log/linear toggle.
  */
 (function () {
 
@@ -17,17 +17,25 @@
     };
 
     var DEFAULT_MIN_FRP = {
-        'MTG-1': 3,
-        'MET-11': 40,
-        'MET-10': 40,
-        'MET-09': 40
+        'MTG-1': 10,
+        'MET-11': 10,
+        'MET-10': 10,
+        'MET-09': 10
+    };
+
+    var SATELLITE_PRODUCTS = {
+        'MTG-1': 'MTG-FCI',
+        'MET-11': 'MSG-HRIT',
+        'MET-10': 'MSG-HRIT',
+        'MET-09': 'MSG-HRIT',
+        'MET-08': 'MSG-HRIT'
     };
 
     var FRP_SCALE_MIN = 1;
     var FRP_SCALE_MAX = 1000;
     var useLogScale = true;
 
-    var COLOR_STOPS = [
+    var MTG_COLOR_STOPS = [
         { t: 0.0,  c: [255, 255, 178] },
         { t: 0.25, c: [254, 204,  92] },
         { t: 0.5,  c: [253, 141,  60] },
@@ -35,21 +43,79 @@
         { t: 1.0,  c: [189,   0,  38] }
     ];
 
+    var FRP_PALETTES = {
+        'MTG-1': MTG_COLOR_STOPS,
+        'MET-11': [
+            { t: 0.0,  c: [239, 246, 255] },
+            { t: 0.25, c: [191, 219, 254] },
+            { t: 0.5,  c: [ 96, 165, 250] },
+            { t: 0.75, c: [ 37,  99, 235] },
+            { t: 1.0,  c: [ 30,  64, 175] }
+        ],
+        'MET-10': [
+            { t: 0.0,  c: [236, 253, 245] },
+            { t: 0.25, c: [167, 243, 208] },
+            { t: 0.5,  c: [ 45, 212, 191] },
+            { t: 0.75, c: [ 13, 148, 136] },
+            { t: 1.0,  c: [ 17,  94,  89] }
+        ],
+        'MET-09': [
+            { t: 0.0,  c: [250, 245, 255] },
+            { t: 0.25, c: [221, 214, 254] },
+            { t: 0.5,  c: [167, 139, 250] },
+            { t: 0.75, c: [124,  58, 237] },
+            { t: 1.0,  c: [ 91,  33, 182] }
+        ],
+        'MET-08': [
+            { t: 0.0,  c: [240, 249, 255] },
+            { t: 0.25, c: [186, 230, 253] },
+            { t: 0.5,  c: [ 56, 189, 248] },
+            { t: 0.75, c: [  2, 132, 199] },
+            { t: 1.0,  c: [ 12,  74, 110] }
+        ]
+    };
+
+    var FALLBACK_COLOR_STOPS = [
+        { t: 0.0,  c: [245, 245, 245] },
+        { t: 0.25, c: [209, 213, 219] },
+        { t: 0.5,  c: [156, 163, 175] },
+        { t: 0.75, c: [ 75,  85,  99] },
+        { t: 1.0,  c: [ 31,  41,  55] }
+    ];
+
     /* ── State ─────────────────────────────────────────────────── */
 
     var clusterGroup  = null;
-    var visible       = false;
+    var visible       = true;
     var allFeatures   = [];
+    var featureIds    = {};
     var yearLoaded    = false;
+    var archiveManifest = null;
+    var loadedArchiveMonths = {};
     var mapRef        = null;
     var dataBaseUrl   = '';
     var legendControl = null;
 
     /* ── FRP color ─────────────────────────────────────────────── */
 
-    function getFRPColor(frp) {
+    function getPalette(satellite) {
+        return FRP_PALETTES[satellite] || FALLBACK_COLOR_STOPS;
+    }
+
+    function getSatelliteLabel(satellite) {
+        var product = SATELLITE_PRODUCTS[satellite];
+        return product ? satellite + ' (' + product + ')' : satellite;
+    }
+
+    function isDefaultSatelliteSelected(satellite, availableSatellites) {
+        if (satellite && satellite.indexOf('MTG') === 0) return true;
+        return !availableSatellites.some(function (sat) { return sat && sat.indexOf('MTG') === 0; });
+    }
+
+    function getFRPColor(frp, satellite) {
         var val = Math.max(frp, FRP_SCALE_MIN);
         val = Math.min(val, FRP_SCALE_MAX);
+        var stops = getPalette(satellite);
         var t;
         if (useLogScale) {
             var minLog = Math.log(FRP_SCALE_MIN);
@@ -59,11 +125,11 @@
             t = (val - FRP_SCALE_MIN) / (FRP_SCALE_MAX - FRP_SCALE_MIN);
         }
         // interpolate
-        var lower = COLOR_STOPS[0], upper = COLOR_STOPS[COLOR_STOPS.length - 1];
-        for (var i = 0; i < COLOR_STOPS.length - 1; i++) {
-            if (t >= COLOR_STOPS[i].t && t <= COLOR_STOPS[i + 1].t) {
-                lower = COLOR_STOPS[i];
-                upper = COLOR_STOPS[i + 1];
+        var lower = stops[0], upper = stops[stops.length - 1];
+        for (var i = 0; i < stops.length - 1; i++) {
+            if (t >= stops[i].t && t <= stops[i + 1].t) {
+                lower = stops[i];
+                upper = stops[i + 1];
                 break;
             }
         }
@@ -75,11 +141,12 @@
         return 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
     }
 
-    function frpGradientCSS() {
+    function frpGradientCSS(stops) {
         var parts = [];
-        for (var i = 0; i < COLOR_STOPS.length; i++) {
-            var c = COLOR_STOPS[i].c;
-            var pct = (COLOR_STOPS[i].t * 100).toFixed(0);
+        stops = stops || MTG_COLOR_STOPS;
+        for (var i = 0; i < stops.length; i++) {
+            var c = stops[i].c;
+            var pct = (stops[i].t * 100).toFixed(0);
             parts.push('rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ') ' + pct + '%');
         }
         return 'linear-gradient(to right, ' + parts.join(', ') + ')';
@@ -107,44 +174,306 @@
         return date.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
     }
 
-    /* ── Data loading ──────────────────────────────────────────── */
+    /* ── Multi-format data loading ─────────────────────────────── */
 
-    function load72h() {
-        EV.showLoading('Loading fire hotspots (72h)...');
-        return fetch(dataBaseUrl + '/fire/sfide_aggregate_72h.geojson')
+    // Preferred format order: FlatGeobuf → zipped Shapefile → GeoPackage → GeoJSON
+    var FORMAT_EXTS = ['.fgb', '.zip', '.gpkg', '.geojson', '.json'];
+
+    function detectAndLoad(baseName, label) {
+        EV.showLoading('Loading ' + label + '...');
+        function tryNext(i) {
+            if (i >= FORMAT_EXTS.length) return Promise.reject(new Error('No file found for ' + baseName));
+            var url = dataBaseUrl + '/fire/' + baseName + FORMAT_EXTS[i];
+            return loadByFormat(url, FORMAT_EXTS[i])
+                .catch(function (err) {
+                    if (err && err.notFound) return tryNext(i + 1);
+                    throw err; // real parse error — don't silently skip
+                });
+        }
+        return tryNext(0).then(function (features) {
+            EV.hideLoading();
+            return features;
+        }).catch(function (err) {
+            EV.hideLoading();
+            throw err;
+        });
+    }
+
+    function loadByFormat(url, ext) {
+        switch (ext) {
+            case '.fgb':    return loadFlatGeobuf(url);
+            case '.zip':    return loadShapefile(url);
+            case '.gpkg':   return loadGeoPackage(url);
+            case '.geojson':
+            case '.json':   return loadGeoJSON(url);
+            default:        return Promise.reject(new Error('Unknown extension: ' + ext));
+        }
+    }
+
+    function loadFlatGeobuf(url) {
+        return fetch(url)
             .then(function (r) {
+                if (r.status === 404) { var e = new Error('404'); e.notFound = true; throw e; }
                 if (!r.ok) throw new Error(r.status);
-                return r.json();
+                return r.arrayBuffer();
             })
-            .then(function (geojson) {
-                allFeatures = (geojson.features || []);
-                EV.hideLoading();
-                return allFeatures;
-            })
-            .catch(function () {
-                console.info('[FIRE] 72h file not available, trying archive...');
-                return loadArchive();
+            .then(function (buf) {
+                var features = [];
+                var iterator = flatgeobuf.deserialize(new Uint8Array(buf)); // eslint-disable-line no-undef
+                if (iterator && iterator[Symbol.asyncIterator]) {
+                    return (async function () {
+                        for await (var feature of iterator) features.push(feature);
+                        return features.map(normalizeFeature).filter(Boolean);
+                    })();
+                }
+                for (var f of iterator) {
+                    features.push(f);
+                }
+                return features.map(normalizeFeature).filter(Boolean);
             });
     }
 
-    function loadArchive() {
-        if (yearLoaded) return Promise.resolve(allFeatures);
-        EV.showLoading('Loading fire archive...');
-        return fetch(dataBaseUrl + '/fire/sfide_aggregate_1Y.geojson')
+    function loadShapefile(url) {
+        return shp(url) // eslint-disable-line no-undef
+            .then(function (fc) {
+                if (!fc) { var e = new Error('404'); e.notFound = true; throw e; }
+                // shpjs may return a FeatureCollection or array of FeatureCollections
+                if (Array.isArray(fc)) {
+                    return fc.reduce(function (acc, c) { return acc.concat(c.features || []); }, [])
+                        .map(normalizeFeature).filter(Boolean);
+                }
+                return (fc.features || []).map(normalizeFeature).filter(Boolean);
+            })
+            .catch(function (err) {
+                if (!err.notFound) { var e = new Error('404'); e.notFound = true; throw e; }
+                throw err;
+            });
+    }
+
+    function loadGeoPackage(url) {
+        return fetch(url)
+            .then(function (r) {
+                if (r.status === 404) { var e = new Error('404'); e.notFound = true; throw e; }
+                if (!r.ok) throw new Error(r.status);
+                return r.arrayBuffer();
+            })
+            .then(function (buf) {
+                return loadSqlJs().then(function (SQL) {
+                    var db = new SQL.Database(new Uint8Array(buf));
+                    return parseGpkg(db).map(normalizeFeature).filter(Boolean);
+                });
+            });
+    }
+
+    function loadGeoJSON(url) {
+        return fetch(url)
+            .then(function (r) {
+                if (r.status === 404) { var e = new Error('404'); e.notFound = true; throw e; }
+                if (!r.ok) throw new Error(r.status);
+                return r.json();
+            })
+            .then(function (fc) { return (fc.features || []).map(normalizeFeature).filter(Boolean); });
+    }
+
+    // Lazy-load sql.js (WASM) only when a .gpkg file is actually needed
+    var _sqlJsPromise = null;
+    function loadSqlJs() {
+        if (_sqlJsPromise) return _sqlJsPromise;
+        _sqlJsPromise = new Promise(function (resolve, reject) {
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/sql.js@1.14.1/dist/sql-wasm.min.js';
+            script.onload = function () {
+                initSqlJs({ locateFile: function (f) { // eslint-disable-line no-undef
+                    return 'https://cdn.jsdelivr.net/npm/sql.js@1.14.1/dist/' + f;
+                }}).then(resolve).catch(reject);
+            };
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        return _sqlJsPromise;
+    }
+
+    // Minimal GPKG parser — points only; properties come straight from DBF columns
+    function parseGpkg(db) {
+        var contents = db.exec("SELECT table_name FROM gpkg_contents WHERE data_type='features'");
+        if (!contents.length || !contents[0].values.length) return [];
+        var table = contents[0].values[0][0];
+
+        var geomCols = db.exec("SELECT column_name FROM gpkg_geometry_columns WHERE table_name='" + table + "'");
+        if (!geomCols.length) return [];
+        var geomCol = geomCols[0].values[0][0];
+
+        var result = db.exec('SELECT * FROM "' + table + '"');
+        if (!result.length) return [];
+
+        var cols = result[0].columns;
+        var rows = result[0].values;
+        var features = [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var props = {};
+            var geomBytes = null;
+            for (var j = 0; j < cols.length; j++) {
+                if (cols[j] === geomCol) geomBytes = rows[i][j];
+                else props[cols[j]] = rows[i][j];
+            }
+            var geom = geomBytes ? parseGpkgPoint(geomBytes) : null;
+            if (geom) features.push({ type: 'Feature', geometry: geom, properties: props });
+        }
+        return features;
+    }
+
+    function normalizeFeature(feature) {
+        if (!feature || !feature.properties) return null;
+        var p = feature.properties;
+        var coords = feature.geometry && feature.geometry.type === 'Point'
+            ? feature.geometry.coordinates
+            : null;
+        if ((p.LATITUDE == null || p.LONGITUDE == null) && coords && coords.length >= 2) {
+            p.LONGITUDE = Number(coords[0]);
+            p.LATITUDE = Number(coords[1]);
+        }
+        if (p.TYPE != null) p.TYPE = Number(p.TYPE);
+        ['LATITUDE', 'LONGITUDE', 'CONFIDENCE', 'FRP_WOOSTER', 'FRP_MODIS', 'BRIGHT_MIR', 'BRIGHT_TIR'].forEach(function (key) {
+            if (p[key] != null && p[key] !== '') p[key] = Number(p[key]);
+        });
+        return (isFinite(p.LATITUDE) && isFinite(p.LONGITUDE)) ? feature : null;
+    }
+
+    function featureKey(feature) {
+        var p = feature.properties || {};
+        return [
+            p.SATELLITE || '',
+            Number(p.LATITUDE || 0).toFixed(6),
+            Number(p.LONGITUDE || 0).toFixed(6),
+            p.DATETIME || '',
+            p.FRP_WOOSTER || p.FRP_MODIS || '',
+            p.TYPE || ''
+        ].join('|');
+    }
+
+    function mergeFeatures(features) {
+        for (var i = 0; i < features.length; i++) {
+            var key = featureKey(features[i]);
+            if (!featureIds[key]) {
+                allFeatures.push(features[i]);
+                featureIds[key] = true;
+            }
+        }
+        allFeatures.sort(function (a, b) {
+            return (parseFeatureDate(a.properties) || 0) - (parseFeatureDate(b.properties) || 0);
+        });
+    }
+
+    // Parse GPKG geometry header + WKB point geometry
+    function parseGpkgPoint(bytes) {
+        if (!bytes || bytes.length < 9) return null;
+        if (bytes[0] !== 0x47 || bytes[1] !== 0x50) return null; // magic 'GP'
+        var flags = bytes[3];
+        var envSizes = [0, 32, 48, 48, 64];
+        var envSize = envSizes[(flags >> 1) & 7] || 0;
+        var wkb = bytes.subarray ? bytes.subarray(8 + envSize) : bytes.slice(8 + envSize);
+        if (wkb.length < 21) return null;
+        var le = wkb[0] === 1;
+        var view = new DataView(wkb.buffer, wkb.byteOffset + 1);
+        if (view.getUint32(0, le) !== 1) return null; // must be Point (type 1)
+        return {
+            type: 'Point',
+            coordinates: [view.getFloat64(4, le), view.getFloat64(12, le)]
+        };
+    }
+
+    function load72h() {
+        return detectAndLoad('sfide_aggregate_72h', 'fire hotspots (72h)')
+            .then(function (features) {
+                allFeatures = [];
+                featureIds = {};
+                mergeFeatures(features);
+                return features;
+            })
+            .catch(function () {
+                console.info('[FIRE] 72h file not available, trying archive...');
+                return loadArchive(getTimeRange());
+            });
+    }
+
+    function loadArchiveManifest() {
+        if (archiveManifest) return Promise.resolve(archiveManifest);
+        return fetch(dataBaseUrl + '/fire/sfide_archive_manifest.json?v=' + Date.now())
             .then(function (r) {
                 if (!r.ok) throw new Error(r.status);
                 return r.json();
             })
-            .then(function (geojson) {
-                allFeatures = (geojson.features || []);
-                yearLoaded = true;
-                EV.hideLoading();
-                return allFeatures;
+            .then(function (manifest) {
+                archiveManifest = manifest;
+                return manifest;
+            });
+    }
+
+    function archiveMonthsForRange(manifest, range) {
+        var months = manifest.months || [];
+        if (!range) return months;
+        return months.filter(function (month) {
+            var start = month.start ? new Date(month.start) : null;
+            var end = month.end ? new Date(month.end) : null;
+            if (!start || !end) return true;
+            return end >= range.start && start <= range.end;
+        });
+    }
+
+    function archiveRangeLoaded(range) {
+        if (!archiveManifest) return false;
+        var months = archiveMonthsForRange(archiveManifest, range);
+        return months.every(function (month) { return loadedArchiveMonths[month.key]; });
+    }
+
+    function loadArchiveMonth(month) {
+        if (loadedArchiveMonths[month.key]) return Promise.resolve([]);
+        var files = month.files || {};
+        var ext = files.fgb ? '.fgb' :
+                  files.zip ? '.zip' :
+                  files.gpkg ? '.gpkg' :
+                  files.geojson ? '.geojson' :
+                  files.json ? '.json' : null;
+        if (!ext) return Promise.resolve([]);
+        var rel = files[ext.substring(1)];
+        var url = dataBaseUrl + '/fire/' + rel;
+        return loadByFormat(url, ext).then(function (features) {
+            loadedArchiveMonths[month.key] = true;
+            mergeFeatures(features);
+            return features;
+        });
+    }
+
+    function loadArchive(range) {
+        return loadArchiveManifest()
+            .then(function (manifest) {
+                var months = archiveMonthsForRange(manifest, range);
+                var pending = months.filter(function (m) { return !loadedArchiveMonths[m.key]; });
+                if (!pending.length) return allFeatures;
+                EV.showLoading('Loading fire archive (' + pending.length + ' month' + (pending.length !== 1 ? 's' : '') + ')...');
+                return Promise.all(pending.map(loadArchiveMonth)).then(function () {
+                    EV.hideLoading();
+                    yearLoaded = (Object.keys(loadedArchiveMonths).length >= (manifest.months || []).length);
+                    return allFeatures;
+                }).catch(function (err) {
+                    EV.hideLoading();
+                    throw err;
+                });
             })
             .catch(function (err) {
-                console.warn('[FIRE] Archive load error:', err);
-                EV.hideLoading();
-                return [];
+                console.warn('[FIRE] Monthly archive load error:', err);
+                console.info('[FIRE] Trying legacy one-year archive...');
+                return detectAndLoad('sfide_aggregate_1Y', 'legacy fire archive')
+                    .then(function (features) {
+                        mergeFeatures(features);
+                        yearLoaded = true;
+                        return allFeatures;
+                    })
+                    .catch(function (legacyErr) {
+                        console.warn('[FIRE] Archive load error:', legacyErr);
+                        return [];
+                    });
             });
     }
 
@@ -155,8 +484,8 @@
 
         // If requesting beyond 72h and archive not loaded, load it first
         var hours72ago = new Date(Date.now() - 72 * 3600000);
-        if (range.start < hours72ago && !yearLoaded) {
-            loadArchive().then(function () {
+        if (range.start < hours72ago && !archiveRangeLoaded(range)) {
+            loadArchive(range).then(function () {
                 populateSatelliteFilters();
                 applyFilters();
             });
@@ -197,6 +526,8 @@
         });
 
         displayFeatures(filtered);
+        var legend = document.getElementById('fire-legend');
+        if (legend) updateLegendContent(legend);
 
         // Update count
         var countEl = document.getElementById('fire-count');
@@ -223,7 +554,7 @@
 
             var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
             var frp = p.FRP_WOOSTER || 0;
-            var color = getFRPColor(frp);
+            var color = getFRPColor(frp, p.SATELLITE);
 
             var iconHtml =
                 '<svg width="12" height="12" viewBox="0 0 24 24" style="opacity:0.85;stroke:#000;stroke-width:1.5;fill:' + color + ';">' +
@@ -248,7 +579,7 @@
         var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
         var date = parseFeatureDate(p);
         var frp = p.FRP_WOOSTER;
-        var html = '<h3>' + (p.SATELLITE || 'Fire') + ' Hotspot</h3><table>';
+        var html = '<h3>' + (p.SATELLITE ? getSatelliteLabel(p.SATELLITE) : 'Fire') + ' Hotspot</h3><table>';
         html += '<tr><th>Time (UTC)</th><td>' + formatUTC(date) + '</td></tr>';
         html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
         html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
@@ -315,9 +646,10 @@
         sorted.forEach(function (sat) {
             var div = document.createElement('label');
             div.className = 'flex items-center gap-2 text-xs';
+            var checked = isDefaultSatelliteSelected(sat, sorted) ? ' checked' : '';
             div.innerHTML =
-                '<input type="checkbox" value="' + sat + '" class="fire-sat-filter h-3.5 w-3.5" checked>' +
-                '<span>' + sat + '</span>';
+                '<input type="checkbox" value="' + sat + '" class="fire-sat-filter h-3.5 w-3.5"' + checked + '>' +
+                '<span>' + getSatelliteLabel(sat) + '</span>';
             container.appendChild(div);
         });
 
@@ -332,7 +664,7 @@
         var container = document.getElementById('layer-controls');
         var section = document.createElement('div');
         section.id = 'fire-controls';
-        section.className = 'border-t pt-4 mt-4 hidden';
+        section.className = 'border-t pt-4 mt-4';
         section.innerHTML =
             '<h2 class="text-sm font-semibold text-gray-700 mb-2">Fire Hotspots (SFIDE)</h2>' +
             '<p class="text-xs text-gray-500 mb-3">Near-real-time fire detections from MSG/MTG satellites.</p>' +
@@ -340,11 +672,12 @@
             /* Time presets */
             '<div class="mb-3">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Time Window</label>' +
-            '  <div class="grid grid-cols-5 gap-1">' +
+            '  <div class="grid grid-cols-3 gap-1">' +
             '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="6">6h</button>' +
             '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="12">12h</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 active" data-hours="24">24h</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="72">72h</button>' +
+            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="24">24h</button>' +
+            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 active" data-hours="72">72h</button>' +
+            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="168">7d</button>' +
             '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="0">All</button>' +
             '  </div>' +
             '</div>' +
@@ -353,10 +686,10 @@
             '<div class="mb-3">' +
             '  <label class="block text-xs font-medium text-gray-600 mb-1">Custom Range</label>' +
             '  <div class="space-y-1 mb-1">' +
-            '    <input type="datetime-local" id="fire-start-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="Start">' +
-            '    <input type="datetime-local" id="fire-end-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="End">' +
+            '    <input type="text" id="fire-start-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="dd/mm/yyyy hh:mm">' +
+            '    <input type="text" id="fire-end-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="dd/mm/yyyy hh:mm">' +
             '  </div>' +
-            '  <button id="fire-apply-custom" class="w-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Apply Custom Range</button>' +
+            '  <button id="fire-apply-custom" class="w-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Apply Range</button>' +
             '</div>' +
 
             /* Satellite filters */
@@ -379,14 +712,15 @@
             '  <input type="number" id="fire-min-conf" min="0" max="100" value="40" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
             '</div>' +
             '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Min. FRP (MW) <span class="text-gray-400">— blank = per-satellite default</span></label>' +
-            '  <input type="number" id="fire-min-frp" min="0" step="0.1" value="" placeholder="auto" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
+            '  <label class="block text-xs font-medium text-gray-600 mb-1">Min. FRP (MW)</label>' +
+            '  <input type="number" id="fire-min-frp" min="0" step="0.1" value="10" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
             '</div>' +
 
             /* Count display */
             '<div class="text-xs text-gray-500 mb-1" id="fire-count">—</div>';
 
         container.appendChild(section);
+        setDefaultCustomRange();
 
         // Wire time preset buttons
         section.querySelectorAll('.fire-time-btn').forEach(function (btn) {
@@ -453,17 +787,43 @@
             var start = new Date(end.getTime() - hours * 3600000);
             return { start: start, end: end };
         }
-        // Custom dates — parse as UTC to match feature dates
+        // Custom dates — parse European UTC inputs (dd/mm/yyyy hh:mm)
         var s = document.getElementById('fire-start-time');
         var e = document.getElementById('fire-end-time');
         if (s && e && s.value && e.value) {
-            return {
-                start: new Date(s.value + 'Z'),
-                end:   new Date(e.value + 'Z')
-            };
+            var start = parseEuropeanDateTime(s.value);
+            var end = parseEuropeanDateTime(e.value);
+            if (start && end) return { start: start, end: end };
         }
         var now = new Date();
-        return { start: new Date(now.getTime() - 24 * 3600000), end: now };
+        return { start: new Date(now.getTime() - 72 * 3600000), end: now };
+    }
+
+    function pad2(n) {
+        return String(n).padStart(2, '0');
+    }
+
+    function formatEuropeanDateTime(date) {
+        return pad2(date.getUTCDate()) + '/' +
+               pad2(date.getUTCMonth() + 1) + '/' +
+               date.getUTCFullYear() + ' ' +
+               pad2(date.getUTCHours()) + ':' +
+               pad2(date.getUTCMinutes());
+    }
+
+    function parseEuropeanDateTime(value) {
+        var m = String(value).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
+        if (!m) return null;
+        return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]));
+    }
+
+    function setDefaultCustomRange() {
+        var end = new Date();
+        var start = new Date(end.getTime() - 168 * 3600000);
+        var s = document.getElementById('fire-start-time');
+        var e = document.getElementById('fire-end-time');
+        if (s) s.value = formatEuropeanDateTime(start);
+        if (e) e.value = formatEuropeanDateTime(end);
     }
 
     /* ── Legend ─────────────────────────────────────────────────── */
@@ -482,14 +842,27 @@
     }
 
     function updateLegendContent(div) {
+        var activeSats = getCheckedValues('.fire-sat-filter');
+        if (!activeSats.length) activeSats = ['MTG-1'];
+
+        var paletteRows = activeSats.map(function (sat) {
+            return '<div class="mt-1">' +
+                   '  <div class="flex justify-between gap-2 leading-tight" style="font-size:10px;">' +
+                   '    <span>' + getSatelliteLabel(sat) + '</span>' +
+                   '    <span>' + FRP_SCALE_MIN + '-' + FRP_SCALE_MAX + '</span>' +
+                   '  </div>' +
+                   '  <div class="legend-gradient" style="height:6px;background:' + frpGradientCSS(getPalette(sat)) + ';"></div>' +
+                   '</div>';
+        }).join('');
+
         div.innerHTML =
             '<h4>FRP (MW)</h4>' +
-            '<div class="legend-gradient" style="background:' + frpGradientCSS() + ';"></div>' +
             '<div class="legend-labels">' +
             '  <span>' + FRP_SCALE_MIN + '</span>' +
             '  <span>' + (useLogScale ? 'log' : 'lin') + '</span>' +
             '  <span>' + FRP_SCALE_MAX + '</span>' +
             '</div>' +
+            paletteRows +
             '<button id="fire-frp-scale-toggle" class="text-xs text-blue-600 mt-1 hover:underline" style="cursor:pointer;background:none;border:none;padding:0;">Toggle log/linear</button>';
 
         var toggleBtn = div.querySelector('#fire-frp-scale-toggle');
@@ -570,7 +943,7 @@
         id: 'fire',
         name: 'Fire Hotspots',
         type: 'point',
-        defaultVisible: false,
+        defaultVisible: true,
 
         init: function (map, baseUrl) {
             mapRef = map;
@@ -584,6 +957,7 @@
                 zoomToBoundsOnClick: true,
                 spiderfyDistanceMultiplier: 1.5,
             });
+            clusterGroup.addTo(map);
 
             // Delegate clicks on FRP timeseries links inside popups
             document.addEventListener('click', function (e) {
@@ -597,20 +971,20 @@
 
             return load72h().then(function () {
                 if (allFeatures.length === 0 && !yearLoaded) {
-                    return loadArchive();
+                    return loadArchive(getTimeRange());
                 }
             }).then(function () {
-                // If archive was loaded (72h empty), switch default to "All"
+                // If archive was loaded because 72h was empty, keep the default last-week view.
                 if (yearLoaded) {
                     var btns = document.querySelectorAll('.fire-time-btn');
                     btns.forEach(function (b) {
                         b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
                         b.classList.add('bg-gray-100', 'text-gray-700');
                     });
-                    var allBtn = document.querySelector('.fire-time-btn[data-hours="0"]');
-                    if (allBtn) {
-                        allBtn.classList.add('active', 'bg-blue-100', 'text-blue-700');
-                        allBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                    var weekBtn = document.querySelector('.fire-time-btn[data-hours="168"]');
+                    if (weekBtn) {
+                        weekBtn.classList.add('active', 'bg-blue-100', 'text-blue-700');
+                        weekBtn.classList.remove('bg-gray-100', 'text-gray-700');
                     }
                 }
                 populateSatelliteFilters();

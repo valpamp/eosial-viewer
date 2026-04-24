@@ -6,8 +6,8 @@ Interactive web viewer for satellite-derived environmental variables, developed 
 
 ## Features
 
+- **Fire hotspots** — Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), displayed as clustered markers and loaded by default over Italy
 - **LFMC layer** — Live Fuel Moisture Content maps rendered from Cloud Optimized GeoTIFFs (COGs), with date slider, animated playback, and multiple colormaps
-- **Fire hotspots** — Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), displayed as clustered markers
 - **Timeseries queries** — Click a point or draw a rectangle to chart LFMC over time, with PNG export
 - **Distance measurement** — Multi-segment ruler tool with metric readout
 - **Location search** — Geocoding via OpenStreetMap Nominatim
@@ -54,7 +54,9 @@ eosial-viewer/
 │   │   ├── manifest.json       # Index of available AOIs, polygons, dates
 │   │   └── cogs/               # Cloud Optimized GeoTIFFs (uint8, DEFLATE)
 │   └── fire/
-│       └── sfide_aggregate_72h.geojson   # Fire hotspot detections
+│       ├── sfide_aggregate_72h.fgb       # Recent fire hotspot detections
+│       ├── sfide_archive_manifest.json   # Monthly archive index
+│       └── archive/sfide_YYYY_MM.fgb     # Rolling one-year monthly chunks
 ├── scripts/
 │   ├── convert_to_cog.py       # Convert LFMC inference TIFs → COGs
 │   └── generate_manifest.py    # Scan COGs directory → manifest.json
@@ -80,7 +82,37 @@ eosial-viewer/
 
 ### Fire hotspots
 
-Place a GeoJSON file at `data/fire/sfide_aggregate_72h.geojson`. The file should contain a `FeatureCollection` of Point features with the following properties:
+The website looks for fire files in this order: FlatGeobuf (`.fgb`), zipped Shapefile (`.zip`), GeoPackage (`.gpkg`), GeoJSON (`.geojson`), then JSON (`.json`). The normal layout is:
+
+- `sfide_aggregate_72h.*` — a small rolling subset used for the initial lightweight load.
+- `sfide_archive_manifest.json` — index of monthly archive chunks.
+- `archive/sfide_YYYY_MM.*` — rolling one-year archive split by month, loaded only when a selected time window needs older detections.
+
+Run the updater once:
+
+```bash
+python scripts/update_sfide_database.py --source-dir U:\ftp\sfide\ITA
+```
+
+Or keep it running every 30 minutes:
+
+```bash
+python scripts/update_sfide_database.py --source-dir U:\ftp\sfide\ITA --watch --interval-minutes 30 --git
+```
+
+The script scans SFIDE outputs recursively, accepts `.fgb`, `.geojson`, `.json`, `.gpkg`, `.shp`, and zipped shapefiles, deduplicates detections, prunes records older than one year, writes the 72-hour aggregate, and splits the one-year archive into monthly chunks to stay below GitHub's 100 MB file limit. With `--git`, it commits and pushes changed fire files so GitHub Pages redeploys. FlatGeobuf output requires `geopandas`/`pyogrio`; GeoJSON-only operation works with the Python standard library by using `--output-format geojson`.
+
+For Windows Task Scheduler, use the batch wrapper instead of `--watch`:
+
+```text
+Program/script: F:\Valerio\eosial-viewer\scripts\run_sfide_update.bat
+Start in:       F:\Valerio\eosial-viewer
+Trigger:        Repeat every 30 minutes
+```
+
+The wrapper writes progress and errors to `logs/sfide_update.log`. During long first runs, watch for lines like `Processing hotspot files: [########--------------------] 120/480 ... ETA 12m 30s`.
+
+Hotspot features should contain Point geometry and these properties where available:
 
 | Property | Description |
 |----------|-------------|
@@ -104,7 +136,8 @@ All libraries are loaded from CDNs — no `npm install` required:
 | [Chart.js](https://www.chartjs.org/) | Timeseries charts |
 | [Tailwind CSS](https://tailwindcss.com/) | Utility-first styling |
 
-Python scripts require **rasterio** and **numpy** (`pip install rasterio numpy`).
+Python LFMC scripts require **rasterio** and **numpy** (`pip install rasterio numpy`).
+The SFIDE updater can read/write GeoJSON with the standard library; FlatGeobuf, Shapefile, and GeoPackage support require **geopandas** and a vector I/O backend such as **pyogrio** (`pip install geopandas pyogrio`).
 
 ## Publishing
 

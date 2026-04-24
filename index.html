@@ -23,6 +23,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
+    <!-- Vector format loaders: FlatGeobuf, Shapefile, GeoPackage -->
+    <script src="https://unpkg.com/flatgeobuf@4.4.0/dist/flatgeobuf-geojson.min.js"></script>
+    <script src="https://unpkg.com/shpjs@6.2.0/dist/shp.min.js"></script>
+    <!-- sql.js (for GeoPackage) is lazy-loaded only when a .gpkg file is detected -->
+
     <!-- GeoRaster + GeoRaster-layer-for-leaflet (COG rendering) -->
     <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
     <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>

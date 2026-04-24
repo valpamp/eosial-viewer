@@ -47,7 +47,7 @@
     });
 
     // Default basemap
-    cartoLight.addTo(map);
+    osm.addTo(map);
 
     var basemaps = {
         'Light (CartoDB)': cartoLight,
@@ -89,7 +89,7 @@
         dropdown.className = 'basemap-dropdown';
         basemapWrap.appendChild(dropdown);
 
-        var activeBasemap = 'Light (CartoDB)';
+        var activeBasemap = 'OpenStreetMap';
         Object.keys(basemaps).forEach(function (name) {
             var opt = document.createElement('button');
             opt.className = 'basemap-option' + (name === activeBasemap ? ' active' : '');

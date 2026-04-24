@@ -39,7 +39,7 @@
     var currentAbort      = null;   // AbortController for the in-flight display COG fetch
     var showGeneration    = 0;      // incremented each showDate call; guards against stale renders
     var opacity           = 1.0;
-    var visible           = true;
+    var visible           = false;
 
     /* ── Manifest + stats loading ─────────────────────────────── */
 
@@ -123,6 +123,13 @@
         // Update UI immediately — don't wait for the async tile load
         updateDateLabel();
         EV.emit('lfmc:dateChanged', { date: dateStr });
+
+        if (!visible) {
+            if (rasterLayer) { map.removeLayer(rasterLayer); rasterLayer = null; }
+            activeGeoraster = null;
+            if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+            return;
+        }
 
         // Cancel any in-flight COG download and guard against stale renders
         if (currentAbort) { currentAbort.abort(); }
@@ -288,7 +295,7 @@
 
         var section = document.createElement('div');
         section.id = 'lfmc-controls';
-        section.className = 'border-t pt-4 mt-4';
+        section.className = 'border-t pt-4 mt-4 hidden';
         section.innerHTML =
             '<h2 class="text-sm font-semibold text-gray-700 mb-2">LFMC — Live Fuel Moisture</h2>' +
 
@@ -534,6 +541,7 @@
         legend.onAdd = function () {
             var div = L.DomUtil.create('div', 'legend');
             div.id = 'lfmc-legend';
+            div.style.display = visible ? '' : 'none';
             updateLegendContent(div);
             return div;
         };
@@ -561,9 +569,15 @@
 
     function setVisible(v, map) {
         visible = v;
+        var ctrl = document.getElementById('lfmc-controls');
+        var leg  = document.getElementById('lfmc-legend');
+        if (ctrl) ctrl.classList.toggle('hidden', !v);
+        if (leg) leg.style.display = v ? '' : 'none';
         if (rasterLayer) {
             if (v) rasterLayer.addTo(map);
             else map.removeLayer(rasterLayer);
+        } else if (v && currentDate) {
+            showDate(currentDate, map, false);
         }
     }
 
@@ -573,7 +587,7 @@
         id: 'lfmc',
         name: 'LFMC',
         type: 'raster',
-        defaultVisible: true,
+        defaultVisible: false,
 
         init: function (map, dataBaseUrl) {
             EV.dataBaseUrl = dataBaseUrl;

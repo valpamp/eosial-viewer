@@ -9,3 +9,9 @@ Thumbs.db
 # Editor
 .vscode/
 *.swp
+
+# Runtime logs
+logs/
+
+# Legacy oversized SFIDE archive aggregates; use data/fire/archive/ monthly chunks instead.
+data/fire/sfide_aggregate_1Y.*
