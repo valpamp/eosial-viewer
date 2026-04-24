@@ -136,6 +136,11 @@
                     },
                     tooltip: {
                         callbacks: {
+                            title: function (items) {
+                                if (!items.length) return '';
+                                var d = new Date(items[0].parsed.x);
+                                return formatChartDate(d, opts.timeUnit === 'hour');
+                            },
                             label: function (ctx) {
                                 var suffix = opts.unit ? ' ' + opts.unit : '';
                                 return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + suffix;
@@ -151,10 +156,21 @@
                     x: {
                         type: 'time',
                         time: {
-                            tooltipFormat: opts.timeUnit === 'hour' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd',
+                            tooltipFormat: opts.timeUnit === 'hour' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy',
                             unit: opts.timeUnit || 'day',
+                            displayFormats: {
+                                minute: 'dd/MM HH:mm',
+                                hour: 'dd/MM HH:mm',
+                                day: 'dd/MM/yyyy',
+                                week: 'dd/MM/yyyy',
+                                month: 'MM/yyyy'
+                            }
                         },
-                        title: { display: true, text: 'Date' }
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true
+                        },
+                        title: { display: true, text: opts.timeUnit === 'hour' ? 'Date / Time (UTC)' : 'Date' }
                     },
                     y: {
                         title: { display: true, text: opts.label || 'Value' },
@@ -163,6 +179,21 @@
                 }
             }
         });
+    }
+
+    function pad2(n) {
+        return String(n).padStart(2, '0');
+    }
+
+    function formatChartDate(date, includeTime) {
+        if (!(date instanceof Date) || isNaN(date)) return '';
+        var text = pad2(date.getUTCDate()) + '/' +
+                   pad2(date.getUTCMonth() + 1) + '/' +
+                   date.getUTCFullYear();
+        if (includeTime) {
+            text += ' ' + pad2(date.getUTCHours()) + ':' + pad2(date.getUTCMinutes()) + ' UTC';
+        }
+        return text;
     }
 
     /** Close modal */

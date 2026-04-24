@@ -784,12 +784,16 @@
             var fireSeries = EV.fireHotspots.queryPolygon(bounds);
             if (fireSeries.length) {
                 drawnItems.removeLayer(e.layer);
+                var fireDetections = fireSeries.reduce(function (sum, item) {
+                    return sum + (item.detections || 1);
+                }, 0);
                 var infoHtml = 'Area: ~' + area.toFixed(2) + ' km&sup2;' +
-                               '<br>Detections in area: ' + fireSeries.length;
+                               '<br>Detections in area: ' + fireDetections +
+                               '<br>Acquisition times plotted: ' + fireSeries.length;
                 EV.showTimeseries(
                     'FRP — Polygon',
                     fireSeries,
-                    { unit: 'MW', label: 'FRP (MW)', color: '#dc2626', info: infoHtml, timeUnit: 'hour' }
+                    { unit: 'MW', label: 'Summed FRP (MW)', color: '#dc2626', info: infoHtml, timeUnit: 'hour' }
                 );
                 return;
             }

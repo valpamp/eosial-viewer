@@ -977,11 +977,25 @@
             return true;
         });
 
-        var series = filtered.map(function (f) {
+        var byTime = {};
+        filtered.forEach(function (f) {
             var p = f.properties;
-            return { date: parseFeatureDate(p), value: p.FRP_WOOSTER || 0 };
-        }).filter(function (s) { return s.date !== null; })
-          .sort(function (a, b) { return a.date - b.date; });
+            var date = parseFeatureDate(p);
+            if (!date) return;
+            var key = date.toISOString().substring(0, 16);
+            if (!byTime[key]) byTime[key] = { date: date, value: 0, detections: 0 };
+            byTime[key].value += p.FRP_WOOSTER || 0;
+            byTime[key].detections += 1;
+        });
+
+        var series = Object.keys(byTime).map(function (key) {
+            var item = byTime[key];
+            return {
+                date: item.date,
+                value: Math.round(item.value * 10) / 10,
+                detections: item.detections
+            };
+        }).sort(function (a, b) { return a.date - b.date; });
 
         return series;
     }
