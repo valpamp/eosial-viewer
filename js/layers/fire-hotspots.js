@@ -978,14 +978,23 @@
         });
 
         var byTime = {};
+        var bySatellite = {};
+        var satelliteTotals = {};
         filtered.forEach(function (f) {
             var p = f.properties;
             var date = parseFeatureDate(p);
             if (!date) return;
             var key = date.toISOString().substring(0, 16);
+            var sat = p.SATELLITE || 'Unknown';
+            var frp = p.FRP_WOOSTER || 0;
             if (!byTime[key]) byTime[key] = { date: date, value: 0, detections: 0 };
-            byTime[key].value += p.FRP_WOOSTER || 0;
+            byTime[key].value += frp;
             byTime[key].detections += 1;
+            if (!bySatellite[sat]) bySatellite[sat] = {};
+            if (!bySatellite[sat][key]) bySatellite[sat][key] = { value: 0, detections: 0 };
+            bySatellite[sat][key].value += frp;
+            bySatellite[sat][key].detections += 1;
+            satelliteTotals[sat] = (satelliteTotals[sat] || 0) + 1;
         });
 
         var series = Object.keys(byTime).map(function (key) {
@@ -996,6 +1005,33 @@
                 detections: item.detections
             };
         }).sort(function (a, b) { return a.date - b.date; });
+
+        var timeKeys = series.map(function (item) {
+            return item.date.toISOString().substring(0, 16);
+        });
+        var satellites = Object.keys(bySatellite).sort();
+        series.datasets = satellites.map(function (sat) {
+            var color = paletteSample(sat);
+            return {
+                label: getSatelliteLabel(sat),
+                data: timeKeys.map(function (key) {
+                    var item = bySatellite[sat][key];
+                    return item ? Math.round(item.value * 10) / 10 : null;
+                }),
+                borderColor: color,
+                backgroundColor: color.replace('rgb', 'rgba').replace(')', ',0.16)'),
+                fill: false,
+                tension: 0.18,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: color,
+                pointBorderWidth: 2,
+                borderWidth: 2.25,
+                spanGaps: false
+            };
+        });
+        series.satelliteDetections = satelliteTotals;
 
         return series;
     }

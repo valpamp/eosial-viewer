@@ -10,7 +10,7 @@
     /** Show the timeseries modal and render a chart.
      *  @param {string} title     - modal title
      *  @param {Array}  series    - array of { date, value } OR { date, mean, median, q25, q75 }
-     *  @param {object} opts      - { unit, color, label, info, timeUnit, datasets }
+     *  @param {object} opts      - { unit, color, label, yLabel, xLabel, info, timeUnit, datasets }
      *
      *  If opts.datasets is provided, it's used directly (array of Chart.js dataset objects).
      *  If series items have .mean/.median/.q25/.q75, multi-metric chart is rendered.
@@ -31,6 +31,8 @@
         var labels = series.map(function (d) { return d.date; });
         var datasets;
         var showLegend = false;
+        var isHourly = opts.timeUnit === 'hour' || opts.timeUnit === 'minute';
+        var xTickLimit = opts.maxXTicks || (isHourly ? 6 : 8);
 
         if (opts.datasets) {
             // Custom datasets passed directly
@@ -109,14 +111,21 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
+                layout: {
+                    padding: { top: 8, right: 14, bottom: 4, left: 4 }
+                },
                 plugins: {
                     legend: {
                         display: showLegend,
                         position: 'top',
+                        align: 'center',
                         labels: {
                             usePointStyle: true,
-                            padding: 12,
-                            font: { size: 11 },
+                            boxWidth: 9,
+                            boxHeight: 9,
+                            padding: 16,
+                            color: '#374151',
+                            font: { size: 11, weight: '500' },
                             filter: function (item) {
                                 // Hide Q25 from legend — IQR label covers the band
                                 return item.text !== 'Q25';
@@ -135,6 +144,12 @@
                         }
                     },
                     tooltip: {
+                        backgroundColor: 'rgba(17,24,39,0.92)',
+                        padding: 10,
+                        cornerRadius: 6,
+                        titleFont: { size: 12, weight: '600' },
+                        bodyFont: { size: 12 },
+                        displayColors: true,
                         callbacks: {
                             title: function (items) {
                                 if (!items.length) return '';
@@ -142,13 +157,14 @@
                                 return formatChartDate(d, opts.timeUnit === 'hour');
                             },
                             label: function (ctx) {
+                                if (ctx.parsed.y == null) return '';
                                 var suffix = opts.unit ? ' ' + opts.unit : '';
                                 return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + suffix;
                             }
                         },
                         filter: function (item) {
                             // Hide Q25 from tooltip
-                            return item.dataset.label !== 'Q25';
+                            return item.dataset.label !== 'Q25' && item.parsed.y != null;
                         }
                     }
                 },
@@ -168,13 +184,58 @@
                         },
                         ticks: {
                             maxRotation: 0,
-                            autoSkip: true
+                            autoSkip: true,
+                            maxTicksLimit: xTickLimit,
+                            color: '#4b5563',
+                            font: { size: 11 },
+                            padding: 8,
+                            callback: function (value) {
+                                if (!opts.compactTimeTicks) return this.getLabelForValue(value);
+                                var d = new Date(value);
+                                if (!(d instanceof Date) || isNaN(d)) return this.getLabelForValue(value);
+                                if (isHourly) {
+                                    return [
+                                        pad2(d.getUTCDate()) + '/' + pad2(d.getUTCMonth() + 1),
+                                        pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes())
+                                    ];
+                                }
+                                return pad2(d.getUTCDate()) + '/' +
+                                       pad2(d.getUTCMonth() + 1) + '/' +
+                                       d.getUTCFullYear();
+                            }
                         },
-                        title: { display: true, text: opts.timeUnit === 'hour' ? 'Date / Time (UTC)' : 'Date' }
+                        grid: {
+                            color: 'rgba(148,163,184,0.22)',
+                            drawTicks: false
+                        },
+                        border: { color: '#d1d5db' },
+                        title: {
+                            display: true,
+                            text: opts.xLabel || (opts.timeUnit === 'hour' ? 'Date / Time (UTC)' : 'Date'),
+                            color: '#4b5563',
+                            font: { size: 12, weight: '500' },
+                            padding: { top: 8 }
+                        }
                     },
                     y: {
-                        title: { display: true, text: opts.label || 'Value' },
-                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: opts.yLabel || opts.label || 'Value',
+                            color: '#374151',
+                            font: { size: 12, weight: '500' },
+                            padding: { bottom: 6 }
+                        },
+                        beginAtZero: opts.beginAtZero === undefined ? false : opts.beginAtZero,
+                        ticks: {
+                            color: '#4b5563',
+                            font: { size: 11 },
+                            padding: 8
+                        },
+                        grid: {
+                            color: 'rgba(148,163,184,0.26)',
+                            drawTicks: false
+                        },
+                        border: { color: '#d1d5db' },
                     }
                 }
             }

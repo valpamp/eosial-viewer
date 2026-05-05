@@ -790,10 +790,28 @@
                 var infoHtml = 'Area: ~' + area.toFixed(2) + ' km&sup2;' +
                                '<br>Detections in area: ' + fireDetections +
                                '<br>Acquisition times plotted: ' + fireSeries.length;
+                if (fireSeries.satelliteDetections) {
+                    var satelliteInfo = Object.keys(fireSeries.satelliteDetections).sort().map(function (sat) {
+                        return sat + ': ' + fireSeries.satelliteDetections[sat];
+                    }).join(', ');
+                    if (satelliteInfo) infoHtml += '<br>Satellites: ' + satelliteInfo;
+                }
                 EV.showTimeseries(
                     'FRP — Polygon',
                     fireSeries,
-                    { unit: 'MW', label: 'Summed FRP (MW)', color: '#dc2626', info: infoHtml, timeUnit: 'hour' }
+                    {
+                        unit: 'MW',
+                        label: 'Cumulative FRP [MW]',
+                        yLabel: 'Cumulative FRP [MW]',
+                        color: '#dc2626',
+                        info: infoHtml,
+                        timeUnit: 'hour',
+                        xLabel: 'Acquisition time [UTC]',
+                        compactTimeTicks: true,
+                        maxXTicks: 6,
+                        beginAtZero: true,
+                        datasets: fireSeries.datasets
+                    }
                 );
                 return;
             }
