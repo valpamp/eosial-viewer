@@ -223,6 +223,30 @@
         return date.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
     }
 
+    function formatSidebarUTC(date) {
+        if (!date) return 'Not available';
+        return pad2(date.getUTCDate()) + '/' +
+               pad2(date.getUTCMonth() + 1) + '/' +
+               date.getUTCFullYear() + ' ' +
+               pad2(date.getUTCHours()) + ':' +
+               pad2(date.getUTCMinutes()) + ' UTC';
+    }
+
+    function getLatestHotspotDate() {
+        var latest = null;
+        for (var i = 0; i < allFeatures.length; i++) {
+            var d = parseFeatureDate(allFeatures[i].properties || {});
+            if (d && (!latest || d > latest)) latest = d;
+        }
+        return latest;
+    }
+
+    function updateDatabaseLastUpdate() {
+        var el = document.getElementById('fire-last-update');
+        if (!el) return;
+        el.textContent = formatSidebarUTC(getLatestHotspotDate());
+    }
+
     /* ── Multi-format data loading ─────────────────────────────── */
 
     // Preferred format order: FlatGeobuf → zipped Shapefile → GeoPackage → GeoJSON
@@ -412,6 +436,7 @@
         allFeatures.sort(function (a, b) {
             return (parseFeatureDate(a.properties) || 0) - (parseFeatureDate(b.properties) || 0);
         });
+        updateDatabaseLastUpdate();
     }
 
     // Parse GPKG geometry header + WKB point geometry
@@ -769,6 +794,16 @@
             '<div class="text-xs text-gray-500 mb-1" id="fire-count">—</div>';
 
         container.appendChild(section);
+        var countEl = document.getElementById('fire-count');
+        if (countEl) {
+            countEl.insertAdjacentHTML(
+                'afterend',
+                '<div class="text-xs text-gray-500 leading-snug">' +
+                '  <span class="font-medium text-gray-600">SFIDE database last update time:</span><br>' +
+                '  <span id="fire-last-update">Loading...</span>' +
+                '</div>'
+            );
+        }
         setDefaultCustomRange();
 
         // Wire time preset buttons
@@ -1091,6 +1126,7 @@
                 applyFilters();
             }).catch(function () {
                 console.info('[FIRE] No fire data available.');
+                updateDatabaseLastUpdate();
             });
         },
 

@@ -186,7 +186,48 @@ def to_float(value: Any) -> float | None:
         return None
 
 
-def find_source_files(source_dir: Path, output_dir: Path) -> list[Path]:
+def infer_datetime_from_path(path: Path) -> datetime | None:
+    text = str(path)
+    candidates: list[str] = []
+    stem = path.stem
+    candidates.extend([stem, text])
+
+    import re
+
+    for candidate in candidates:
+        for match in re.finditer(r"(20\d{2})[^\d]?([01]\d)[^\d]?([0-3]\d)(?:[^\d]?([0-2]\d)[^\d]?([0-5]\d)(?:[^\d]?([0-5]\d))?)?", candidate):
+            year, month, day, hour, minute, second = match.groups()
+            try:
+                return datetime(
+                    int(year),
+                    int(month),
+                    int(day),
+                    int(hour or 0),
+                    int(minute or 0),
+                    int(second or 0),
+                    tzinfo=timezone.utc,
+                )
+            except ValueError:
+                continue
+    return None
+
+
+def source_file_may_contain_new_data(path: Path, start_date: datetime | None) -> bool:
+    if start_date is None:
+        return True
+
+    inferred = infer_datetime_from_path(path)
+    if inferred is not None:
+        return inferred >= start_date - timedelta(days=1)
+
+    try:
+        modified = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        return modified >= start_date
+    except OSError:
+        return True
+
+
+def find_source_files(source_dir: Path, output_dir: Path, start_date: datetime | None = None) -> list[Path]:
     output_dir = output_dir.resolve()
     files: list[Path] = []
     for path in source_dir.rglob("*"):
@@ -197,6 +238,8 @@ def find_source_files(source_dir: Path, output_dir: Path) -> list[Path]:
                 continue
         except OSError:
             pass
+        if not source_file_may_contain_new_data(path, start_date):
+            continue
         files.append(path)
     return sorted(files)
 
@@ -264,11 +307,23 @@ def print_progress(
     print(message, flush=True)
 
 
-def collect_features(source_dir: Path, output_dir: Path, progress_interval_seconds: float) -> list[dict[str, Any]]:
+def collect_features(
+    source_dir: Path,
+    output_dir: Path,
+    progress_interval_seconds: float,
+    start_date: datetime | None = None,
+) -> list[dict[str, Any]]:
     gpd = try_import_geopandas()
     print(f"Finding SFIDE vector files in {source_dir}...", flush=True)
-    files = find_source_files(source_dir, output_dir)
-    print(f"Scanning {len(files)} SFIDE vector files in {source_dir}", flush=True)
+    files = find_source_files(source_dir, output_dir, start_date)
+    if start_date:
+        print(
+            f"Scanning {len(files)} SFIDE vector files in {source_dir} "
+            f"from {start_date.strftime('%Y-%m-%d %H:%M UTC')}",
+            flush=True,
+        )
+    else:
+        print(f"Scanning {len(files)} SFIDE vector files in {source_dir}", flush=True)
 
     features_by_id: dict[str, dict[str, Any]] = {}
     skipped = 0
@@ -289,6 +344,10 @@ def collect_features(source_dir: Path, output_dir: Path, progress_interval_secon
         raw_features += len(features)
         before = len(features_by_id)
         for feature in features:
+            if start_date:
+                dt = parse_feature_date(feature["properties"])
+                if dt and dt < start_date:
+                    continue
             features_by_id[feature_id(feature)] = feature
         added = len(features_by_id) - before
         detail = f"{detail}; features {len(features)}, new unique {added}, total unique {len(features_by_id)}"
@@ -369,6 +428,102 @@ def group_by_month(features: list[dict[str, Any]]) -> dict[str, list[dict[str, A
     for feature in features:
         grouped.setdefault(month_key(feature), []).append(feature)
     return dict(sorted(grouped.items()))
+
+
+def choose_existing_data_path(output_dir: Path, rel_or_base: str) -> Path | None:
+    path = output_dir / rel_or_base
+    if path.exists():
+        return path
+
+    base = output_dir / rel_or_base
+    for suffix in (".fgb", ".geojson", ".json", ".gpkg", ".zip", ".shp"):
+        candidate = base.with_suffix(suffix)
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def existing_archive_paths(output_dir: Path) -> list[Path]:
+    manifest_path = output_dir / ARCHIVE_MANIFEST
+    paths: list[Path] = []
+    if manifest_path.exists():
+        with manifest_path.open("r", encoding="utf-8") as src:
+            manifest = json.load(src)
+        for month in manifest.get("months", []):
+            files = month.get("files", {})
+            for key in ("fgb", "geojson", "json", "gpkg", "zip", "shp"):
+                rel = files.get(key)
+                if rel:
+                    path = output_dir / rel
+                    if path.exists():
+                        paths.append(path)
+                        break
+
+    if paths:
+        return paths
+
+    archive_dir = output_dir / "archive"
+    if archive_dir.exists():
+        paths.extend(sorted(archive_dir.glob("sfide_*.fgb")))
+        paths.extend(sorted(archive_dir.glob("sfide_*.geojson")))
+        paths.extend(sorted(archive_dir.glob("sfide_*.json")))
+
+    for base in ("sfide_aggregate_1Y", "sfide_aggregate_72h"):
+        path = choose_existing_data_path(output_dir, base)
+        if path:
+            paths.append(path)
+    return paths
+
+
+def load_existing_database(output_dir: Path) -> list[dict[str, Any]]:
+    if not output_dir.exists():
+        return []
+
+    gpd = try_import_geopandas()
+    features_by_id: dict[str, dict[str, Any]] = {}
+    paths = existing_archive_paths(output_dir)
+    if not paths:
+        print("No existing SFIDE web database found; running a full rebuild.", flush=True)
+        return []
+
+    print(f"Loading existing SFIDE web database from {len(paths)} file(s)...", flush=True)
+    skipped = 0
+    for path in paths:
+        try:
+            features = read_features(path, gpd)
+        except Exception as exc:
+            skipped += 1
+            print(f"Warning: skipped existing database file {path}: {exc}", file=sys.stderr, flush=True)
+            continue
+        for feature in features:
+            features_by_id[feature_id(feature)] = feature
+
+    print(
+        f"Loaded {len(features_by_id)} existing unique detections"
+        f"{f' ({skipped} existing file(s) skipped)' if skipped else ''}.",
+        flush=True,
+    )
+    return sorted(
+        features_by_id.values(),
+        key=lambda feature: parse_feature_date(feature["properties"]) or datetime.min.replace(tzinfo=timezone.utc),
+    )
+
+
+def latest_feature_date(features: list[dict[str, Any]]) -> datetime | None:
+    dates = [parse_feature_date(feature["properties"]) for feature in features]
+    dates = [date for date in dates if date]
+    return max(dates) if dates else None
+
+
+def merge_feature_lists(*feature_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    features_by_id: dict[str, dict[str, Any]] = {}
+    for features in feature_lists:
+        for feature in features:
+            features_by_id[feature_id(feature)] = feature
+    return sorted(
+        features_by_id.values(),
+        key=lambda feature: parse_feature_date(feature["properties"]) or datetime.min.replace(tzinfo=timezone.utc),
+    )
 
 
 def remove_stale_archive_files(archive_dir: Path, keep_paths: set[Path]) -> None:
@@ -470,7 +625,27 @@ def run_once(args: argparse.Namespace) -> None:
     if not source_dir.exists():
         raise FileNotFoundError(f"Source directory does not exist: {source_dir}")
 
-    features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
+    existing_features: list[dict[str, Any]] = []
+    start_date: datetime | None = None
+    if not args.full_rebuild:
+        existing_features = load_existing_database(output_dir)
+        latest_existing = latest_feature_date(existing_features)
+        if latest_existing:
+            start_date = latest_existing - timedelta(hours=args.incremental_overlap_hours)
+            print(
+                "Latest existing hotspot: "
+                f"{latest_existing.strftime('%Y-%m-%d %H:%M UTC')}; "
+                f"searching source data from {start_date.strftime('%Y-%m-%d %H:%M UTC')}.",
+                flush=True,
+            )
+
+    new_features = collect_features(source_dir, output_dir, args.progress_interval_seconds, start_date)
+    features = merge_feature_lists(existing_features, new_features)
+    print(
+        f"Merged database contains {len(features)} unique detections "
+        f"({len(existing_features)} existing, {len(new_features)} newly scanned).",
+        flush=True,
+    )
     write_outputs(features, output_dir, args.output_format, args.also_geojson)
 
     if args.copy_to:
@@ -529,6 +704,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--git", action="store_true", help="Commit and push changed aggregate files after each update.")
     parser.add_argument("--repo-root", type=Path, default=DEFAULT_WEB_ROOT, help="Git repository root for --git.")
     parser.add_argument("--git-exe", default="git", help="Path to git executable for --git.")
+    parser.add_argument(
+        "--full-rebuild",
+        action="store_true",
+        help="Ignore existing web database files and rebuild by scanning the full source tree.",
+    )
+    parser.add_argument(
+        "--incremental-overlap-hours",
+        type=float,
+        default=6.0,
+        help="When updating incrementally, rescan this many hours before the newest existing hotspot.",
+    )
     parser.add_argument(
         "--progress-interval-seconds",
         type=float,
