@@ -35,6 +35,7 @@ DEFAULT_SOURCE_DIR = Path(r"U:\ftp\sfide\ITA")
 DEFAULT_WEB_ROOT = Path(__file__).resolve().parents[1]
 PROGRESS_BAR_WIDTH = 28
 ARCHIVE_MANIFEST = "sfide_archive_manifest.json"
+UPDATE_STATE = "sfide_update_state.json"
 
 
 def try_import_geopandas():
@@ -129,6 +130,11 @@ def feature_id(feature: dict[str, Any]) -> str:
             props.get("TYPE", ""),
         )
     )
+
+
+def feature_satellite(feature: dict[str, Any]) -> str:
+    value = (feature.get("properties") or {}).get("SATELLITE")
+    return str(value).strip() if value not in (None, "") else "UNKNOWN"
 
 
 def round_float(value: Any) -> Any:
@@ -227,21 +233,61 @@ def source_file_may_contain_new_data(path: Path, start_date: datetime | None) ->
         return True
 
 
-def find_source_files(source_dir: Path, output_dir: Path, start_date: datetime | None = None) -> list[Path]:
+def iter_days(start_date: datetime, end_date: datetime):
+    day = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+    last_day = datetime(end_date.year, end_date.month, end_date.day, tzinfo=timezone.utc)
+    while day <= last_day:
+        yield day
+        day += timedelta(days=1)
+
+
+def find_date_directories(source_dir: Path, start_date: datetime, end_date: datetime) -> list[Path]:
+    dirs: list[Path] = []
+    for day in iter_days(start_date, end_date):
+        path = source_dir / f"{day.year:04d}" / f"{day.month:02d}" / f"{day.day:02d}"
+        if path.is_dir():
+            dirs.append(path)
+    return dirs
+
+
+def find_source_files(
+    source_dir: Path,
+    output_dir: Path,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> list[Path]:
     output_dir = output_dir.resolve()
     files: list[Path] = []
-    for path in source_dir.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            continue
-        try:
-            if output_dir in path.resolve().parents:
+    search_roots = [source_dir]
+    if start_date and end_date:
+        date_dirs = find_date_directories(source_dir, start_date, end_date)
+        if date_dirs:
+            search_roots = date_dirs
+            print(
+                f"Using dated source folders: {len(date_dirs)} day folder(s) "
+                f"from {start_date:%Y-%m-%d} to {end_date:%Y-%m-%d}",
+                flush=True,
+            )
+        else:
+            print(
+                "No /YYYY/MM/DD folders found for requested incremental range; no source files to scan.",
+                flush=True,
+            )
+            return []
+
+    for root in search_roots:
+        for path in root.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in SUPPORTED_EXTENSIONS:
                 continue
-        except OSError:
-            pass
-        if not source_file_may_contain_new_data(path, start_date):
-            continue
-        files.append(path)
-    return sorted(files)
+            try:
+                if output_dir in path.resolve().parents:
+                    continue
+            except OSError:
+                pass
+            if not source_file_may_contain_new_data(path, start_date):
+                continue
+            files.append(path)
+    return sorted(set(files))
 
 
 def read_features(path: Path, gpd: Any) -> list[dict[str, Any]]:
@@ -312,14 +358,17 @@ def collect_features(
     output_dir: Path,
     progress_interval_seconds: float,
     start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    satellite_start_dates: dict[str, datetime] | None = None,
 ) -> list[dict[str, Any]]:
     gpd = try_import_geopandas()
     print(f"Finding SFIDE vector files in {source_dir}...", flush=True)
-    files = find_source_files(source_dir, output_dir, start_date)
+    files = find_source_files(source_dir, output_dir, start_date, end_date)
     if start_date:
         print(
             f"Scanning {len(files)} SFIDE vector files in {source_dir} "
-            f"from {start_date.strftime('%Y-%m-%d %H:%M UTC')}",
+            f"from {start_date.strftime('%Y-%m-%d %H:%M UTC')}"
+            f"{' to ' + end_date.strftime('%Y-%m-%d %H:%M UTC') if end_date else ''}",
             flush=True,
         )
     else:
@@ -344,9 +393,14 @@ def collect_features(
         raw_features += len(features)
         before = len(features_by_id)
         for feature in features:
-            if start_date:
-                dt = parse_feature_date(feature["properties"])
-                if dt and dt < start_date:
+            dt = parse_feature_date(feature["properties"])
+            if start_date and dt and dt < start_date:
+                continue
+            if end_date and dt and dt > end_date:
+                continue
+            if satellite_start_dates and dt:
+                sat_start = satellite_start_dates.get(feature_satellite(feature))
+                if sat_start and dt < sat_start:
                     continue
             features_by_id[feature_id(feature)] = feature
         added = len(features_by_id) - before
@@ -515,6 +569,18 @@ def latest_feature_date(features: list[dict[str, Any]]) -> datetime | None:
     return max(dates) if dates else None
 
 
+def latest_feature_dates_by_satellite(features: list[dict[str, Any]]) -> dict[str, datetime]:
+    latest: dict[str, datetime] = {}
+    for feature in features:
+        dt = parse_feature_date(feature["properties"])
+        if not dt:
+            continue
+        sat = feature_satellite(feature)
+        if sat not in latest or dt > latest[sat]:
+            latest[sat] = dt
+    return latest
+
+
 def merge_feature_lists(*feature_lists: list[dict[str, Any]]) -> list[dict[str, Any]]:
     features_by_id: dict[str, dict[str, Any]] = {}
     for features in feature_lists:
@@ -562,14 +628,7 @@ def write_archive_manifest(output_dir: Path, months: list[dict[str, Any]], outpu
     print(f"Finished {path.name}", flush=True)
 
 
-def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_format: str, also_geojson: bool) -> None:
-    now = datetime.now(timezone.utc)
-    one_year_ago = now - timedelta(days=365)
-    seventy_two_hours_ago = now - timedelta(hours=72)
-
-    one_year = [f for f in features if (parse_feature_date(f["properties"]) or now) >= one_year_ago]
-    last_72h = [f for f in one_year if (parse_feature_date(f["properties"]) or now) >= seventy_two_hours_ago]
-
+def get_writers(output_format: str, also_geojson: bool) -> list[tuple[str, Any]]:
     writers = []
     if output_format == "fgb":
         writers.append((".fgb", write_flatgeobuf))
@@ -580,6 +639,123 @@ def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_forma
 
     if also_geojson and output_format != "geojson":
         writers.append((".geojson", write_geojson))
+    return writers
+
+
+def read_archive_manifest(output_dir: Path) -> dict[str, Any]:
+    path = output_dir / ARCHIVE_MANIFEST
+    if not path.exists():
+        return {"generated": None, "format": None, "months": []}
+    with path.open("r", encoding="utf-8") as src:
+        return json.load(src)
+
+
+def read_update_state(output_dir: Path) -> dict[str, Any]:
+    path = output_dir / UPDATE_STATE
+    if not path.exists():
+        return {}
+    try:
+        with path.open("r", encoding="utf-8") as src:
+            return json.load(src)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Warning: could not read {path.name}: {exc}", file=sys.stderr, flush=True)
+        return {}
+
+
+def parse_state_datetime(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def parse_state_satellite_dates(state: dict[str, Any]) -> dict[str, datetime]:
+    raw = state.get("latest_by_satellite") or {}
+    if not isinstance(raw, dict):
+        return {}
+    parsed: dict[str, datetime] = {}
+    for sat, value in raw.items():
+        dt = parse_state_datetime(value)
+        if dt:
+            parsed[str(sat)] = dt
+    return parsed
+
+
+def write_update_state(
+    output_dir: Path,
+    features: list[dict[str, Any]],
+    output_format: str,
+    feature_count: int | None = None,
+    latest: datetime | None = None,
+    latest_by_satellite: dict[str, datetime] | None = None,
+) -> None:
+    latest = latest or latest_feature_date(features)
+    latest_by_satellite = latest_by_satellite or latest_feature_dates_by_satellite(features)
+    payload = {
+        "generated": datetime.now(timezone.utc).isoformat(),
+        "latest_hotspot": latest.isoformat() if latest else None,
+        "latest_by_satellite": {
+            sat: dt.isoformat()
+            for sat, dt in sorted(latest_by_satellite.items())
+        },
+        "feature_count": len(features) if feature_count is None else feature_count,
+        "format": output_format,
+        "archive_manifest": ARCHIVE_MANIFEST,
+    }
+    path = output_dir / UPDATE_STATE
+    print(f"Writing {path.name}...", flush=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=path.parent, suffix=".json") as tmp:
+        json.dump(payload, tmp, indent=2)
+        temp_name = tmp.name
+    os.replace(temp_name, path)
+
+
+def choose_month_existing_path(output_dir: Path, month_entry: dict[str, Any]) -> Path | None:
+    files = month_entry.get("files", {})
+    for key in ("fgb", "geojson", "json", "gpkg", "zip", "shp"):
+        rel = files.get(key)
+        if rel:
+            path = output_dir / rel
+            if path.exists():
+                return path
+    return None
+
+
+def read_existing_features_from_path(path: Path | None) -> list[dict[str, Any]]:
+    if not path or not path.exists():
+        return []
+    return read_features(path, try_import_geopandas())
+
+
+def make_month_entry(
+    key: str,
+    month_features: list[dict[str, Any]],
+    files: dict[str, str],
+) -> dict[str, Any]:
+    dates = [parse_feature_date(f["properties"]) for f in month_features]
+    dates = [d for d in dates if d]
+    return {
+        "key": key,
+        "label": month_label(key),
+        "start": min(dates).isoformat() if dates else None,
+        "end": max(dates).isoformat() if dates else None,
+        "count": len(month_features),
+        "files": files,
+    }
+
+
+def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_format: str, also_geojson: bool) -> None:
+    now = datetime.now(timezone.utc)
+    one_year_ago = now - timedelta(days=365)
+    seventy_two_hours_ago = now - timedelta(hours=72)
+
+    one_year = [f for f in features if (parse_feature_date(f["properties"]) or now) >= one_year_ago]
+    last_72h = [f for f in one_year if (parse_feature_date(f["properties"]) or now) >= seventy_two_hours_ago]
+
+    writers = get_writers(output_format, also_geojson)
 
     for suffix, writer in writers:
         writer(last_72h, output_dir / f"sfide_aggregate_72h{suffix}")
@@ -597,16 +773,7 @@ def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_forma
             writer(month_features, path)
             keep_paths.add(path.resolve())
             files[suffix.lstrip(".")] = "archive/" + path.name
-        dates = [parse_feature_date(f["properties"]) for f in month_features]
-        dates = [d for d in dates if d]
-        months_payload.append({
-            "key": key,
-            "label": month_label(key),
-            "start": min(dates).isoformat() if dates else None,
-            "end": max(dates).isoformat() if dates else None,
-            "count": len(month_features),
-            "files": files,
-        })
+        months_payload.append(make_month_entry(key, month_features, files))
 
     remove_stale_archive_files(archive_dir, keep_paths)
     remove_legacy_one_year_aggregates(output_dir)
@@ -617,6 +784,101 @@ def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_forma
         f"{len(one_year)} one-year hotspots split across {len(grouped)} monthly archive files.",
         flush=True,
     )
+    write_update_state(output_dir, one_year, output_format)
+
+
+def write_incremental_outputs(
+    new_features: list[dict[str, Any]],
+    output_dir: Path,
+    output_format: str,
+    also_geojson: bool,
+    latest_by_satellite: dict[str, datetime],
+) -> None:
+    now = datetime.now(timezone.utc)
+    one_year_ago = now - timedelta(days=365)
+    seventy_two_hours_ago = now - timedelta(hours=72)
+    writers = get_writers(output_format, also_geojson)
+
+    manifest = read_archive_manifest(output_dir)
+    month_entries: dict[str, dict[str, Any]] = {
+        month.get("key"): month
+        for month in manifest.get("months", [])
+        if month.get("key")
+    }
+
+    new_one_year = [
+        f for f in new_features
+        if (parse_feature_date(f["properties"]) or now) >= one_year_ago
+    ]
+    new_last_72h = [
+        f for f in new_one_year
+        if (parse_feature_date(f["properties"]) or now) >= seventy_two_hours_ago
+    ]
+
+    existing_72h = read_existing_features_from_path(choose_existing_data_path(output_dir, "sfide_aggregate_72h"))
+    last_72h = [
+        f for f in merge_feature_lists(existing_72h, new_last_72h)
+        if (parse_feature_date(f["properties"]) or now) >= seventy_two_hours_ago
+    ]
+    for suffix, writer in writers:
+        writer(last_72h, output_dir / f"sfide_aggregate_72h{suffix}")
+
+    archive_dir = output_dir / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    updated_months = 0
+
+    for key, incoming in group_by_month(new_one_year).items():
+        existing_path = choose_month_existing_path(output_dir, month_entries.get(key, {}))
+        existing_month = read_existing_features_from_path(existing_path)
+        month_features = [
+            f for f in merge_feature_lists(existing_month, incoming)
+            if (parse_feature_date(f["properties"]) or now) >= one_year_ago
+        ]
+        files: dict[str, str] = {}
+        for suffix, writer in writers:
+            path = archive_dir / f"sfide_{key}{suffix}"
+            writer(month_features, path)
+            files[suffix.lstrip(".")] = "archive/" + path.name
+        month_entries[key] = make_month_entry(key, month_features, files)
+        updated_months += 1
+
+    active_months: list[dict[str, Any]] = []
+    stale_paths: set[Path] = set()
+    for key, entry in sorted(month_entries.items()):
+        end = parse_state_datetime(entry.get("end"))
+        if end and end < one_year_ago:
+            for rel in (entry.get("files") or {}).values():
+                stale_paths.add((output_dir / rel).resolve())
+            continue
+        active_months.append(entry)
+
+    for path in stale_paths:
+        if path.exists():
+            path.unlink()
+            print(f"Removed stale archive file {path.name}", flush=True)
+
+    remove_legacy_one_year_aggregates(output_dir)
+    write_archive_manifest(output_dir, active_months, output_format)
+    updated_satellites = dict(latest_by_satellite)
+    for sat, dt in latest_feature_dates_by_satellite(new_features).items():
+        if sat not in updated_satellites or dt > updated_satellites[sat]:
+            updated_satellites[sat] = dt
+    latest = max(updated_satellites.values()) if updated_satellites else None
+    feature_count = sum(int(entry.get("count") or 0) for entry in active_months)
+    write_update_state(
+        output_dir,
+        [],
+        output_format,
+        feature_count=feature_count,
+        latest=latest,
+        latest_by_satellite=updated_satellites,
+    )
+
+    print(
+        f"Incremental update wrote {len(last_72h)} hotspots in the 72h aggregate "
+        f"and refreshed {updated_months} monthly archive chunk(s).",
+        flush=True,
+    )
 
 
 def run_once(args: argparse.Namespace) -> None:
@@ -625,34 +887,72 @@ def run_once(args: argparse.Namespace) -> None:
     if not source_dir.exists():
         raise FileNotFoundError(f"Source directory does not exist: {source_dir}")
 
-    existing_features: list[dict[str, Any]] = []
-    start_date: datetime | None = None
-    if not args.full_rebuild:
-        existing_features = load_existing_database(output_dir)
-        latest_existing = latest_feature_date(existing_features)
+    if args.full_rebuild:
+        print("Full rebuild requested; scanning the full source tree.", flush=True)
+        features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
+        write_outputs(features, output_dir, args.output_format, args.also_geojson)
+    else:
+        state = read_update_state(output_dir)
+        latest_existing = parse_state_datetime(state.get("latest_hotspot"))
+        latest_by_satellite = parse_state_satellite_dates(state)
         if latest_existing:
-            start_date = latest_existing - timedelta(hours=args.incremental_overlap_hours)
             print(
-                "Latest existing hotspot: "
-                f"{latest_existing.strftime('%Y-%m-%d %H:%M UTC')}; "
-                f"searching source data from {start_date.strftime('%Y-%m-%d %H:%M UTC')}.",
+                f"Loaded incremental state from {UPDATE_STATE}: "
+                f"latest hotspot {latest_existing.strftime('%Y-%m-%d %H:%M UTC')} "
+                f"across {len(latest_by_satellite)} satellite(s).",
                 flush=True,
             )
+            if not latest_by_satellite:
+                print(f"{UPDATE_STATE} has no per-satellite timestamps; bootstrapping them once.", flush=True)
+                existing_features = load_existing_database(output_dir)
+                latest_by_satellite = latest_feature_dates_by_satellite(existing_features)
+                if latest_by_satellite:
+                    write_update_state(output_dir, existing_features, args.output_format)
+        else:
+            print(f"No usable {UPDATE_STATE}; bootstrapping state from existing web database.", flush=True)
+            existing_features = load_existing_database(output_dir)
+            latest_existing = latest_feature_date(existing_features)
+            latest_by_satellite = latest_feature_dates_by_satellite(existing_features)
+            if latest_existing:
+                write_update_state(output_dir, existing_features, args.output_format)
 
-    new_features = collect_features(source_dir, output_dir, args.progress_interval_seconds, start_date)
-    features = merge_feature_lists(existing_features, new_features)
-    print(
-        f"Merged database contains {len(features)} unique detections "
-        f"({len(existing_features)} existing, {len(new_features)} newly scanned).",
-        flush=True,
-    )
-    write_outputs(features, output_dir, args.output_format, args.also_geojson)
+        if latest_existing is None:
+            print("No existing hotspot timestamp found; falling back to a full rebuild.", flush=True)
+            features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
+            write_outputs(features, output_dir, args.output_format, args.also_geojson)
+        else:
+            recent_floor = datetime.now(timezone.utc) - timedelta(hours=args.incremental_window_hours)
+            satellite_start_dates = {
+                sat: max(dt - timedelta(hours=args.incremental_overlap_hours), recent_floor)
+                for sat, dt in latest_by_satellite.items()
+            }
+            start_date = min(satellite_start_dates.values()) if satellite_start_dates else latest_existing - timedelta(hours=args.incremental_overlap_hours)
+            end_date = datetime.now(timezone.utc) + timedelta(hours=args.incremental_lookahead_hours)
+            print(
+                "Latest known hotspot: "
+                f"{latest_existing.strftime('%Y-%m-%d %H:%M UTC')}; "
+                f"searching source data from {start_date.strftime('%Y-%m-%d %H:%M UTC')} "
+                f"to {end_date.strftime('%Y-%m-%d %H:%M UTC')} "
+                f"({len(satellite_start_dates)} satellite-specific lower bound(s), "
+                f"{args.incremental_window_hours:g}h recent window).",
+                flush=True,
+            )
+            new_features = collect_features(
+                source_dir,
+                output_dir,
+                args.progress_interval_seconds,
+                start_date,
+                end_date,
+                satellite_start_dates,
+            )
+            write_incremental_outputs(new_features, output_dir, args.output_format, args.also_geojson, latest_by_satellite)
 
     if args.copy_to:
         copy_to = args.copy_to.resolve()
         copy_to.mkdir(parents=True, exist_ok=True)
-        for path in list(output_dir.glob("sfide_aggregate_72h.*")) + [output_dir / ARCHIVE_MANIFEST]:
-            shutil.copy2(path, copy_to / path.name)
+        for path in list(output_dir.glob("sfide_aggregate_72h.*")) + [output_dir / ARCHIVE_MANIFEST, output_dir / UPDATE_STATE]:
+            if path.exists():
+                shutil.copy2(path, copy_to / path.name)
         archive_copy = copy_to / "archive"
         archive_copy.mkdir(parents=True, exist_ok=True)
         for path in (output_dir / "archive").glob("sfide_*.*"):
@@ -707,13 +1007,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--full-rebuild",
         action="store_true",
-        help="Ignore existing web database files and rebuild by scanning the full source tree.",
+        help=f"Ignore {UPDATE_STATE} and rebuild by scanning the full source tree.",
     )
     parser.add_argument(
         "--incremental-overlap-hours",
         type=float,
         default=6.0,
         help="When updating incrementally, rescan this many hours before the newest existing hotspot.",
+    )
+    parser.add_argument(
+        "--incremental-lookahead-hours",
+        type=float,
+        default=3.0,
+        help="When updating incrementally, scan dated source folders up to this many hours after current UTC time.",
+    )
+    parser.add_argument(
+        "--incremental-window-hours",
+        type=float,
+        default=96.0,
+        help="Maximum recent source window for normal incremental runs; inactive satellites cannot force older scans.",
     )
     parser.add_argument(
         "--progress-interval-seconds",
