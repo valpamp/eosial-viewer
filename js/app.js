@@ -787,8 +787,7 @@
                 var fireDetections = fireSeries.reduce(function (sum, item) {
                     return sum + (item.detections || 1);
                 }, 0);
-                var infoHtml = 'Area: ~' + area.toFixed(2) + ' km&sup2;' +
-                               '<br>Detections in area: ' + fireDetections +
+                var infoHtml = 'Detections in query area: ' + fireDetections +
                                '<br>Acquisition times plotted: ' + fireSeries.length;
                 if (fireSeries.satelliteDetections) {
                     var satelliteInfo = Object.keys(fireSeries.satelliteDetections).sort().map(function (sat) {
