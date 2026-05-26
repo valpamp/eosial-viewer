@@ -158,6 +158,39 @@
         return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
     }
 
+    function clusterShapeCSS(fireType) {
+        switch (Number(fireType)) {
+            case 1:
+                return 'clip-path:polygon(50% 4%,96% 96%,4% 96%);';
+            case 2:
+                return 'border-radius:5px;';
+            case 3:
+                return 'clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);';
+            case 0:
+            default:
+                return 'border-radius:50%;';
+        }
+    }
+
+    function majorityFireType(markers) {
+        var counts = {};
+        markers.forEach(function (marker) {
+            var type = marker.options.fireType;
+            if (FIRE_TYPE_CONFIG[type] === undefined) type = 0;
+            counts[type] = (counts[type] || 0) + 1;
+        });
+
+        var winner = 0;
+        var best = -1;
+        Object.keys(counts).sort(function (a, b) { return Number(a) - Number(b); }).forEach(function (type) {
+            if (counts[type] > best) {
+                winner = Number(type);
+                best = counts[type];
+            }
+        });
+        return winner;
+    }
+
     function clusterIconCreate(cluster) {
         var markers = cluster.getAllChildMarkers();
         var counts = {};
@@ -180,15 +213,23 @@
 
         var size = total < 10 ? 34 : total < 100 ? 40 : 48;
         var bg = segments.length > 1 ? 'conic-gradient(' + segments.join(',') + ')' : paletteSample(satellites[0]);
+        var fireType = majorityFireType(markers);
+        var shape = clusterShapeCSS(fireType);
+        var typeConf = FIRE_TYPE_CONFIG[fireType] || FIRE_TYPE_CONFIG[0];
         var html =
             '<div style="' +
-            'width:' + size + 'px;height:' + size + 'px;border-radius:50%;' +
-            'background:' + bg + ';border:2px solid rgba(17,24,39,0.8);' +
-            'box-shadow:0 2px 8px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;' +
+            'position:relative;width:' + size + 'px;height:' + size + 'px;' +
+            'background:rgba(17,24,39,0.86);' + shape +
+            'box-shadow:0 2px 8px rgba(0,0,0,0.28);' +
+            '" title="' + typeConf.label + ' majority">' +
+            '<div style="' +
+            'position:absolute;inset:2px;background:' + bg + ';' + shape +
             '">' +
+            '</div>' +
             '<span style="' +
-            'min-width:22px;height:22px;border-radius:999px;background:rgba(255,255,255,0.88);' +
-            'display:flex;align-items:center;justify-content:center;padding:0 4px;' +
+            'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);' +
+            'min-width:22px;height:22px;border-radius:999px;background:rgba(255,255,255,0.9);' +
+            'display:flex;align-items:center;justify-content:center;padding:0 5px;' +
             'font-size:11px;font-weight:700;color:#111827;line-height:1;' +
             '">' + total + '</span>' +
             '</div>';
@@ -244,7 +285,7 @@
     function updateDatabaseLastUpdate() {
         var el = document.getElementById('fire-last-update');
         if (!el) return;
-        el.textContent = formatSidebarUTC(getLatestHotspotDate());
+        el.textContent = 'Updated: ' + formatSidebarUTC(getLatestHotspotDate());
     }
 
     /* ── Multi-format data loading ─────────────────────────────── */
@@ -568,8 +609,16 @@
 
         var activeSats = getCheckedValues('.fire-sat-filter');
         var activeTypes = getCheckedValues('.fire-type-filter').map(Number);
+        var typeFilterCount = document.querySelectorAll('.fire-type-filter').length;
         var minConf = parseFloat(document.getElementById('fire-min-conf').value) || 0;
         var minFrpStr = document.getElementById('fire-min-frp').value;
+
+        if (typeFilterCount > 0 && activeTypes.length === 0) {
+            displayFeatures([]);
+            var emptyCountEl = document.getElementById('fire-count');
+            if (emptyCountEl) emptyCountEl.textContent = '0 hotspots';
+            return;
+        }
 
         var filtered = allFeatures.filter(function (f) {
             var p = f.properties;
@@ -641,7 +690,7 @@
                 iconAnchor: [6, 6]
             });
 
-            var marker = L.marker(latlng, { icon: icon, satellite: p.SATELLITE });
+            var marker = L.marker(latlng, { icon: icon, satellite: p.SATELLITE, fireType: p.TYPE });
             marker.bindPopup(buildPopup(p));
             markers.push(marker);
         }
@@ -719,10 +768,10 @@
 
         sorted.forEach(function (sat) {
             var div = document.createElement('label');
-            div.className = 'flex items-center gap-2 text-xs';
+            div.className = 'toolbar-pill';
             var checked = isDefaultSatelliteSelected(sat, sorted) ? ' checked' : '';
             div.innerHTML =
-                '<input type="checkbox" value="' + sat + '" class="fire-sat-filter h-3.5 w-3.5"' + checked + '>' +
+                '<input type="checkbox" value="' + sat + '" class="fire-sat-filter"' + checked + '>' +
                 '<span>' + getSatelliteLabel(sat) + '</span>';
             container.appendChild(div);
         });
@@ -735,75 +784,60 @@
     /* ── Sidebar controls ──────────────────────────────────────── */
 
     function buildControls(map) {
-        var container = document.getElementById('layer-controls');
+        var container = document.getElementById('product-toolbar-content') || document.getElementById('layer-controls');
         var section = document.createElement('div');
         section.id = 'fire-controls';
-        section.className = 'border-t pt-4 mt-4';
+        section.className = 'product-toolbar-section';
         section.innerHTML =
-            '<h2 class="text-sm font-semibold text-gray-700 mb-2">Fire Hotspots (SFIDE)</h2>' +
-            '<p class="text-xs text-gray-500 mb-3">Near-real-time fire detections from MSG/MTG satellites.</p>' +
+            '<div class="product-toolbar-title">Fire Hotspots</div>' +
+            '<div class="toolbar-divider"></div>' +
 
             /* Time presets */
-            '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Time Window</label>' +
-            '  <div class="grid grid-cols-3 gap-1">' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="6">6h</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="12">12h</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="24">24h</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 active" data-hours="72">72h</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="168">7d</button>' +
-            '    <button class="fire-time-btn px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200" data-hours="0">All</button>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Time</span>' +
+            '  <div class="toolbar-pill-list">' +
+            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="6">6h</button>' +
+            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="12">12h</button>' +
+            '    <button class="fire-time-btn toolbar-btn-compact active" data-hours="24">24h</button>' +
+            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="72">72h</button>' +
+            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="168">7d</button>' +
+            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="0">All</button>' +
             '  </div>' +
             '</div>' +
 
             /* Custom date range */
-            '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Custom Range</label>' +
-            '  <div class="space-y-1 mb-1">' +
-            '    <input type="text" id="fire-start-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="dd/mm/yyyy hh:mm">' +
-            '    <input type="text" id="fire-end-time" class="w-full px-2 py-1 text-xs border border-gray-300 rounded" placeholder="dd/mm/yyyy hh:mm">' +
-            '  </div>' +
-            '  <button id="fire-apply-custom" class="w-full px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200">Apply Range</button>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Range</span>' +
+            '  <span class="toolbar-field"><input type="text" id="fire-start-time" placeholder="dd/mm/yyyy hh:mm"></span>' +
+            '  <span class="toolbar-field"><input type="text" id="fire-end-time" placeholder="dd/mm/yyyy hh:mm"></span>' +
+            '  <button id="fire-apply-custom" class="toolbar-btn-compact">Apply</button>' +
             '</div>' +
 
             /* Satellite filters */
-            '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Satellites</label>' +
-            '  <div id="fire-sat-list" class="space-y-1 max-h-24 overflow-y-auto">' +
-            '    <span class="text-xs text-gray-400">Loading...</span>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Satellites</span>' +
+            '  <div id="fire-sat-list" class="toolbar-pill-list">' +
+            '    <span class="toolbar-status">Loading...</span>' +
             '  </div>' +
             '</div>' +
 
             /* Fire type filters */
-            '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Fire Type</label>' +
-            '  <div id="fire-type-list" class="space-y-1"></div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Type</span>' +
+            '  <div id="fire-type-list" class="toolbar-pill-list"></div>' +
             '</div>' +
 
             /* Advanced: confidence + FRP */
-            '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Min. Confidence (%)</label>' +
-            '  <input type="number" id="fire-min-conf" min="0" max="100" value="40" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
-            '</div>' +
-            '<div class="mb-3">' +
-            '  <label class="block text-xs font-medium text-gray-600 mb-1">Min. FRP (MW)</label>' +
-            '  <input type="number" id="fire-min-frp" min="0" step="0.1" value="10" class="w-full px-2 py-1 text-xs border border-gray-300 rounded">' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">Conf</span><input type="number" id="fire-min-conf" min="0" max="100" value="40" title="Minimum confidence (%)"></span>' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-min-frp" min="0" step="0.1" value="10" title="Minimum FRP (MW)"></span>' +
             '</div>' +
 
             /* Count display */
-            '<div class="text-xs text-gray-500 mb-1" id="fire-count">—</div>';
+            '<div class="toolbar-status"><span id="fire-count">-</span><br><span id="fire-last-update">Loading...</span></div>';
 
         container.appendChild(section);
-        var countEl = document.getElementById('fire-count');
-        if (countEl) {
-            countEl.insertAdjacentHTML(
-                'afterend',
-                '<div class="text-xs text-gray-500 leading-snug">' +
-                '  <span class="font-medium text-gray-600">SFIDE database last update time:</span><br>' +
-                '  <span id="fire-last-update">Loading...</span>' +
-                '</div>'
-            );
-        }
+        EV.updateProductToolbarVisibility();
         setDefaultCustomRange();
 
         // Wire time preset buttons
@@ -841,9 +875,9 @@
         Object.keys(FIRE_TYPE_CONFIG).forEach(function (type) {
             var conf = FIRE_TYPE_CONFIG[type];
             var div = document.createElement('label');
-            div.className = 'flex items-center gap-2 text-xs';
+            div.className = 'toolbar-pill';
             div.innerHTML =
-                '<input type="checkbox" value="' + type + '" class="fire-type-filter h-3.5 w-3.5" checked>' +
+                '<input type="checkbox" value="' + type + '" class="fire-type-filter" checked>' +
                 '<svg width="12" height="12" viewBox="0 0 24 24" style="fill:#777;stroke:#000;stroke-width:2;"><path d="' + conf.path + '"/></svg>' +
                 '<span>' + conf.label + '</span>';
             typeList.appendChild(div);
@@ -867,7 +901,7 @@
                 // "All" — no time restriction
                 return { start: new Date(Date.UTC(2000, 0, 1)), end: new Date() };
             }
-            var end = new Date();
+            var end = getLatestHotspotDate() || new Date();
             var start = new Date(end.getTime() - hours * 3600000);
             return { start: start, end: end };
         }
@@ -879,8 +913,8 @@
             var end = parseEuropeanDateTime(e.value);
             if (start && end) return { start: start, end: end };
         }
-        var now = new Date();
-        return { start: new Date(now.getTime() - 72 * 3600000), end: now };
+        var now = getLatestHotspotDate() || new Date();
+        return { start: new Date(now.getTime() - 24 * 3600000), end: now };
     }
 
     function pad2(n) {
@@ -902,8 +936,8 @@
     }
 
     function setDefaultCustomRange() {
-        var end = new Date();
-        var start = new Date(end.getTime() - 168 * 3600000);
+        var end = getLatestHotspotDate() || new Date();
+        var start = new Date(end.getTime() - 24 * 3600000);
         var s = document.getElementById('fire-start-time');
         var e = document.getElementById('fire-end-time');
         if (s) s.value = formatEuropeanDateTime(start);
@@ -974,6 +1008,7 @@
             if (leg) leg.style.display = 'none';
             if (clusterGroup) map.removeLayer(clusterGroup);
         }
+        EV.updateProductToolbarVisibility();
     }
 
     /**
@@ -992,8 +1027,11 @@
         var range = getTimeRange();
         var activeSats = getCheckedValues('.fire-sat-filter');
         var activeTypes = getCheckedValues('.fire-type-filter').map(Number);
+        var typeFilterCount = document.querySelectorAll('.fire-type-filter').length;
         var minConf = parseFloat(document.getElementById('fire-min-conf').value) || 0;
         var minFrpStr = document.getElementById('fire-min-frp').value;
+
+        if (typeFilterCount > 0 && activeTypes.length === 0) return [];
 
         var filtered = inside.filter(function (f) {
             var p = f.properties;
@@ -1109,19 +1147,20 @@
                     return loadArchive(getTimeRange());
                 }
             }).then(function () {
-                // If archive was loaded because 72h was empty, keep the default last-week view.
+                // If archive was loaded because 72h was empty, keep the default 24h view.
                 if (yearLoaded) {
                     var btns = document.querySelectorAll('.fire-time-btn');
                     btns.forEach(function (b) {
                         b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
                         b.classList.add('bg-gray-100', 'text-gray-700');
                     });
-                    var weekBtn = document.querySelector('.fire-time-btn[data-hours="168"]');
-                    if (weekBtn) {
-                        weekBtn.classList.add('active', 'bg-blue-100', 'text-blue-700');
-                        weekBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                    var dayBtn = document.querySelector('.fire-time-btn[data-hours="24"]');
+                    if (dayBtn) {
+                        dayBtn.classList.add('active', 'bg-blue-100', 'text-blue-700');
+                        dayBtn.classList.remove('bg-gray-100', 'text-gray-700');
                     }
                 }
+                setDefaultCustomRange();
                 populateSatelliteFilters();
                 applyFilters();
             }).catch(function () {

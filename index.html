@@ -42,9 +42,6 @@
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <!-- TopoJSON client (for admin boundaries) -->
-    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
-
     <!-- Inter Font -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
@@ -62,7 +59,7 @@
         <!-- Title -->
         <div class="flex-shrink-0">
             <h1 class="text-2xl font-bold text-gray-800 mb-1">EOSIAL Viewer</h1>
-            <p class="text-xs text-gray-500 mb-3">Satellite-derived environmental maps</p>
+            <p class="text-xs text-gray-500 mb-3">A viewer for the satellite wildfire management products created and maintained by the EOSIAL Laboratory of the School of Aerospace Engineering</p>
         </div>
 
         <!-- Scrollable content -->
@@ -132,6 +129,11 @@
     <!-- Map -->
     <div id="map"></div>
 
+    <!-- Product Toolbar -->
+    <div id="product-toolbar" class="product-toolbar hidden">
+        <div id="product-toolbar-content" class="product-toolbar-content"></div>
+    </div>
+
     <!-- Timeseries Modal -->
     <div id="ts-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50
                               flex items-center justify-center z-50 p-4">
@@ -172,7 +174,7 @@
                    the EOSIAL Laboratory at Sapienza University of Rome.</p>
                 <p><b>Available layers:</b></p>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b>LFMC</b> &mdash; Live Fuel Moisture Content estimated from Sentinel-2 L2A, Landsat 8/9, VIIRS VNP09H1 or Sentinel-3 Synergy 10-Day aggregate imagery.</li>
+                    <li><b>Live Fuel Moisture Content</b> &mdash; Estimated from Sentinel-2 L2A, Landsat 8/9, VIIRS VNP09H1 or Sentinel-3 Synergy 10-Day aggregate imagery.</li>
                     <li><b>Fire Hotspots</b> &mdash; Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm).</li>
                 </ul>
                 <p class="text-xs text-gray-500 mt-4">
@@ -184,7 +186,7 @@
     </div>
 
     <!-- Coordinate + hover value display -->
-    <div id="map-info-bar" class="fixed bottom-0 left-0 right-0 z-30
+    <div id="map-info-bar" class="hidden fixed bottom-0 left-0 right-0 z-30
                                    flex items-center justify-between px-4 py-1
                                    bg-white/90 backdrop-blur text-xs text-gray-600
                                    border-t border-gray-200 pointer-events-none">
@@ -218,7 +220,6 @@
     <script src="js/timeseries.js"></script>
     <script src="js/layers/lfmc.js"></script>
     <script src="js/layers/fire-hotspots.js"></script>
-    <script src="js/layers/admin-boundaries.js"></script>
     <script src="js/app.js"></script>
 
 </body>

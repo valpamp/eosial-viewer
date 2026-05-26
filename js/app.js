@@ -660,7 +660,7 @@
             });
             var span = document.createElement('span');
             span.className = 'layer-name';
-            span.textContent = lyr.name;
+            span.textContent = lyr.id === 'lfmc' ? 'Live Fuel Moisture Content' : lyr.name;
             label.appendChild(cb);
             label.appendChild(span);
             container.appendChild(label);
@@ -886,20 +886,32 @@
 
     var coordsEl = document.getElementById('cursor-coords');
     var valueEl  = document.getElementById('cursor-value');
+    var infoBar  = document.getElementById('map-info-bar');
+
+    function hideCursorInfo() {
+        if (infoBar) infoBar.classList.add('hidden');
+        coordsEl.textContent = '';
+        valueEl.textContent = '';
+    }
 
     map.on('mousemove', EV.debounce(function (e) {
-        coordsEl.textContent = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
-
         if (EV.lfmc && EV.lfmc.getValueAt) {
             var v = EV.lfmc.getValueAt(e.latlng);
-            valueEl.textContent = v !== null ? 'LFMC: ' + Math.round(v) + ' %' : '';
+            if (v !== null) {
+                coordsEl.textContent = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
+                valueEl.textContent = 'Live Fuel Moisture Content: ' + Math.round(v) + ' %';
+                if (infoBar) infoBar.classList.remove('hidden');
+                return;
+            }
         }
+        hideCursorInfo();
     }, 30));
 
     map.on('mouseout', function () {
         coordsEl.textContent = '—';
         valueEl.textContent = '';
     });
+    map.on('mouseout', hideCursorInfo);
 
     /* ── Loading skeleton ──────────────────────────────────────── */
 
@@ -951,12 +963,10 @@
     // Register layers
     registerLayer(EV.lfmc);
     registerLayer(EV.fireHotspots);
-    registerLayer(EV.adminL0);
     buildLayerToggles();
 
     // Initialise layers
     EV.lfmc.init(map, DATA_BASE);
     EV.fireHotspots.init(map, DATA_BASE);
-    EV.adminL0.init(map);
 
 })();

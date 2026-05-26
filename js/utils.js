@@ -15,6 +15,20 @@ EV.hideLoading = function () {
     document.getElementById('loading-indicator').classList.add('hidden');
 };
 
+EV.updateProductToolbarVisibility = function () {
+    var toolbar = document.getElementById('product-toolbar');
+    if (!toolbar) return;
+    var sections = toolbar.querySelectorAll('.product-toolbar-section');
+    var anyVisible = false;
+    for (var i = 0; i < sections.length; i++) {
+        if (!sections[i].classList.contains('hidden')) {
+            anyVisible = true;
+            break;
+        }
+    }
+    toolbar.classList.toggle('hidden', !anyVisible);
+};
+
 /* ── LFMC colormaps ───────────────────────────────────────────── */
 
 EV.LFMC_COLORMAPS = {

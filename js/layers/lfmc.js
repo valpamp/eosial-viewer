@@ -291,11 +291,11 @@
     /* ── Sidebar controls ──────────────────────────────────────── */
 
     function buildControls(map) {
-        var container = document.getElementById('layer-controls');
+        var container = document.getElementById('product-toolbar-content') || document.getElementById('layer-controls');
 
         var section = document.createElement('div');
         section.id = 'lfmc-controls';
-        section.className = 'border-t pt-4 mt-4 hidden';
+        section.className = 'product-toolbar-section hidden';
         section.innerHTML =
             '<h2 class="text-sm font-semibold text-gray-700 mb-2">LFMC — Live Fuel Moisture</h2>' +
 
@@ -339,7 +339,38 @@
             '  <input type="range" id="lfmc-opacity" min="0" max="100" value="100" class="opacity-slider">' +
             '</div>';
 
+        section.innerHTML =
+            '<div class="product-toolbar-title">Live Fuel Moisture Content</div>' +
+            '<div class="toolbar-divider"></div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">AOI</span>' +
+            '  <span class="toolbar-field"><select id="lfmc-aoi-select"><option value="">Loading...</option></select></span>' +
+            '</div>' +
+            '<div id="lfmc-poly-wrap" class="product-toolbar-group hidden">' +
+            '  <span class="product-toolbar-label">Polygon</span>' +
+            '  <span class="toolbar-field"><select id="lfmc-poly-select"></select></span>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Date</span>' +
+            '  <span class="toolbar-field"><select id="lfmc-date-select"></select></span>' +
+            '  <span class="toolbar-field"><input type="range" id="lfmc-date-slider" min="0" max="0" value="0"></span>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <button id="lfmc-prev" class="toolbar-btn-compact" title="Previous date">&laquo;</button>' +
+            '  <button id="lfmc-play" class="toolbar-btn-compact" title="Animate through dates">&#9654;</button>' +
+            '  <button id="lfmc-next" class="toolbar-btn-compact" title="Next date">&raquo;</button>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Color</span>' +
+            '  <span class="toolbar-field"><select id="lfmc-cmap-select"></select></span>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Opacity</span>' +
+            '  <span class="toolbar-field"><input type="range" id="lfmc-opacity" min="0" max="100" value="100"></span>' +
+            '</div>';
+
         container.appendChild(section);
+        EV.updateProductToolbarVisibility();
 
         // Wire events
         document.getElementById('lfmc-aoi-select').addEventListener('change', function () {
@@ -579,13 +610,14 @@
         } else if (v && currentDate) {
             showDate(currentDate, map, false);
         }
+        EV.updateProductToolbarVisibility();
     }
 
     /* ── Public API ────────────────────────────────────────────── */
 
     EV.lfmc = {
         id: 'lfmc',
-        name: 'LFMC',
+        name: 'Live Fuel Moisture Content',
         type: 'raster',
         defaultVisible: false,
 
