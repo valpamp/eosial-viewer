@@ -961,7 +961,8 @@
 
     // Register layers
     registerLayer(EV.lfmc);
-    registerLayer(EV.fireHotspots);
+    registerLayer(EV.sfideHotspots);
+    registerLayer(EV.firmsHotspots);
     buildLayerToggles();
 
     // Initialise layers

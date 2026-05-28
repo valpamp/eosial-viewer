@@ -21,16 +21,16 @@ body.dark {
 .product-toolbar {
     position: fixed;
     left: 50%;
-    bottom: 34px;
+    bottom: 30px;
     transform: translateX(-50%);
     z-index: 31;
-    width: min(calc(100vw - 28px), 1120px);
+    width: min(calc(100vw - 32px), 1160px);
     pointer-events: none;
 }
 .product-toolbar-content {
     display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
     gap: 8px;
 }
@@ -46,6 +46,8 @@ body.dark {
     border: 1px solid rgba(209,213,219,0.9);
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(15,23,42,0.18);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .product-toolbar-group {
     display: flex;
@@ -76,6 +78,7 @@ body.dark {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
+    max-width: 100%;
 }
 .toolbar-pill {
     display: inline-flex;
@@ -98,6 +101,15 @@ body.dark {
     height: 13px;
     margin: 0;
     accent-color: #2563eb;
+}
+.toolbar-sat-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    border-radius: 50%;
+    border: 0;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.95), 0 0 0 3px rgba(17,24,39,0.22);
 }
 .toolbar-pill:has(input:checked),
 .toolbar-pill.active {
@@ -150,6 +162,45 @@ body.dark {
     color: #4b5563;
     line-height: 1.25;
     white-space: nowrap;
+}
+.toolbar-source-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 120px;
+}
+.fire-toolbar-window { width: fit-content; }
+.fire-source-toolbar {
+    width: min(100%, 1080px);
+    align-items: flex-start;
+}
+.fire-source-toolbar-sfide {
+    border-left: 4px solid #2563eb;
+}
+.fire-source-toolbar-firms {
+    border-left: 4px solid #059669;
+    background: rgba(240,253,244,0.96);
+}
+.fire-source-toolbar .toolbar-pill {
+    max-width: 340px;
+    white-space: normal;
+    line-height: 1.15;
+}
+.fire-source-toolbar .toolbar-pill span:last-child {
+    overflow-wrap: anywhere;
+}
+.firms-title {
+    color: #047857;
+}
+.toolbar-source-badge {
+    padding: 2px 5px;
+    border: 1px solid #86efac;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #047857;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
 }
 @media (max-width: 760px) {
     .product-toolbar {
@@ -546,6 +597,16 @@ body.dark .toolbar-field select {
     background: #2a2a2e;
     border-color: #4b5563;
     color: #d4d4d8;
+}
+body.dark .fire-source-toolbar-firms {
+    background: rgba(20,83,45,0.28);
+    border-left-color: #22c55e;
+}
+body.dark .firms-title { color: #86efac; }
+body.dark .toolbar-source-badge {
+    background: #14532d;
+    border-color: #16a34a;
+    color: #bbf7d0;
 }
 
 body.dark .map-toolbar {

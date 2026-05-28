@@ -20,7 +20,12 @@
         'MTG-1': 10,
         'MET-11': 10,
         'MET-10': 10,
-        'MET-09': 10
+        'MET-09': 10,
+        'FIRMS-MODIS-AQUA': 0,
+        'FIRMS-MODIS-TERRA': 0,
+        'FIRMS-NPP': 0,
+        'FIRMS-NOAA20': 0,
+        'FIRMS-NOAA21': 0
     };
 
     var SATELLITE_PRODUCTS = {
@@ -28,7 +33,12 @@
         'MET-11': 'MSG-RSS',
         'MET-10': 'MSG-HRIT',
         'MET-09': 'MSG-IODC',
-        'MET-08': 'MSG-HRIT'
+        'MET-08': 'MSG-HRIT',
+        'FIRMS-MODIS-AQUA': 'NASA FIRMS MODIS/Aqua C6.1',
+        'FIRMS-MODIS-TERRA': 'NASA FIRMS MODIS/Terra C6.1',
+        'FIRMS-NPP': 'NASA FIRMS Suomi-NPP VIIRS C2',
+        'FIRMS-NOAA20': 'NASA FIRMS NOAA-20 VIIRS C2',
+        'FIRMS-NOAA21': 'NASA FIRMS NOAA-21 VIIRS C2'
     };
 
     var FRP_SCALE_MIN = 1;
@@ -46,17 +56,17 @@
     var FRP_PALETTES = {
         'MTG-1': MTG_COLOR_STOPS,
         'MET-11': [
-            { t: 0.0,  c: [239, 246, 255] },
-            { t: 0.25, c: [191, 219, 254] },
-            { t: 0.5,  c: [ 96, 165, 250] },
-            { t: 0.75, c: [ 37,  99, 235] },
+            { t: 0.0,  c: [219, 234, 254] },
+            { t: 0.25, c: [147, 197, 253] },
+            { t: 0.5,  c: [ 59, 130, 246] },
+            { t: 0.75, c: [ 29,  78, 216] },
             { t: 1.0,  c: [ 30,  64, 175] }
         ],
         'MET-10': [
-            { t: 0.0,  c: [236, 253, 245] },
-            { t: 0.25, c: [167, 243, 208] },
-            { t: 0.5,  c: [ 45, 212, 191] },
-            { t: 0.75, c: [ 13, 148, 136] },
+            { t: 0.0,  c: [204, 251, 241] },
+            { t: 0.25, c: [ 94, 234, 212] },
+            { t: 0.5,  c: [ 20, 184, 166] },
+            { t: 0.75, c: [ 15, 118, 110] },
             { t: 1.0,  c: [ 17,  94,  89] }
         ],
         'MET-09': [
@@ -72,6 +82,41 @@
             { t: 0.5,  c: [ 56, 189, 248] },
             { t: 0.75, c: [  2, 132, 199] },
             { t: 1.0,  c: [ 12,  74, 110] }
+        ],
+        'FIRMS-MODIS-AQUA': [
+            { t: 0.0,  c: [255, 237, 213] },
+            { t: 0.25, c: [253, 186, 116] },
+            { t: 0.5,  c: [249, 115,  22] },
+            { t: 0.75, c: [194,  65,  12] },
+            { t: 1.0,  c: [124,  45,  18] }
+        ],
+        'FIRMS-MODIS-TERRA': [
+            { t: 0.0,  c: [254, 226, 226] },
+            { t: 0.25, c: [252, 165, 165] },
+            { t: 0.5,  c: [239,  68,  68] },
+            { t: 0.75, c: [185,  28,  28] },
+            { t: 1.0,  c: [127,  29,  29] }
+        ],
+        'FIRMS-NPP': [
+            { t: 0.0,  c: [220, 252, 231] },
+            { t: 0.25, c: [134, 239, 172] },
+            { t: 0.5,  c: [ 34, 197,  94] },
+            { t: 0.75, c: [ 21, 128,  61] },
+            { t: 1.0,  c: [ 20,  83,  45] }
+        ],
+        'FIRMS-NOAA20': [
+            { t: 0.0,  c: [219, 234, 254] },
+            { t: 0.25, c: [165, 180, 252] },
+            { t: 0.5,  c: [ 99, 102, 241] },
+            { t: 0.75, c: [ 67,  56, 202] },
+            { t: 1.0,  c: [ 49,  46, 129] }
+        ],
+        'FIRMS-NOAA21': [
+            { t: 0.0,  c: [243, 232, 255] },
+            { t: 0.25, c: [216, 180, 254] },
+            { t: 0.5,  c: [168,  85, 247] },
+            { t: 0.75, c: [126,  34, 206] },
+            { t: 1.0,  c: [ 88,  28, 135] }
         ]
     };
 
@@ -86,7 +131,8 @@
     /* ── State ─────────────────────────────────────────────────── */
 
     var clusterGroup  = null;
-    var visible       = true;
+    var sfideVisible  = true;
+    var firmsVisible  = false;
     var allFeatures   = [];
     var featureIds    = {};
     var yearLoaded    = false;
@@ -108,8 +154,25 @@
     }
 
     function isDefaultSatelliteSelected(satellite, availableSatellites) {
+        if (satellite && satellite.indexOf('FIRMS-') === 0) return true;
         if (satellite && satellite.indexOf('MTG') === 0) return true;
         return !availableSatellites.some(function (sat) { return sat && sat.indexOf('MTG') === 0; });
+    }
+
+    function getDatasetLabel(dataset) {
+        return dataset === 'FIRMS' ? 'NASA FIRMS NRT (external)' : 'SFIDE';
+    }
+
+    function isFirmsFeature(props) {
+        return props && props.DATASET === 'FIRMS';
+    }
+
+    function isSourceVisible(props) {
+        return isFirmsFeature(props) ? firmsVisible : sfideVisible;
+    }
+
+    function anySourceVisible() {
+        return sfideVisible || firmsVisible;
     }
 
     function getFRPColor(frp, satellite) {
@@ -154,7 +217,7 @@
 
     function paletteSample(satellite) {
         var stops = getPalette(satellite);
-        var c = stops[Math.min(3, stops.length - 1)].c;
+        var c = stops[Math.min(2, stops.length - 1)].c;
         return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
     }
 
@@ -259,6 +322,47 @@
         }
     }
 
+    function normalizeFirmsSatellite(raw, product) {
+        raw = String(raw || '').toUpperCase();
+        product = String(product || '').toLowerCase();
+        if (product.indexOf('noaa-21') !== -1 || raw === 'N21') return 'FIRMS-NOAA21';
+        if (product.indexOf('noaa-20') !== -1 || raw === 'N20') return 'FIRMS-NOAA20';
+        if (product.indexOf('suomi') !== -1 || raw === 'N') return 'FIRMS-NPP';
+        if (raw === 'A') return 'FIRMS-MODIS-AQUA';
+        if (raw === 'T') return 'FIRMS-MODIS-TERRA';
+        if (product.indexOf('modis') !== -1) return 'FIRMS-MODIS';
+        return 'FIRMS-' + (raw || 'UNKNOWN');
+    }
+
+    function normalizeFirmsFeature(feature) {
+        var p = feature.properties;
+        var date = String(p.acq_date || '').trim();
+        var time = String(p.acq_time || '').trim();
+        if (/^\d{4}$/.test(time)) time = time.substring(0, 2) + ':' + time.substring(2, 4);
+        if (/^\d{1,2}:\d{2}$/.test(time)) time = time.padStart(5, '0');
+
+        p.DATASET = 'FIRMS';
+        p.DATASET_LABEL = getDatasetLabel('FIRMS');
+        p.PRODUCT = p.product || '';
+        p.SOURCE_FILE = p.source_file || '';
+        p.SATELLITE = normalizeFirmsSatellite(p.satellite, p.product);
+        p.LATITUDE = Number(p.latitude);
+        p.LONGITUDE = Number(p.longitude);
+        p.DATETIME = date && time ? date.replace(/-/g, '/') + ' ' + time : '';
+        p.TYPE = 0;
+        p.FRP_WOOSTER = Number(p.frp || 0);
+        p.CONFIDENCE_RAW = p.confidence;
+        p.CONFIDENCE = /^\d+(\.\d+)?$/.test(String(p.confidence || '')) ? Number(p.confidence) : null;
+        p.VIIRS_CONFIDENCE = p.CONFIDENCE === null ? String(p.confidence || '').toLowerCase() : '';
+        p.INSTRUMENT = String(p.product || '').indexOf('modis') !== -1 ? 'MODIS' : 'VIIRS';
+        p.DAYNIGHT = p.daynight || '';
+        p.BRIGHT_MIR = Number(p.brightness != null ? p.brightness : p.bright_ti4);
+        p.BRIGHT_TIR = Number(p.bright_t31 != null ? p.bright_t31 : p.bright_ti5);
+        if (!isFinite(p.BRIGHT_MIR)) p.BRIGHT_MIR = null;
+        if (!isFinite(p.BRIGHT_TIR)) p.BRIGHT_TIR = null;
+        return feature;
+    }
+
     function formatUTC(date) {
         if (!date) return 'N/A';
         return date.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
@@ -273,12 +377,15 @@
                pad2(date.getUTCMinutes()) + ' UTC';
     }
 
-    function getLatestHotspotDate() {
+    function getLatestHotspotDate(includeHiddenSources) {
         var latest = null;
         for (var i = 0; i < allFeatures.length; i++) {
-            var d = parseFeatureDate(allFeatures[i].properties || {});
+            var props = allFeatures[i].properties || {};
+            if (!includeHiddenSources && !isSourceVisible(props)) continue;
+            var d = parseFeatureDate(props);
             if (d && (!latest || d > latest)) latest = d;
         }
+        if (!latest && !includeHiddenSources) return getLatestHotspotDate(true);
         return latest;
     }
 
@@ -440,6 +547,13 @@
     function normalizeFeature(feature) {
         if (!feature || !feature.properties) return null;
         var p = feature.properties;
+        if (p.acq_date && p.acq_time && p.product) {
+            feature = normalizeFirmsFeature(feature);
+            p = feature.properties;
+        } else {
+            p.DATASET = p.DATASET || 'SFIDE';
+            p.DATASET_LABEL = getDatasetLabel('SFIDE');
+        }
         var coords = feature.geometry && feature.geometry.type === 'Point'
             ? feature.geometry.coordinates
             : null;
@@ -448,15 +562,20 @@
             p.LATITUDE = Number(coords[1]);
         }
         if (p.TYPE != null) p.TYPE = Number(p.TYPE);
-        ['LATITUDE', 'LONGITUDE', 'CONFIDENCE', 'FRP_WOOSTER', 'FRP_MODIS', 'BRIGHT_MIR', 'BRIGHT_TIR'].forEach(function (key) {
+        ['LATITUDE', 'LONGITUDE', 'FRP_WOOSTER', 'FRP_MODIS', 'BRIGHT_MIR', 'BRIGHT_TIR'].forEach(function (key) {
             if (p[key] != null && p[key] !== '') p[key] = Number(p[key]);
         });
+        if (p.CONFIDENCE != null && p.CONFIDENCE !== '') {
+            var conf = Number(p.CONFIDENCE);
+            p.CONFIDENCE = isFinite(conf) ? conf : null;
+        }
         return (isFinite(p.LATITUDE) && isFinite(p.LONGITUDE)) ? feature : null;
     }
 
     function featureKey(feature) {
         var p = feature.properties || {};
         return [
+            p.DATASET || '',
             p.SATELLITE || '',
             Number(p.LATITUDE || 0).toFixed(6),
             Number(p.LONGITUDE || 0).toFixed(6),
@@ -509,6 +628,45 @@
             .catch(function () {
                 console.info('[FIRE] 72h file not available, trying archive...');
                 return loadArchive(getTimeRange());
+            });
+    }
+
+    function loadFirmsNrt() {
+        function loadListed(files) {
+            if (!files || !files.length) return Promise.resolve([]);
+            EV.showLoading('Loading NASA FIRMS NRT hotspots...');
+            return Promise.all(files.map(function (file) {
+                return loadByFormat(file.url, file.ext || '.fgb').catch(function (err) {
+                    console.warn('[FIRMS] External hotspot load error:', file.url, err);
+                    return [];
+                });
+            })).then(function (groups) {
+                EV.hideLoading();
+                var merged = [];
+                groups.forEach(function (features) { merged = merged.concat(features || []); });
+                mergeFeatures(merged);
+                return merged;
+            }).catch(function (err) {
+                EV.hideLoading();
+                throw err;
+            });
+        }
+
+        return fetch(dataBaseUrl + '/fire/firms_manifest.json?v=' + Date.now())
+            .then(function (r) {
+                if (!r.ok) throw new Error('No FIRMS manifest');
+                return r.json();
+            })
+            .then(function (manifest) {
+                var files = (manifest.files || []).map(function (item) {
+                    var path = typeof item === 'string' ? item : item.path;
+                    var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
+                    return { url: dataBaseUrl + '/fire/' + path, ext: ext };
+                }).filter(function (item) { return !!item.url; });
+                return loadListed(files);
+            })
+            .catch(function () {
+                return loadListed([{ url: 'FIRMS_ITA_2026147.fgb?v=' + Date.now(), ext: '.fgb' }]);
             });
     }
 
@@ -609,19 +767,25 @@
 
         var activeSats = getCheckedValues('.fire-sat-filter');
         var activeTypes = getCheckedValues('.fire-type-filter').map(Number);
-        var typeFilterCount = document.querySelectorAll('.fire-type-filter').length;
-        var minConf = parseFloat(document.getElementById('fire-min-conf').value) || 0;
-        var minFrpStr = document.getElementById('fire-min-frp').value;
+        var activeViirsConf = getCheckedValues('.fire-viirs-conf-filter');
+        var viirsConfFilterCount = document.querySelectorAll('.fire-viirs-conf-filter').length;
+        var sfideMinConf = parseFloat(document.getElementById('fire-sfide-min-conf').value) || 0;
+        var firmsModisMinConf = parseFloat(document.getElementById('fire-firms-modis-min-conf').value) || 0;
+        var sfideMinFrpStr = document.getElementById('fire-sfide-min-frp').value;
+        var firmsMinFrpStr = document.getElementById('fire-firms-min-frp').value;
 
-        if (typeFilterCount > 0 && activeTypes.length === 0) {
+        if (!anySourceVisible()) {
             displayFeatures([]);
-            var emptyCountEl = document.getElementById('fire-count');
-            if (emptyCountEl) emptyCountEl.textContent = '0 hotspots';
+            var noSourceCountEl = document.getElementById('fire-count');
+            if (noSourceCountEl) noSourceCountEl.textContent = '0 hotspots';
             return;
         }
 
         var filtered = allFeatures.filter(function (f) {
             var p = f.properties;
+            var isFirms = isFirmsFeature(p);
+
+            if (!isSourceVisible(p)) return false;
 
             // Time
             var d = parseFeatureDate(p);
@@ -630,14 +794,20 @@
             // Satellite
             if (activeSats.length > 0 && activeSats.indexOf(p.SATELLITE) === -1) return false;
 
-            // Fire type
-            if (activeTypes.length > 0 && activeTypes.indexOf(p.TYPE) === -1) return false;
+            // SFIDE fire type
+            if (!isFirms && (activeTypes.length === 0 || activeTypes.indexOf(p.TYPE) === -1)) return false;
 
             // Confidence
-            if ((p.CONFIDENCE || 0) < minConf) return false;
+            if (isFirms && p.VIIRS_CONFIDENCE) {
+                if (viirsConfFilterCount > 0 && activeViirsConf.length === 0) return false;
+                if (activeViirsConf.length > 0 && activeViirsConf.indexOf(p.VIIRS_CONFIDENCE) === -1) return false;
+            } else if (isFirms) {
+                if ((p.CONFIDENCE || 0) < firmsModisMinConf) return false;
+            } else if ((p.CONFIDENCE || 0) < sfideMinConf) return false;
 
             // FRP
             var frp = p.FRP_WOOSTER || 0;
+            var minFrpStr = isFirms ? firmsMinFrpStr : sfideMinFrpStr;
             if (minFrpStr === '' || minFrpStr === undefined) {
                 var defMin = DEFAULT_MIN_FRP[p.SATELLITE] || 0;
                 if (frp < defMin) return false;
@@ -703,10 +873,12 @@
         var date = parseFeatureDate(p);
         var frp = p.FRP_WOOSTER;
         var html = '<h3>' + (p.SATELLITE ? getSatelliteLabel(p.SATELLITE) : 'Fire') + ' Hotspot</h3><table>';
+        html += '<tr><th>Source</th><td>' + (p.DATASET_LABEL || getDatasetLabel(p.DATASET || 'SFIDE')) + '</td></tr>';
         html += '<tr><th>Time (UTC)</th><td>' + formatUTC(date) + '</td></tr>';
-        html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
+        if (!isFirmsFeature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
         html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
-        html += '<tr><th>Confidence</th><td>' + (p.CONFIDENCE != null ? p.CONFIDENCE + '%' : 'N/A') + '</td></tr>';
+        html += '<tr><th>Confidence</th><td>' + (p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE + '%' : 'N/A')) + '</td></tr>';
+        if (p.PRODUCT) html += '<tr><th>Product</th><td>' + p.PRODUCT + '</td></tr>';
         html += '<tr><th>Instrument</th><td>' + (p.INSTRUMENT || 'N/A') + '</td></tr>';
         html += '<tr><th>Day/Night</th><td>' + (p.DAYNIGHT || 'N/A') + '</td></tr>';
         html += '<tr><th>Bright MIR</th><td>' + (p.BRIGHT_MIR != null ? p.BRIGHT_MIR.toFixed(1) + ' K' : 'N/A') + '</td></tr>';
@@ -727,6 +899,7 @@
         var tolerance = 0.001; // ~100m for geostationary pixel matching
         var colocated = allFeatures.filter(function (f) {
             var p = f.properties;
+            if (!isSourceVisible(p)) return false;
             return Math.abs(p.LATITUDE - lat) < tolerance &&
                    Math.abs(p.LONGITUDE - lon) < tolerance;
         });
@@ -756,9 +929,13 @@
     /* ── Dynamic satellite filter population ───────────────────── */
 
     function populateSatelliteFilters() {
-        var container = document.getElementById('fire-sat-list');
-        if (!container) return;
-        container.innerHTML = '';
+        var sfideContainer = document.getElementById('fire-sfide-sat-list');
+        var firmsContainer = document.getElementById('fire-firms-sat-list');
+        var fallbackContainer = document.getElementById('fire-sat-list');
+        if (!sfideContainer && !firmsContainer && !fallbackContainer) return;
+        if (sfideContainer) sfideContainer.innerHTML = '';
+        if (firmsContainer) firmsContainer.innerHTML = '';
+        if (fallbackContainer) fallbackContainer.innerHTML = '';
 
         var sats = {};
         for (var i = 0; i < allFeatures.length; i++) {
@@ -767,16 +944,21 @@
         var sorted = Object.keys(sats).sort();
 
         sorted.forEach(function (sat) {
+            var target = sat.indexOf('FIRMS-') === 0 ? firmsContainer : sfideContainer;
+            if (!target) target = fallbackContainer;
+            if (!target) return;
             var div = document.createElement('label');
             div.className = 'toolbar-pill';
             var checked = isDefaultSatelliteSelected(sat, sorted) ? ' checked' : '';
+            var swatchColor = paletteSample(sat);
             div.innerHTML =
                 '<input type="checkbox" value="' + sat + '" class="fire-sat-filter"' + checked + '>' +
+                '<span class="toolbar-sat-swatch" style="background-color:' + swatchColor + ';"></span>' +
                 '<span>' + getSatelliteLabel(sat) + '</span>';
-            container.appendChild(div);
+            target.appendChild(div);
         });
 
-        container.querySelectorAll('.fire-sat-filter').forEach(function (cb) {
+        document.querySelectorAll('.fire-sat-filter').forEach(function (cb) {
             cb.addEventListener('change', applyFilters);
         });
     }
@@ -787,9 +969,9 @@
         var container = document.getElementById('product-toolbar-content') || document.getElementById('layer-controls');
         var section = document.createElement('div');
         section.id = 'fire-controls';
-        section.className = 'product-toolbar-section';
+        section.className = 'product-toolbar-section fire-toolbar-window';
         section.innerHTML =
-            '<div class="product-toolbar-title">Fire Hotspots</div>' +
+            '<div class="product-toolbar-title">Hotspot Window</div>' +
             '<div class="toolbar-divider"></div>' +
 
             /* Time presets */
@@ -813,30 +995,55 @@
             '  <button id="fire-apply-custom" class="toolbar-btn-compact">Apply</button>' +
             '</div>' +
 
-            /* Satellite filters */
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Satellites</span>' +
-            '  <div id="fire-sat-list" class="toolbar-pill-list">' +
-            '    <span class="toolbar-status">Loading...</span>' +
-            '  </div>' +
-            '</div>' +
-
-            /* Fire type filters */
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Type</span>' +
-            '  <div id="fire-type-list" class="toolbar-pill-list"></div>' +
-            '</div>' +
-
-            /* Advanced: confidence + FRP */
-            '<div class="product-toolbar-group">' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">Conf</span><input type="number" id="fire-min-conf" min="0" max="100" value="40" title="Minimum confidence (%)"></span>' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-min-frp" min="0" step="0.1" value="10" title="Minimum FRP (MW)"></span>' +
-            '</div>' +
-
             /* Count display */
             '<div class="toolbar-status"><span id="fire-count">-</span><br><span id="fire-last-update">Loading...</span></div>';
 
         container.appendChild(section);
+
+        var sfideSection = document.createElement('div');
+        sfideSection.id = 'fire-sfide-controls';
+        sfideSection.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-sfide';
+        sfideSection.innerHTML =
+            '<div class="product-toolbar-title toolbar-source-title">SFIDE Hotspots</div>' +
+            '<div class="toolbar-divider"></div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Satellites</span>' +
+            '  <div id="fire-sfide-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Fire type</span>' +
+            '  <div id="fire-type-list" class="toolbar-pill-list"></div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-sfide-min-conf" min="0" max="100" value="40" title="Minimum SFIDE confidence (%)"></span>' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-sfide-min-frp" min="0" step="0.1" value="10" title="Minimum SFIDE FRP (MW)"></span>' +
+            '</div>';
+        container.appendChild(sfideSection);
+
+        var firmsSection = document.createElement('div');
+        firmsSection.id = 'fire-firms-controls';
+        firmsSection.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-firms hidden';
+        firmsSection.innerHTML =
+            '<div class="product-toolbar-title toolbar-source-title firms-title">FIRMS Hotspots <span class="toolbar-source-badge">NASA external</span></div>' +
+            '<div class="toolbar-divider"></div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Satellites</span>' +
+            '  <div id="fire-firms-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">VIIRS conf</span>' +
+            '  <div class="toolbar-pill-list">' +
+            '    <label class="toolbar-pill"><input type="checkbox" value="low" class="fire-viirs-conf-filter" checked><span>Low</span></label>' +
+            '    <label class="toolbar-pill"><input type="checkbox" value="nominal" class="fire-viirs-conf-filter" checked><span>Nominal</span></label>' +
+            '    <label class="toolbar-pill"><input type="checkbox" value="high" class="fire-viirs-conf-filter" checked><span>High</span></label>' +
+            '  </div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">MODIS conf</span><input type="number" id="fire-firms-modis-min-conf" min="0" max="100" value="0" title="Minimum NASA FIRMS MODIS confidence (%)"></span>' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-firms-min-frp" min="0" step="0.1" value="0" title="Minimum NASA FIRMS FRP (MW)"></span>' +
+            '</div>';
+        container.appendChild(firmsSection);
+
         EV.updateProductToolbarVisibility();
         setDefaultCustomRange();
 
@@ -887,8 +1094,14 @@
         });
 
         // Advanced filter inputs
-        document.getElementById('fire-min-conf').addEventListener('change', applyFilters);
-        document.getElementById('fire-min-frp').addEventListener('change', applyFilters);
+        document.getElementById('fire-sfide-min-conf').addEventListener('change', applyFilters);
+        document.getElementById('fire-sfide-min-frp').addEventListener('change', applyFilters);
+        document.getElementById('fire-firms-modis-min-conf').addEventListener('change', applyFilters);
+        document.getElementById('fire-firms-min-frp').addEventListener('change', applyFilters);
+        firmsSection.querySelectorAll('.fire-viirs-conf-filter').forEach(function (cb) {
+            cb.addEventListener('change', applyFilters);
+        });
+        updateFireControlVisibility();
     }
 
     /* ── "All" time — handle as full archive ───────────────────── */
@@ -961,7 +1174,17 @@
 
     function updateLegendContent(div) {
         var activeSats = getCheckedValues('.fire-sat-filter');
-        if (!activeSats.length) activeSats = ['MTG-1'];
+        activeSats = activeSats.filter(function (sat) {
+            return sat.indexOf('FIRMS-') === 0 ? firmsVisible : sfideVisible;
+        });
+        if (!activeSats.length) {
+            var visibleSats = {};
+            allFeatures.forEach(function (f) {
+                var p = f.properties || {};
+                if (isSourceVisible(p) && p.SATELLITE) visibleSats[p.SATELLITE] = true;
+            });
+            activeSats = Object.keys(visibleSats).sort().slice(0, 1);
+        }
 
         var paletteRows = activeSats.map(function (sat) {
             return '<div class="mt-1">' +
@@ -995,19 +1218,38 @@
 
     /* ── Visibility ────────────────────────────────────────────── */
 
-    function setVisible(v, map) {
-        visible = v;
-        var ctrl = document.getElementById('fire-controls');
+    function updateFireControlVisibility() {
+        var common = document.getElementById('fire-controls');
+        var sfide = document.getElementById('fire-sfide-controls');
+        var firms = document.getElementById('fire-firms-controls');
         var leg  = document.getElementById('fire-legend');
-        if (v) {
-            ctrl.classList.remove('hidden');
-            if (leg) leg.style.display = '';
-            if (clusterGroup) clusterGroup.addTo(map);
+        if (common) common.classList.toggle('hidden', !anySourceVisible());
+        if (sfide) sfide.classList.toggle('hidden', !sfideVisible);
+        if (firms) firms.classList.toggle('hidden', !firmsVisible);
+        if (leg) leg.style.display = anySourceVisible() ? '' : 'none';
+        EV.updateProductToolbarVisibility();
+    }
+
+    function setSourceVisible(source, v, map) {
+        if (source === 'FIRMS') {
+            firmsVisible = v;
         } else {
-            ctrl.classList.add('hidden');
-            if (leg) leg.style.display = 'none';
-            if (clusterGroup) map.removeLayer(clusterGroup);
+            sfideVisible = v;
         }
+
+        var targetMap = map || mapRef;
+        if (clusterGroup && targetMap) {
+            if (anySourceVisible()) clusterGroup.addTo(targetMap);
+            else targetMap.removeLayer(clusterGroup);
+        }
+
+        updateFireControlVisibility();
+        updateDatabaseLastUpdate();
+        applyFilters();
+    }
+
+    function setVisible(v, map) {
+        setSourceVisible('SFIDE', v, map);
         EV.updateProductToolbarVisibility();
     }
 
@@ -1027,20 +1269,31 @@
         var range = getTimeRange();
         var activeSats = getCheckedValues('.fire-sat-filter');
         var activeTypes = getCheckedValues('.fire-type-filter').map(Number);
-        var typeFilterCount = document.querySelectorAll('.fire-type-filter').length;
-        var minConf = parseFloat(document.getElementById('fire-min-conf').value) || 0;
-        var minFrpStr = document.getElementById('fire-min-frp').value;
+        var activeViirsConf = getCheckedValues('.fire-viirs-conf-filter');
+        var viirsConfFilterCount = document.querySelectorAll('.fire-viirs-conf-filter').length;
+        var sfideMinConf = parseFloat(document.getElementById('fire-sfide-min-conf').value) || 0;
+        var firmsModisMinConf = parseFloat(document.getElementById('fire-firms-modis-min-conf').value) || 0;
+        var sfideMinFrpStr = document.getElementById('fire-sfide-min-frp').value;
+        var firmsMinFrpStr = document.getElementById('fire-firms-min-frp').value;
 
-        if (typeFilterCount > 0 && activeTypes.length === 0) return [];
+        if (!anySourceVisible()) return [];
 
         var filtered = inside.filter(function (f) {
             var p = f.properties;
+            var isFirms = isFirmsFeature(p);
             var d = parseFeatureDate(p);
+            if (!isSourceVisible(p)) return false;
             if (!d || d < range.start || d > range.end) return false;
             if (activeSats.length > 0 && activeSats.indexOf(p.SATELLITE) === -1) return false;
-            if (activeTypes.length > 0 && activeTypes.indexOf(p.TYPE) === -1) return false;
-            if ((p.CONFIDENCE || 0) < minConf) return false;
+            if (!isFirms && (activeTypes.length === 0 || activeTypes.indexOf(p.TYPE) === -1)) return false;
+            if (isFirms && p.VIIRS_CONFIDENCE) {
+                if (viirsConfFilterCount > 0 && activeViirsConf.length === 0) return false;
+                if (activeViirsConf.length > 0 && activeViirsConf.indexOf(p.VIIRS_CONFIDENCE) === -1) return false;
+            } else if (isFirms) {
+                if ((p.CONFIDENCE || 0) < firmsModisMinConf) return false;
+            } else if ((p.CONFIDENCE || 0) < sfideMinConf) return false;
             var frp = p.FRP_WOOSTER || 0;
+            var minFrpStr = isFirms ? firmsMinFrpStr : sfideMinFrpStr;
             if (minFrpStr === '' || minFrpStr === undefined) {
                 var defMin = DEFAULT_MIN_FRP[p.SATELLITE] || 0;
                 if (frp < defMin) return false;
@@ -1112,11 +1365,6 @@
     /* ── Public API ────────────────────────────────────────────── */
 
     EV.fireHotspots = {
-        id: 'fire',
-        name: 'Fire Hotspots',
-        type: 'point',
-        defaultVisible: true,
-
         init: function (map, baseUrl) {
             mapRef = map;
             dataBaseUrl = baseUrl;
@@ -1147,6 +1395,8 @@
                     return loadArchive(getTimeRange());
                 }
             }).then(function () {
+                return loadFirmsNrt();
+            }).then(function () {
                 // If archive was loaded because 72h was empty, keep the default 24h view.
                 if (yearLoaded) {
                     var btns = document.querySelectorAll('.fire-time-btn');
@@ -1162,6 +1412,7 @@
                 }
                 setDefaultCustomRange();
                 populateSatelliteFilters();
+                updateFireControlVisibility();
                 applyFilters();
             }).catch(function () {
                 console.info('[FIRE] No fire data available.');
@@ -1171,6 +1422,26 @@
 
         setVisible: setVisible,
         queryPolygon: queryPolygon,
+    };
+
+    EV.sfideHotspots = {
+        id: 'sfide-fire',
+        name: 'SFIDE Hotspots',
+        type: 'point',
+        defaultVisible: true,
+        setVisible: function (v, map) {
+            setSourceVisible('SFIDE', v, map);
+        }
+    };
+
+    EV.firmsHotspots = {
+        id: 'firms-fire',
+        name: 'FIRMS Hotspots',
+        type: 'point',
+        defaultVisible: false,
+        setVisible: function (v, map) {
+            setSourceVisible('FIRMS', v, map);
+        }
     };
 
 })();
