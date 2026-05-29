@@ -6,6 +6,13 @@
  */
 (function () {
     var chart = null;
+    var tableRows = [];
+    var tableColumns = [];
+    var selectedTableColumns = [];
+    var tablePage = 0;
+    var tablePageSize = 50;
+    var tableFilename = 'hotspot_table.csv';
+    var activeView = 'chart';
 
     /** Show the timeseries modal and render a chart.
      *  @param {string} title     - modal title
@@ -25,6 +32,8 @@
         document.getElementById('ts-modal-title').textContent = title;
         info.innerHTML = opts.info || '';
         modal.classList.remove('hidden');
+        setupTable(opts);
+        setViewMode('chart');
 
         if (chart) { chart.destroy(); chart = null; }
 
@@ -257,13 +266,184 @@
         return text;
     }
 
+    function setupTable(opts) {
+        tableRows = opts.tableRows || [];
+        tableColumns = opts.tableColumns || inferColumns(tableRows);
+        selectedTableColumns = tableColumns.filter(function (col) {
+            return col.defaultVisible !== false;
+        }).map(function (col) { return col.key; });
+        if (!selectedTableColumns.length && tableColumns.length) {
+            selectedTableColumns = tableColumns.slice(0, Math.min(4, tableColumns.length)).map(function (col) {
+                return col.key;
+            });
+        }
+        tableFilename = opts.tableFilename || 'hotspot_table.csv';
+        tablePage = 0;
+
+        var tabs = document.getElementById('ts-view-tabs');
+        if (tabs) tabs.classList.toggle('hidden', !tableRows.length);
+        renderFieldControls();
+        renderTable();
+    }
+
+    function inferColumns(rows) {
+        if (!rows.length) return [];
+        return Object.keys(rows[0]).map(function (key) {
+            return { key: key, label: key };
+        });
+    }
+
+    function setViewMode(mode) {
+        activeView = mode === 'table' && tableRows.length ? 'table' : 'chart';
+        var chartPanel = document.getElementById('ts-chart-panel');
+        var tablePanel = document.getElementById('ts-table-panel');
+        var chartTab = document.getElementById('ts-chart-tab');
+        var tableTab = document.getElementById('ts-table-tab');
+        var pngBtn = document.getElementById('ts-save-png');
+        var csvBtn = document.getElementById('ts-save-csv');
+
+        if (chartPanel) chartPanel.classList.toggle('hidden', activeView !== 'chart');
+        if (tablePanel) tablePanel.classList.toggle('hidden', activeView !== 'table');
+        if (chartTab) chartTab.classList.toggle('active', activeView === 'chart');
+        if (tableTab) tableTab.classList.toggle('active', activeView === 'table');
+        if (pngBtn) pngBtn.classList.toggle('hidden', activeView !== 'chart');
+        if (csvBtn) csvBtn.textContent = activeView === 'table' ? 'Download Table CSV' : 'Download CSV';
+    }
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function cellValue(row, col) {
+        var value = row[col.key];
+        return col.formatter ? col.formatter(value, row) : value;
+    }
+
+    function getVisibleTableColumns() {
+        var selected = {};
+        selectedTableColumns.forEach(function (key) { selected[key] = true; });
+        var visible = tableColumns.filter(function (col) { return selected[col.key]; });
+        if (!visible.length && tableColumns.length) {
+            visible = [tableColumns[0]];
+            selectedTableColumns = [tableColumns[0].key];
+        }
+        return visible;
+    }
+
+    function renderFieldControls() {
+        var wrap = document.getElementById('ts-field-controls');
+        if (!wrap) return;
+        if (!tableRows.length || !tableColumns.length) {
+            wrap.innerHTML = '';
+            wrap.classList.add('hidden');
+            return;
+        }
+        wrap.classList.remove('hidden');
+        var selected = {};
+        selectedTableColumns.forEach(function (key) { selected[key] = true; });
+        wrap.innerHTML = tableColumns.map(function (col) {
+            return '<label class="ts-field-pill">' +
+                   '<input type="checkbox" class="ts-field-toggle" value="' + escapeHtml(col.key) + '"' +
+                   (selected[col.key] ? ' checked' : '') + '>' +
+                   '<span>' + escapeHtml(col.label || col.key) + '</span>' +
+                   '</label>';
+        }).join('');
+        wrap.querySelectorAll('.ts-field-toggle').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                selectedTableColumns = [];
+                wrap.querySelectorAll('.ts-field-toggle:checked').forEach(function (checked) {
+                    selectedTableColumns.push(checked.value);
+                });
+                if (!selectedTableColumns.length) {
+                    cb.checked = true;
+                    selectedTableColumns.push(cb.value);
+                }
+                renderTable();
+            });
+        });
+    }
+
+    function renderTable() {
+        var table = document.getElementById('ts-table');
+        var summary = document.getElementById('ts-table-summary');
+        var status = document.getElementById('ts-table-page-status');
+        var prev = document.getElementById('ts-table-prev');
+        var next = document.getElementById('ts-table-next');
+        if (!table) return;
+
+        var visibleColumns = getVisibleTableColumns();
+        if (!tableRows.length || !visibleColumns.length) {
+            table.innerHTML = '';
+            if (summary) summary.textContent = '';
+            if (status) status.textContent = '';
+            return;
+        }
+
+        var totalPages = Math.max(1, Math.ceil(tableRows.length / tablePageSize));
+        tablePage = Math.min(Math.max(tablePage, 0), totalPages - 1);
+        var start = tablePage * tablePageSize;
+        var end = Math.min(start + tablePageSize, tableRows.length);
+        var rows = tableRows.slice(start, end);
+
+        var html = '<thead><tr>' + visibleColumns.map(function (col) {
+            return '<th>' + escapeHtml(col.label || col.key) + '</th>';
+        }).join('') + '</tr></thead><tbody>';
+        rows.forEach(function (row) {
+            html += '<tr>' + visibleColumns.map(function (col) {
+                return '<td>' + escapeHtml(cellValue(row, col)) + '</td>';
+            }).join('') + '</tr>';
+        });
+        html += '</tbody>';
+        table.innerHTML = html;
+
+        if (summary) summary.textContent = 'Selected hotspot detections. Choose fields below; 50 rows are shown per page.';
+        if (status) status.textContent = (start + 1) + '-' + end + ' of ' + tableRows.length;
+        if (prev) prev.disabled = tablePage <= 0;
+        if (next) next.disabled = tablePage >= totalPages - 1;
+    }
+
     /** Close modal */
     function closeModal() {
         document.getElementById('ts-modal').classList.add('hidden');
         if (chart) { chart.destroy(); chart = null; }
     }
 
-    function downloadCSV() {
+    function csvEscape(value) {
+        value = value == null ? '' : String(value);
+        if (/[",\r\n]/.test(value)) return '"' + value.replace(/"/g, '""') + '"';
+        return value;
+    }
+
+    function downloadTableCSV() {
+        if (!tableRows.length || !tableColumns.length) return;
+        var visibleColumns = getVisibleTableColumns();
+        var rows = [visibleColumns.map(function (col) {
+            return csvEscape(col.label || col.key);
+        }).join(',')];
+        tableRows.forEach(function (row) {
+            rows.push(visibleColumns.map(function (col) {
+                return csvEscape(cellValue(row, col));
+            }).join(','));
+        });
+        triggerCSV(rows.join('\r\n'), tableFilename);
+    }
+
+    function triggerCSV(csv, filename) {
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename || 'timeseries.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function downloadChartCSV() {
         if (!chart) return;
         var datasets = chart.data.datasets;
         var labels   = chart.data.labels;
@@ -289,14 +469,15 @@
             }
             rows.push(row.join(','));
         }
-        var csv  = rows.join('\r\n');
-        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement('a');
-        a.href     = url;
-        a.download = 'timeseries.csv';
-        a.click();
-        URL.revokeObjectURL(url);
+        triggerCSV(rows.join('\r\n'), 'timeseries.csv');
+    }
+
+    function downloadCSV() {
+        if (activeView === 'table' && tableRows.length) {
+            downloadTableCSV();
+        } else {
+            downloadChartCSV();
+        }
     }
 
     // Wire close button
@@ -304,6 +485,20 @@
         document.getElementById('ts-modal-close').addEventListener('click', closeModal);
         document.getElementById('ts-modal').addEventListener('click', function (e) {
             if (e.target === this) closeModal();
+        });
+        document.getElementById('ts-chart-tab').addEventListener('click', function () {
+            setViewMode('chart');
+        });
+        document.getElementById('ts-table-tab').addEventListener('click', function () {
+            setViewMode('table');
+        });
+        document.getElementById('ts-table-prev').addEventListener('click', function () {
+            tablePage -= 1;
+            renderTable();
+        });
+        document.getElementById('ts-table-next').addEventListener('click', function () {
+            tablePage += 1;
+            renderTable();
         });
         document.getElementById('ts-save-png').addEventListener('click', function () {
             if (!chart) return;

@@ -1306,6 +1306,30 @@
         var byTime = {};
         var bySatellite = {};
         var satelliteTotals = {};
+        var tableRows = filtered.map(function (f) {
+            var p = f.properties || {};
+            var date = parseFeatureDate(p);
+            var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
+            return {
+                _sortTime: date ? date.getTime() : 0,
+                datetime: date ? formatUTC(date) : '',
+                source: p.DATASET_LABEL || getDatasetLabel(p.DATASET || 'SFIDE'),
+                satellite: p.SATELLITE || '',
+                sensor: p.INSTRUMENT || SATELLITE_PRODUCTS[p.SATELLITE] || p.PRODUCT || '',
+                product: p.PRODUCT || SATELLITE_PRODUCTS[p.SATELLITE] || '',
+                fireType: isFirmsFeature(p) ? '' : typeConf.label,
+                frp: p.FRP_WOOSTER != null ? Math.round(p.FRP_WOOSTER * 10) / 10 : '',
+                confidence: p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE : ''),
+                brightMir: p.BRIGHT_MIR != null ? Math.round(p.BRIGHT_MIR * 10) / 10 : '',
+                brightTir: p.BRIGHT_TIR != null ? Math.round(p.BRIGHT_TIR * 10) / 10 : '',
+                dayNight: p.DAYNIGHT || '',
+                latitude: p.LATITUDE != null ? Number(p.LATITUDE).toFixed(5) : '',
+                longitude: p.LONGITUDE != null ? Number(p.LONGITUDE).toFixed(5) : '',
+                sourceFile: p.SOURCE_FILE || ''
+            };
+        }).sort(function (a, b) {
+            return a._sortTime - b._sortTime;
+        });
         filtered.forEach(function (f) {
             var p = f.properties;
             var date = parseFeatureDate(p);
@@ -1358,6 +1382,23 @@
             };
         });
         series.satelliteDetections = satelliteTotals;
+        series.tableRows = tableRows;
+        series.tableColumns = [
+            { key: 'datetime', label: 'Datetime', defaultVisible: true },
+            { key: 'satellite', label: 'Satellite', defaultVisible: true },
+            { key: 'sensor', label: 'Sensor', defaultVisible: true },
+            { key: 'frp', label: 'FRP [MW]', defaultVisible: true },
+            { key: 'source', label: 'Source', defaultVisible: false },
+            { key: 'product', label: 'Product', defaultVisible: false },
+            { key: 'fireType', label: 'Fire Type', defaultVisible: false },
+            { key: 'confidence', label: 'Confidence', defaultVisible: false },
+            { key: 'brightMir', label: 'Bright MIR [K]', defaultVisible: false },
+            { key: 'brightTir', label: 'Bright TIR [K]', defaultVisible: false },
+            { key: 'dayNight', label: 'Day/Night', defaultVisible: false },
+            { key: 'latitude', label: 'Latitude', defaultVisible: false },
+            { key: 'longitude', label: 'Longitude', defaultVisible: false },
+            { key: 'sourceFile', label: 'Source File', defaultVisible: false }
+        ];
 
         return series;
     }

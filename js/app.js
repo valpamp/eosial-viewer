@@ -809,7 +809,10 @@
                         compactTimeTicks: true,
                         maxXTicks: 6,
                         beginAtZero: true,
-                        datasets: fireSeries.datasets
+                        datasets: fireSeries.datasets,
+                        tableRows: fireSeries.tableRows,
+                        tableColumns: fireSeries.tableColumns,
+                        tableFilename: 'polygon_hotspot_detections.csv'
                     }
                 );
                 return;

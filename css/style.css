@@ -320,6 +320,131 @@ body.querying .leaflet-container { cursor: crosshair !important; }
 /* Stack legends vertically with spacing */
 .fire-legend { margin-top: 8px !important; }
 
+/* Timeseries modal table view */
+.ts-view-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+.ts-view-tab {
+    min-height: 34px;
+    min-width: 74px;
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.ts-view-tab.active {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 1px 4px rgba(37,99,235,0.35);
+}
+.ts-table-summary {
+    margin-bottom: 8px;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 600;
+}
+.ts-field-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+.ts-field-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    background: #fff;
+    color: #374151;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+}
+.ts-field-pill input {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    accent-color: #2563eb;
+}
+.ts-field-pill:has(input:checked) {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+.ts-table-wrap {
+    max-height: 420px;
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+.ts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.ts-table th,
+.ts-table td {
+    padding: 7px 9px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    white-space: nowrap;
+}
+.ts-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 800;
+}
+.ts-table td {
+    color: #1f2937;
+}
+.ts-table tr:nth-child(even) td {
+    background: #f9fafb;
+}
+.ts-table-pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+    color: #4b5563;
+    font-size: 12px;
+}
+.ts-table-page-btn {
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.ts-table-page-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
 /* ── Unified right toolbar ────────────────────────────────────── */
 .leaflet-top.leaflet-right {
     display: flex;
@@ -568,6 +693,32 @@ body.dark .legend {
 body.dark .legend h4 { color: #e4e4e7; }
 body.dark .legend-labels { color: #a1a1aa; }
 body.dark .legend-gradient { border-color: #555; }
+body.dark .ts-view-tabs,
+body.dark .ts-field-controls,
+body.dark .ts-table th,
+body.dark .ts-table tr:nth-child(even) td {
+    background: #2a2a2e;
+}
+body.dark .ts-view-tabs,
+body.dark .ts-field-controls,
+body.dark .ts-field-pill,
+body.dark .ts-table-wrap,
+body.dark .ts-table th,
+body.dark .ts-table td,
+body.dark .ts-table-page-btn {
+    border-color: #374151;
+}
+body.dark .ts-view-tab,
+body.dark .ts-field-pill,
+body.dark .ts-table-summary,
+body.dark .ts-table-pager,
+body.dark .ts-table td,
+body.dark .ts-table-page-btn {
+    color: #d4d4d8;
+}
+body.dark .ts-table th { color: #e4e4e7; }
+body.dark .ts-field-pill { background: #1e1e1e; }
+body.dark .ts-table-page-btn { background: #1e1e1e; }
 
 body.dark .product-toolbar-section {
     background: rgba(30,30,30,0.94);
