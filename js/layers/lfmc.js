@@ -367,6 +367,9 @@
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Opacity</span>' +
             '  <span class="toolbar-field"><input type="range" id="lfmc-opacity" min="0" max="100" value="100"></span>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <label class="toolbar-pill"><input type="checkbox" id="lfmc-country-borders"><span>Country Borders</span></label>' +
             '</div>';
 
         container.appendChild(section);
@@ -401,6 +404,9 @@
         document.getElementById('lfmc-opacity').addEventListener('input', function () {
             opacity = +this.value / 100;
             if (rasterLayer) rasterLayer.setOpacity(opacity);
+        });
+        document.getElementById('lfmc-country-borders').addEventListener('change', function () {
+            if (EV.adminL0) EV.adminL0.setVisible(this.checked, map);
         });
 
         // Playback
@@ -609,6 +615,11 @@
             else map.removeLayer(rasterLayer);
         } else if (v && currentDate) {
             showDate(currentDate, map, false);
+        }
+        if (!v && EV.adminL0) {
+            EV.adminL0.setVisible(false, map);
+            var bordersCb = document.getElementById('lfmc-country-borders');
+            if (bordersCb) bordersCb.checked = false;
         }
         EV.updateProductToolbarVisibility();
     }

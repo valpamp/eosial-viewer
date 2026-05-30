@@ -25,7 +25,9 @@
         'FIRMS-MODIS-TERRA': 0,
         'FIRMS-NPP': 0,
         'FIRMS-NOAA20': 0,
-        'FIRMS-NOAA21': 0
+        'FIRMS-NOAA21': 0,
+        'S3A': 0,
+        'S3B': 0
     };
 
     var SATELLITE_PRODUCTS = {
@@ -38,7 +40,9 @@
         'FIRMS-MODIS-TERRA': 'NASA FIRMS MODIS/Terra C6.1',
         'FIRMS-NPP': 'NASA FIRMS Suomi-NPP VIIRS C2',
         'FIRMS-NOAA20': 'NASA FIRMS NOAA-20 VIIRS C2',
-        'FIRMS-NOAA21': 'NASA FIRMS NOAA-21 VIIRS C2'
+        'FIRMS-NOAA21': 'NASA FIRMS NOAA-21 VIIRS C2',
+        'S3A': 'Sentinel-3A SLSTR',
+        'S3B': 'Sentinel-3B SLSTR'
     };
 
     var FRP_SCALE_MIN = 1;
@@ -117,6 +121,20 @@
             { t: 0.5,  c: [168,  85, 247] },
             { t: 0.75, c: [126,  34, 206] },
             { t: 1.0,  c: [ 88,  28, 135] }
+        ],
+        'S3A': [
+            { t: 0.0,  c: [207, 250, 254] },
+            { t: 0.25, c: [103, 232, 249] },
+            { t: 0.5,  c: [  6, 182, 212] },
+            { t: 0.75, c: [ 14, 116, 144] },
+            { t: 1.0,  c: [ 22,  78,  99] }
+        ],
+        'S3B': [
+            { t: 0.0,  c: [254, 249, 195] },
+            { t: 0.25, c: [253, 224,  71] },
+            { t: 0.5,  c: [234, 179,   8] },
+            { t: 0.75, c: [161,  98,   7] },
+            { t: 1.0,  c: [113,  63,  18] }
         ]
     };
 
@@ -133,6 +151,7 @@
     var clusterGroup  = null;
     var sfideVisible  = true;
     var firmsVisible  = false;
+    var s3Visible     = false;
     var allFeatures   = [];
     var featureIds    = {};
     var yearLoaded    = false;
@@ -154,25 +173,34 @@
     }
 
     function isDefaultSatelliteSelected(satellite, availableSatellites) {
+        if (satellite === 'S3A' || satellite === 'S3B') return true;
         if (satellite && satellite.indexOf('FIRMS-') === 0) return true;
         if (satellite && satellite.indexOf('MTG') === 0) return true;
         return !availableSatellites.some(function (sat) { return sat && sat.indexOf('MTG') === 0; });
     }
 
     function getDatasetLabel(dataset) {
-        return dataset === 'FIRMS' ? 'NASA FIRMS NRT (external)' : 'SFIDE';
+        if (dataset === 'FIRMS') return 'NASA FIRMS NRT (external)';
+        if (dataset === 'S3') return 'Sentinel-3 NRT (external)';
+        return 'SFIDE';
     }
 
     function isFirmsFeature(props) {
         return props && props.DATASET === 'FIRMS';
     }
 
+    function isS3Feature(props) {
+        return props && props.DATASET === 'S3';
+    }
+
     function isSourceVisible(props) {
-        return isFirmsFeature(props) ? firmsVisible : sfideVisible;
+        if (isFirmsFeature(props)) return firmsVisible;
+        if (isS3Feature(props)) return s3Visible;
+        return sfideVisible;
     }
 
     function anySourceVisible() {
-        return sfideVisible || firmsVisible;
+        return sfideVisible || firmsVisible || s3Visible;
     }
 
     function getFRPColor(frp, satellite) {
@@ -363,6 +391,75 @@
         return feature;
     }
 
+    function firstProp(props, names) {
+        for (var i = 0; i < names.length; i++) {
+            if (props[names[i]] != null && props[names[i]] !== '') return props[names[i]];
+        }
+        var keys = Object.keys(props);
+        for (var j = 0; j < names.length; j++) {
+            var wanted = names[j].toLowerCase();
+            for (var k = 0; k < keys.length; k++) {
+                if (keys[k].toLowerCase() === wanted && props[keys[k]] != null && props[keys[k]] !== '') return props[keys[k]];
+            }
+        }
+        return null;
+    }
+
+    function normalizeS3Satellite(value, fallbackName) {
+        var text = String(value || fallbackName || '').toUpperCase();
+        if (text.indexOf('S3B') !== -1 || text.indexOf('SENTINEL-3B') !== -1) return 'S3B';
+        return 'S3A';
+    }
+
+    function normalizeS3DateTime(dateValue, timeValue, isoValue) {
+        if (isoValue) {
+            var isoText = String(isoValue).trim().replace('T', ' ').replace('Z', '');
+            return isoText.replace(/-/g, '/').substring(0, 16);
+        }
+        if (!dateValue) return '';
+        var dateText = String(dateValue).trim().replace(/-/g, '/');
+        var timeText = String(timeValue || '00:00').trim();
+        if (/^\d{4}$/.test(timeText)) timeText = timeText.substring(0, 2) + ':' + timeText.substring(2, 4);
+        if (/^\d{1,2}:\d{2}/.test(timeText)) timeText = timeText.padStart(5, '0').substring(0, 5);
+        return (dateText + ' ' + timeText).substring(0, 16);
+    }
+
+    function numberOrNull(value) {
+        if (value == null || value === '') return null;
+        var n = Number(value);
+        return isFinite(n) ? n : null;
+    }
+
+    function normalizeS3Feature(feature, sourceName) {
+        var p = feature.properties || {};
+        var coords = feature.geometry && feature.geometry.type === 'Point' ? feature.geometry.coordinates : null;
+        p.DATASET = 'S3';
+        p.DATASET_LABEL = getDatasetLabel('S3');
+        p.SOURCE_FILE = p.SOURCE_FILE || p.source_file || p.source || sourceName || '';
+        p.SATELLITE = normalizeS3Satellite(firstProp(p, ['SATELLITE', 'satellite', 'platform', 'mission', 'spacecraft']), sourceName);
+        p.PRODUCT = firstProp(p, ['PRODUCT', 'product']) || 'Sentinel-3 SLSTR FRP';
+        p.INSTRUMENT = firstProp(p, ['INSTRUMENT', 'instrument', 'sensor']) || 'SLSTR';
+        var lon = numberOrNull(firstProp(p, ['LONGITUDE', 'longitude', 'lon', 'x']));
+        var lat = numberOrNull(firstProp(p, ['LATITUDE', 'latitude', 'lat', 'y']));
+        p.LONGITUDE = lon != null ? lon : Number(coords ? coords[0] : NaN);
+        p.LATITUDE = lat != null ? lat : Number(coords ? coords[1] : NaN);
+        p.DATETIME = normalizeS3DateTime(
+            firstProp(p, ['OBS_DATE', 'obs_date', 'DATE', 'date', 'acq_date', 'ACQ_DATE']),
+            firstProp(p, ['OBS_TIME', 'obs_time', 'TIME', 'time', 'acq_time', 'ACQ_TIME']),
+            firstProp(p, ['DATETIME', 'datetime', 'acq_datetime', 'ACQ_DATETIME', 'timestamp', 'TIMESTAMP'])
+        );
+        p.TYPE = 0;
+        var frp = numberOrNull(firstProp(p, ['FRP_WOOSTER', 'FRP', 'frp', 'FRP_MW', 'frp_mw']));
+        p.FRP_WOOSTER = frp != null ? frp : 0;
+        p.CONFIDENCE_RAW = firstProp(p, ['CONFIDENCE_RAW', 'confidence', 'CONFIDENCE', 'confid']);
+        p.CONFIDENCE = numberOrNull(p.CONFIDENCE_RAW);
+        p.BRIGHT_MIR = numberOrNull(firstProp(p, ['BRIGHT_MIR', 'bright_mir', 'BT_MIR', 'bt_mir', 'mwir_bt_k', 'MWIR_BT_K', 'S7_BT']));
+        p.BRIGHT_TIR = numberOrNull(firstProp(p, ['BRIGHT_TIR', 'bright_tir', 'BT_TIR', 'bt_tir', 'S8_BT']));
+        p.DAYNIGHT = firstProp(p, ['DAYNIGHT', 'daynight', 'day_night']) || '';
+        feature.properties = p;
+        return feature;
+    }
+
     function formatUTC(date) {
         if (!date) return 'N/A';
         return date.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
@@ -420,18 +517,23 @@
         });
     }
 
-    function loadByFormat(url, ext) {
+    function loadByFormat(url, ext, normalizer) {
         switch (ext) {
-            case '.fgb':    return loadFlatGeobuf(url);
-            case '.zip':    return loadShapefile(url);
-            case '.gpkg':   return loadGeoPackage(url);
+            case '.fgb':    return loadFlatGeobuf(url, normalizer);
+            case '.zip':    return loadShapefile(url, normalizer);
+            case '.gpkg':   return loadGeoPackage(url, normalizer);
             case '.geojson':
-            case '.json':   return loadGeoJSON(url);
+            case '.json':   return loadGeoJSON(url, normalizer);
             default:        return Promise.reject(new Error('Unknown extension: ' + ext));
         }
     }
 
-    function loadFlatGeobuf(url) {
+    function normalizeLoadedFeatures(features, normalizer) {
+        var fn = normalizer || normalizeFeature;
+        return (features || []).map(fn).filter(Boolean);
+    }
+
+    function loadFlatGeobuf(url, normalizer) {
         return fetch(url)
             .then(function (r) {
                 if (r.status === 404) { var e = new Error('404'); e.notFound = true; throw e; }
@@ -444,26 +546,26 @@
                 if (iterator && iterator[Symbol.asyncIterator]) {
                     return (async function () {
                         for await (var feature of iterator) features.push(feature);
-                        return features.map(normalizeFeature).filter(Boolean);
+                        return normalizeLoadedFeatures(features, normalizer);
                     })();
                 }
                 for (var f of iterator) {
                     features.push(f);
                 }
-                return features.map(normalizeFeature).filter(Boolean);
+                return normalizeLoadedFeatures(features, normalizer);
             });
     }
 
-    function loadShapefile(url) {
+    function loadShapefile(url, normalizer) {
         return shp(url) // eslint-disable-line no-undef
             .then(function (fc) {
                 if (!fc) { var e = new Error('404'); e.notFound = true; throw e; }
                 // shpjs may return a FeatureCollection or array of FeatureCollections
                 if (Array.isArray(fc)) {
                     return fc.reduce(function (acc, c) { return acc.concat(c.features || []); }, [])
-                        .map(normalizeFeature).filter(Boolean);
+                        .map(normalizer || normalizeFeature).filter(Boolean);
                 }
-                return (fc.features || []).map(normalizeFeature).filter(Boolean);
+                return normalizeLoadedFeatures(fc.features || [], normalizer);
             })
             .catch(function (err) {
                 if (!err.notFound) { var e = new Error('404'); e.notFound = true; throw e; }
@@ -471,7 +573,7 @@
             });
     }
 
-    function loadGeoPackage(url) {
+    function loadGeoPackage(url, normalizer) {
         return fetch(url)
             .then(function (r) {
                 if (r.status === 404) { var e = new Error('404'); e.notFound = true; throw e; }
@@ -481,19 +583,19 @@
             .then(function (buf) {
                 return loadSqlJs().then(function (SQL) {
                     var db = new SQL.Database(new Uint8Array(buf));
-                    return parseGpkg(db).map(normalizeFeature).filter(Boolean);
+                    return normalizeLoadedFeatures(parseGpkg(db), normalizer);
                 });
             });
     }
 
-    function loadGeoJSON(url) {
+    function loadGeoJSON(url, normalizer) {
         return fetch(url)
             .then(function (r) {
                 if (r.status === 404) { var e = new Error('404'); e.notFound = true; throw e; }
                 if (!r.ok) throw new Error(r.status);
                 return r.json();
             })
-            .then(function (fc) { return (fc.features || []).map(normalizeFeature).filter(Boolean); });
+            .then(function (fc) { return normalizeLoadedFeatures(fc.features || [], normalizer); });
     }
 
     // Lazy-load sql.js (WASM) only when a .gpkg file is actually needed
@@ -547,7 +649,9 @@
     function normalizeFeature(feature) {
         if (!feature || !feature.properties) return null;
         var p = feature.properties;
-        if (p.acq_date && p.acq_time && p.product) {
+        if (p.DATASET === 'S3') {
+            p.DATASET_LABEL = getDatasetLabel('S3');
+        } else if (p.acq_date && p.acq_time && p.product) {
             feature = normalizeFirmsFeature(feature);
             p = feature.properties;
         } else {
@@ -670,6 +774,48 @@
             });
     }
 
+    function loadS3Nrt() {
+        function loadListed(files) {
+            if (!files || !files.length) return Promise.resolve([]);
+            EV.showLoading('Loading Sentinel-3 NRT hotspots...');
+            return Promise.all(files.map(function (file) {
+                return loadByFormat(file.url, file.ext || '.fgb', function (feature) {
+                    return normalizeFeature(normalizeS3Feature(feature, file.label || file.url));
+                })
+                    .catch(function (err) {
+                        console.warn('[S3] External hotspot load error:', file.url, err);
+                        return [];
+                    });
+            })).then(function (groups) {
+                EV.hideLoading();
+                var merged = [];
+                groups.forEach(function (features) { merged = merged.concat(features || []); });
+                mergeFeatures(merged);
+                return merged;
+            }).catch(function (err) {
+                EV.hideLoading();
+                throw err;
+            });
+        }
+
+        return fetch(dataBaseUrl + '/fire/s3_manifest.json?v=' + Date.now())
+            .then(function (r) {
+                if (!r.ok) throw new Error('No Sentinel-3 manifest');
+                return r.json();
+            })
+            .then(function (manifest) {
+                var files = (manifest.files || []).map(function (item) {
+                    var path = typeof item === 'string' ? item : item.path;
+                    var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
+                    return { url: dataBaseUrl + '/fire/' + path, ext: ext, label: item.label || path };
+                }).filter(function (item) { return !!item.url; });
+                return loadListed(files);
+            })
+            .catch(function () {
+                return [];
+            });
+    }
+
     function loadArchiveManifest() {
         if (archiveManifest) return Promise.resolve(archiveManifest);
         return fetch(dataBaseUrl + '/fire/sfide_archive_manifest.json?v=' + Date.now())
@@ -771,8 +917,10 @@
         var viirsConfFilterCount = document.querySelectorAll('.fire-viirs-conf-filter').length;
         var sfideMinConf = parseFloat(document.getElementById('fire-sfide-min-conf').value) || 0;
         var firmsModisMinConf = parseFloat(document.getElementById('fire-firms-modis-min-conf').value) || 0;
+        var s3MinConf = parseFloat(document.getElementById('fire-s3-min-conf').value) || 0;
         var sfideMinFrpStr = document.getElementById('fire-sfide-min-frp').value;
         var firmsMinFrpStr = document.getElementById('fire-firms-min-frp').value;
+        var s3MinFrpStr = document.getElementById('fire-s3-min-frp').value;
 
         if (!anySourceVisible()) {
             displayFeatures([]);
@@ -784,6 +932,7 @@
         var filtered = allFeatures.filter(function (f) {
             var p = f.properties;
             var isFirms = isFirmsFeature(p);
+            var isS3 = isS3Feature(p);
 
             if (!isSourceVisible(p)) return false;
 
@@ -795,7 +944,7 @@
             if (activeSats.length > 0 && activeSats.indexOf(p.SATELLITE) === -1) return false;
 
             // SFIDE fire type
-            if (!isFirms && (activeTypes.length === 0 || activeTypes.indexOf(p.TYPE) === -1)) return false;
+            if (!isFirms && !isS3 && (activeTypes.length === 0 || activeTypes.indexOf(p.TYPE) === -1)) return false;
 
             // Confidence
             if (isFirms && p.VIIRS_CONFIDENCE) {
@@ -803,11 +952,13 @@
                 if (activeViirsConf.length > 0 && activeViirsConf.indexOf(p.VIIRS_CONFIDENCE) === -1) return false;
             } else if (isFirms) {
                 if ((p.CONFIDENCE || 0) < firmsModisMinConf) return false;
+            } else if (isS3) {
+                if (p.CONFIDENCE != null && (p.CONFIDENCE || 0) < s3MinConf) return false;
             } else if ((p.CONFIDENCE || 0) < sfideMinConf) return false;
 
             // FRP
             var frp = p.FRP_WOOSTER || 0;
-            var minFrpStr = isFirms ? firmsMinFrpStr : sfideMinFrpStr;
+            var minFrpStr = isS3 ? s3MinFrpStr : (isFirms ? firmsMinFrpStr : sfideMinFrpStr);
             if (minFrpStr === '' || minFrpStr === undefined) {
                 var defMin = DEFAULT_MIN_FRP[p.SATELLITE] || 0;
                 if (frp < defMin) return false;
@@ -875,7 +1026,7 @@
         var html = '<h3>' + (p.SATELLITE ? getSatelliteLabel(p.SATELLITE) : 'Fire') + ' Hotspot</h3><table>';
         html += '<tr><th>Source</th><td>' + (p.DATASET_LABEL || getDatasetLabel(p.DATASET || 'SFIDE')) + '</td></tr>';
         html += '<tr><th>Time (UTC)</th><td>' + formatUTC(date) + '</td></tr>';
-        if (!isFirmsFeature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
+        if (!isFirmsFeature(p) && !isS3Feature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
         html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
         html += '<tr><th>Confidence</th><td>' + (p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE + '%' : 'N/A')) + '</td></tr>';
         if (p.PRODUCT) html += '<tr><th>Product</th><td>' + p.PRODUCT + '</td></tr>';
@@ -931,10 +1082,12 @@
     function populateSatelliteFilters() {
         var sfideContainer = document.getElementById('fire-sfide-sat-list');
         var firmsContainer = document.getElementById('fire-firms-sat-list');
+        var s3Container = document.getElementById('fire-s3-sat-list');
         var fallbackContainer = document.getElementById('fire-sat-list');
-        if (!sfideContainer && !firmsContainer && !fallbackContainer) return;
+        if (!sfideContainer && !firmsContainer && !s3Container && !fallbackContainer) return;
         if (sfideContainer) sfideContainer.innerHTML = '';
         if (firmsContainer) firmsContainer.innerHTML = '';
+        if (s3Container) s3Container.innerHTML = '';
         if (fallbackContainer) fallbackContainer.innerHTML = '';
 
         var sats = {};
@@ -944,7 +1097,8 @@
         var sorted = Object.keys(sats).sort();
 
         sorted.forEach(function (sat) {
-            var target = sat.indexOf('FIRMS-') === 0 ? firmsContainer : sfideContainer;
+            var target = sat.indexOf('FIRMS-') === 0 ? firmsContainer :
+                         (sat === 'S3A' || sat === 'S3B' ? s3Container : sfideContainer);
             if (!target) target = fallbackContainer;
             if (!target) return;
             var div = document.createElement('label');
@@ -1044,6 +1198,22 @@
             '</div>';
         container.appendChild(firmsSection);
 
+        var s3Section = document.createElement('div');
+        s3Section.id = 'fire-s3-controls';
+        s3Section.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-s3 hidden';
+        s3Section.innerHTML =
+            '<div class="product-toolbar-title toolbar-source-title s3-title">Sentinel-3 Hotspots <span class="toolbar-source-badge s3-badge">external</span></div>' +
+            '<div class="toolbar-divider"></div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Satellites</span>' +
+            '  <div id="fire-s3-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-s3-min-conf" min="0" max="100" value="0" title="Minimum Sentinel-3 confidence, when available"></span>' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-s3-min-frp" min="0" step="0.1" value="0" title="Minimum Sentinel-3 FRP (MW)"></span>' +
+            '</div>';
+        container.appendChild(s3Section);
+
         EV.updateProductToolbarVisibility();
         setDefaultCustomRange();
 
@@ -1098,6 +1268,8 @@
         document.getElementById('fire-sfide-min-frp').addEventListener('change', applyFilters);
         document.getElementById('fire-firms-modis-min-conf').addEventListener('change', applyFilters);
         document.getElementById('fire-firms-min-frp').addEventListener('change', applyFilters);
+        document.getElementById('fire-s3-min-conf').addEventListener('change', applyFilters);
+        document.getElementById('fire-s3-min-frp').addEventListener('change', applyFilters);
         firmsSection.querySelectorAll('.fire-viirs-conf-filter').forEach(function (cb) {
             cb.addEventListener('change', applyFilters);
         });
@@ -1175,7 +1347,9 @@
     function updateLegendContent(div) {
         var activeSats = getCheckedValues('.fire-sat-filter');
         activeSats = activeSats.filter(function (sat) {
-            return sat.indexOf('FIRMS-') === 0 ? firmsVisible : sfideVisible;
+            if (sat.indexOf('FIRMS-') === 0) return firmsVisible;
+            if (sat === 'S3A' || sat === 'S3B') return s3Visible;
+            return sfideVisible;
         });
         if (!activeSats.length) {
             var visibleSats = {};
@@ -1222,10 +1396,12 @@
         var common = document.getElementById('fire-controls');
         var sfide = document.getElementById('fire-sfide-controls');
         var firms = document.getElementById('fire-firms-controls');
+        var s3 = document.getElementById('fire-s3-controls');
         var leg  = document.getElementById('fire-legend');
         if (common) common.classList.toggle('hidden', !anySourceVisible());
         if (sfide) sfide.classList.toggle('hidden', !sfideVisible);
         if (firms) firms.classList.toggle('hidden', !firmsVisible);
+        if (s3) s3.classList.toggle('hidden', !s3Visible);
         if (leg) leg.style.display = anySourceVisible() ? '' : 'none';
         EV.updateProductToolbarVisibility();
     }
@@ -1233,6 +1409,8 @@
     function setSourceVisible(source, v, map) {
         if (source === 'FIRMS') {
             firmsVisible = v;
+        } else if (source === 'S3') {
+            s3Visible = v;
         } else {
             sfideVisible = v;
         }
@@ -1273,27 +1451,32 @@
         var viirsConfFilterCount = document.querySelectorAll('.fire-viirs-conf-filter').length;
         var sfideMinConf = parseFloat(document.getElementById('fire-sfide-min-conf').value) || 0;
         var firmsModisMinConf = parseFloat(document.getElementById('fire-firms-modis-min-conf').value) || 0;
+        var s3MinConf = parseFloat(document.getElementById('fire-s3-min-conf').value) || 0;
         var sfideMinFrpStr = document.getElementById('fire-sfide-min-frp').value;
         var firmsMinFrpStr = document.getElementById('fire-firms-min-frp').value;
+        var s3MinFrpStr = document.getElementById('fire-s3-min-frp').value;
 
         if (!anySourceVisible()) return [];
 
         var filtered = inside.filter(function (f) {
             var p = f.properties;
             var isFirms = isFirmsFeature(p);
+            var isS3 = isS3Feature(p);
             var d = parseFeatureDate(p);
             if (!isSourceVisible(p)) return false;
             if (!d || d < range.start || d > range.end) return false;
             if (activeSats.length > 0 && activeSats.indexOf(p.SATELLITE) === -1) return false;
-            if (!isFirms && (activeTypes.length === 0 || activeTypes.indexOf(p.TYPE) === -1)) return false;
+            if (!isFirms && !isS3 && (activeTypes.length === 0 || activeTypes.indexOf(p.TYPE) === -1)) return false;
             if (isFirms && p.VIIRS_CONFIDENCE) {
                 if (viirsConfFilterCount > 0 && activeViirsConf.length === 0) return false;
                 if (activeViirsConf.length > 0 && activeViirsConf.indexOf(p.VIIRS_CONFIDENCE) === -1) return false;
             } else if (isFirms) {
                 if ((p.CONFIDENCE || 0) < firmsModisMinConf) return false;
+            } else if (isS3) {
+                if (p.CONFIDENCE != null && (p.CONFIDENCE || 0) < s3MinConf) return false;
             } else if ((p.CONFIDENCE || 0) < sfideMinConf) return false;
             var frp = p.FRP_WOOSTER || 0;
-            var minFrpStr = isFirms ? firmsMinFrpStr : sfideMinFrpStr;
+            var minFrpStr = isS3 ? s3MinFrpStr : (isFirms ? firmsMinFrpStr : sfideMinFrpStr);
             if (minFrpStr === '' || minFrpStr === undefined) {
                 var defMin = DEFAULT_MIN_FRP[p.SATELLITE] || 0;
                 if (frp < defMin) return false;
@@ -1317,7 +1500,7 @@
                 satellite: p.SATELLITE || '',
                 sensor: p.INSTRUMENT || SATELLITE_PRODUCTS[p.SATELLITE] || p.PRODUCT || '',
                 product: p.PRODUCT || SATELLITE_PRODUCTS[p.SATELLITE] || '',
-                fireType: isFirmsFeature(p) ? '' : typeConf.label,
+                fireType: (isFirmsFeature(p) || isS3Feature(p)) ? '' : typeConf.label,
                 frp: p.FRP_WOOSTER != null ? Math.round(p.FRP_WOOSTER * 10) / 10 : '',
                 confidence: p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE : ''),
                 brightMir: p.BRIGHT_MIR != null ? Math.round(p.BRIGHT_MIR * 10) / 10 : '',
@@ -1438,6 +1621,8 @@
             }).then(function () {
                 return loadFirmsNrt();
             }).then(function () {
+                return loadS3Nrt();
+            }).then(function () {
                 // If archive was loaded because 72h was empty, keep the default 24h view.
                 if (yearLoaded) {
                     var btns = document.querySelectorAll('.fire-time-btn');
@@ -1482,6 +1667,16 @@
         defaultVisible: false,
         setVisible: function (v, map) {
             setSourceVisible('FIRMS', v, map);
+        }
+    };
+
+    EV.s3Hotspots = {
+        id: 's3-fire',
+        name: 'Sentinel-3 Hotspots',
+        type: 'point',
+        defaultVisible: false,
+        setVisible: function (v, map) {
+            setSourceVisible('S3', v, map);
         }
     };
 

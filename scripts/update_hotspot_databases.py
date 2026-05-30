@@ -2,8 +2,8 @@
 Update all web-facing hotspot databases for EOSIAL Viewer.
 
 This is the operational entry point for scheduled updates. It updates the
-native SFIDE database and the external NASA FIRMS NRT database in one run, then
-optionally commits/pushes the combined data/fire changes.
+native SFIDE database plus the external NASA FIRMS and Sentinel-3 NRT databases
+in one run, then optionally commits/pushes the combined data/fire changes.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import update_firms_database
+import update_s3_database
 import update_sfide_database
 
 
@@ -89,14 +90,34 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         print(f"WARNING: FIRMS source path not found; skipping FIRMS update: {firms_source}", flush=True)
 
+    s3_source = args.s3_source_dir.resolve()
+    if s3_source.exists():
+        s3_args = argparse.Namespace(
+            source_dir=s3_source,
+            output_dir=output_dir,
+            recent_days=args.s3_recent_days,
+            lookahead_days=args.s3_lookahead_days,
+            full_rebuild=args.full_rebuild_s3,
+            git=False,
+            repo_root=args.repo_root,
+            git_exe=args.git_exe,
+            watch=False,
+            interval_minutes=args.interval_minutes,
+        )
+        print("Updating Sentinel-3 NRT hotspots...", flush=True)
+        update_s3_database.run_once(s3_args)
+    else:
+        print(f"WARNING: Sentinel-3 source path not found; skipping Sentinel-3 update: {s3_source}", flush=True)
+
     if args.git:
         commit_and_push(args.repo_root.resolve(), output_dir, args.git_exe)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Update SFIDE and NASA FIRMS hotspot databases for EOSIAL Viewer.")
+    parser = argparse.ArgumentParser(description="Update SFIDE, NASA FIRMS, and Sentinel-3 hotspot databases for EOSIAL Viewer.")
     parser.add_argument("--sfide-source-dir", type=Path, default=update_sfide_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--firms-source-dir", type=Path, default=update_firms_database.DEFAULT_SOURCE_DIR)
+    parser.add_argument("--s3-source-dir", type=Path, default=update_s3_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_WEB_ROOT / "data" / "fire")
     parser.add_argument("--output-format", choices=("fgb", "geojson"), default="fgb")
     parser.add_argument("--also-geojson", action="store_true")
@@ -105,8 +126,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--git-exe", default="git")
     parser.add_argument("--full-rebuild-sfide", action="store_true")
     parser.add_argument("--full-rebuild-firms", action="store_true")
+    parser.add_argument("--full-rebuild-s3", action="store_true")
     parser.add_argument("--firms-recent-days", type=int, default=4)
     parser.add_argument("--firms-lookahead-days", type=int, default=1)
+    parser.add_argument("--s3-recent-days", type=int, default=4)
+    parser.add_argument("--s3-lookahead-days", type=int, default=1)
     parser.add_argument("--incremental-overlap-hours", type=float, default=6.0)
     parser.add_argument("--incremental-lookahead-hours", type=float, default=3.0)
     parser.add_argument("--incremental-window-hours", type=float, default=96.0)

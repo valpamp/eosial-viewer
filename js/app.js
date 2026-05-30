@@ -966,10 +966,12 @@
     registerLayer(EV.lfmc);
     registerLayer(EV.sfideHotspots);
     registerLayer(EV.firmsHotspots);
+    registerLayer(EV.s3Hotspots);
     buildLayerToggles();
 
     // Initialise layers
     EV.lfmc.init(map, DATA_BASE);
+    if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
     EV.fireHotspots.init(map, DATA_BASE);
 
 })();

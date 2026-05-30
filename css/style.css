@@ -181,6 +181,10 @@ body.dark {
     border-left: 4px solid #059669;
     background: rgba(240,253,244,0.96);
 }
+.fire-source-toolbar-s3 {
+    border-left: 4px solid #0891b2;
+    background: rgba(236,254,255,0.96);
+}
 .fire-source-toolbar .toolbar-pill {
     max-width: 340px;
     white-space: normal;
@@ -192,6 +196,9 @@ body.dark {
 .firms-title {
     color: #047857;
 }
+.s3-title {
+    color: #0e7490;
+}
 .toolbar-source-badge {
     padding: 2px 5px;
     border: 1px solid #86efac;
@@ -201,6 +208,11 @@ body.dark {
     font-size: 9px;
     font-weight: 800;
     text-transform: uppercase;
+}
+.s3-badge {
+    border-color: #67e8f9;
+    background: #cffafe;
+    color: #0e7490;
 }
 @media (max-width: 760px) {
     .product-toolbar {
@@ -753,11 +765,21 @@ body.dark .fire-source-toolbar-firms {
     background: rgba(20,83,45,0.28);
     border-left-color: #22c55e;
 }
+body.dark .fire-source-toolbar-s3 {
+    background: rgba(22,78,99,0.28);
+    border-left-color: #22d3ee;
+}
 body.dark .firms-title { color: #86efac; }
+body.dark .s3-title { color: #67e8f9; }
 body.dark .toolbar-source-badge {
     background: #14532d;
     border-color: #16a34a;
     color: #bbf7d0;
+}
+body.dark .s3-badge {
+    background: #164e63;
+    border-color: #0891b2;
+    color: #cffafe;
 }
 
 body.dark .map-toolbar {
