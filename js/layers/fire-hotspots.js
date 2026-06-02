@@ -27,7 +27,8 @@
         'FIRMS-NOAA20': 0,
         'FIRMS-NOAA21': 0,
         'S3A': 0,
-        'S3B': 0
+        'S3B': 0,
+        'MTG-FIR': 0
     };
 
     var SATELLITE_PRODUCTS = {
@@ -42,7 +43,8 @@
         'FIRMS-NOAA20': 'NASA FIRMS NOAA-20 VIIRS C2',
         'FIRMS-NOAA21': 'NASA FIRMS NOAA-21 VIIRS C2',
         'S3A': 'Sentinel-3A SLSTR',
-        'S3B': 'Sentinel-3B SLSTR'
+        'S3B': 'Sentinel-3B SLSTR',
+        'MTG-FIR': 'Official EUMETSAT MTG-FIR'
     };
 
     var FRP_SCALE_MIN = 1;
@@ -135,6 +137,13 @@
             { t: 0.5,  c: [234, 179,   8] },
             { t: 0.75, c: [161,  98,   7] },
             { t: 1.0,  c: [113,  63,  18] }
+        ],
+        'MTG-FIR': [
+            { t: 0.0,  c: [253, 242, 248] },
+            { t: 0.25, c: [249, 168, 212] },
+            { t: 0.5,  c: [236,  72, 153] },
+            { t: 0.75, c: [190,  24,  93] },
+            { t: 1.0,  c: [131,  24,  67] }
         ]
     };
 
@@ -152,6 +161,7 @@
     var sfideVisible  = true;
     var firmsVisible  = false;
     var s3Visible     = false;
+    var mtgFirVisible = false;
     var allFeatures   = [];
     var featureIds    = {};
     var yearLoaded    = false;
@@ -179,6 +189,7 @@
     }
 
     function isDefaultSatelliteSelected(satellite, availableSatellites) {
+        if (satellite === 'MTG-FIR') return true;
         if (satellite === 'S3A' || satellite === 'S3B') return true;
         if (satellite && satellite.indexOf('FIRMS-') === 0) return true;
         if (satellite && satellite.indexOf('MTG') === 0) return true;
@@ -188,6 +199,7 @@
     function getDatasetLabel(dataset) {
         if (dataset === 'FIRMS') return 'NASA FIRMS NRT (external)';
         if (dataset === 'S3') return 'Sentinel-3 NRT (external)';
+        if (dataset === 'MTG_FIR') return 'EUMETSAT MTG-FIR (external)';
         return 'SFIDE';
     }
 
@@ -199,14 +211,19 @@
         return props && props.DATASET === 'S3';
     }
 
+    function isMtgFirFeature(props) {
+        return props && props.DATASET === 'MTG_FIR';
+    }
+
     function isSourceVisible(props) {
         if (isFirmsFeature(props)) return firmsVisible;
         if (isS3Feature(props)) return s3Visible;
+        if (isMtgFirFeature(props)) return mtgFirVisible;
         return sfideVisible;
     }
 
     function anySourceVisible() {
-        return sfideVisible || firmsVisible || s3Visible;
+        return sfideVisible || firmsVisible || s3Visible || mtgFirVisible;
     }
 
     function getFRPColor(frp, satellite) {
@@ -430,6 +447,13 @@
         return (dateText + ' ' + timeText).substring(0, 16);
     }
 
+    function normalizeCompactDateTime(value) {
+        var text = String(value || '').trim();
+        var m = text.match(/^(20\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+        if (m) return m[1] + '/' + m[2] + '/' + m[3] + ' ' + m[4] + ':' + m[5];
+        return text.replace(/-/g, '/').replace('T', ' ').substring(0, 16);
+    }
+
     function numberOrNull(value) {
         if (value == null || value === '') return null;
         var n = Number(value);
@@ -467,6 +491,33 @@
         return feature;
     }
 
+    function normalizeMtgFirFeature(feature, sourceName) {
+        var p = feature.properties || {};
+        var coords = feature.geometry && feature.geometry.type === 'Point' ? feature.geometry.coordinates : null;
+        p.DATASET = 'MTG_FIR';
+        p.DATASET_LABEL = getDatasetLabel('MTG_FIR');
+        p.SOURCE_FILE = p.SOURCE_FILE || p.source_file || p.source_fgb || sourceName || '';
+        p.SATELLITE = 'MTG-FIR';
+        p.PRODUCT = 'MTG-FIR Fire Detection and Monitoring';
+        p.INSTRUMENT = 'MTG-I FCI';
+        p.LONGITUDE = Number(coords ? coords[0] : firstProp(p, ['LONGITUDE', 'longitude', 'lon', 'x']));
+        p.LATITUDE = Number(coords ? coords[1] : firstProp(p, ['LATITUDE', 'latitude', 'lat', 'y']));
+        p.DATETIME = normalizeCompactDateTime(firstProp(p, ['start_time', 'START_TIME', 'DATETIME', 'datetime']));
+        p.TYPE = 0;
+        p.FRP_WOOSTER = null;
+        p.CONFIDENCE_RAW = firstProp(p, ['fire_probability', 'FIRE_PROBABILITY', 'confidence', 'CONFIDENCE']);
+        p.CONFIDENCE = numberOrNull(p.CONFIDENCE_RAW);
+        p.FIRE_RESULT = firstProp(p, ['fire_result', 'FIRE_RESULT']);
+        p.PROD_QUALITY = numberOrNull(firstProp(p, ['prod_quality', 'PROD_QUALITY']));
+        p.PROD_COMPLETE = numberOrNull(firstProp(p, ['prod_complete', 'PROD_COMPLETE']));
+        p.PROD_TIMELY = numberOrNull(firstProp(p, ['prod_timely', 'PROD_TIMELY']));
+        p.DAYNIGHT = '';
+        p.BRIGHT_MIR = null;
+        p.BRIGHT_TIR = null;
+        feature.properties = p;
+        return feature;
+    }
+
     function formatUTC(date) {
         if (!date) return 'N/A';
         return date.toISOString().replace('T', ' ').substring(0, 16) + ' UTC';
@@ -498,7 +549,7 @@
         for (var i = 0; i < allFeatures.length; i++) {
             var props = allFeatures[i].properties || {};
             if (dataset === 'SFIDE') {
-                if (isFirmsFeature(props) || isS3Feature(props)) continue;
+                if (isFirmsFeature(props) || isS3Feature(props) || isMtgFirFeature(props)) continue;
             } else if ((props.DATASET || 'SFIDE') !== dataset) {
                 continue;
             }
@@ -673,6 +724,8 @@
         var p = feature.properties;
         if (p.DATASET === 'S3') {
             p.DATASET_LABEL = getDatasetLabel('S3');
+        } else if (p.DATASET === 'MTG_FIR') {
+            p.DATASET_LABEL = getDatasetLabel('MTG_FIR');
         } else if (p.acq_date && p.acq_time && p.product) {
             feature = normalizeFirmsFeature(feature);
             p = feature.properties;
@@ -838,6 +891,48 @@
             });
     }
 
+    function loadMtgFirNrt() {
+        function loadListed(files) {
+            if (!files || !files.length) return Promise.resolve([]);
+            EV.showLoading('Loading EUMETSAT MTG-FIR hotspots...');
+            return Promise.all(files.map(function (file) {
+                return loadByFormat(file.url, file.ext || '.fgb', function (feature) {
+                    return normalizeFeature(normalizeMtgFirFeature(feature, file.label || file.url));
+                })
+                    .catch(function (err) {
+                        console.warn('[MTG-FIR] External hotspot load error:', file.url, err);
+                        return [];
+                    });
+            })).then(function (groups) {
+                EV.hideLoading();
+                var merged = [];
+                groups.forEach(function (features) { merged = merged.concat(features || []); });
+                mergeFeatures(merged);
+                return merged;
+            }).catch(function (err) {
+                EV.hideLoading();
+                throw err;
+            });
+        }
+
+        return fetch(dataBaseUrl + '/fire/mtg_fir_manifest.json?v=' + Date.now())
+            .then(function (r) {
+                if (!r.ok) throw new Error('No MTG-FIR manifest');
+                return r.json();
+            })
+            .then(function (manifest) {
+                var files = (manifest.files || []).map(function (item) {
+                    var path = typeof item === 'string' ? item : item.path;
+                    var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
+                    return { url: dataBaseUrl + '/fire/' + path, ext: ext, label: item.label || path };
+                }).filter(function (item) { return !!item.url; });
+                return loadListed(files);
+            })
+            .catch(function () {
+                return [];
+            });
+    }
+
     function loadArchiveManifest() {
         if (archiveManifest) return Promise.resolve(archiveManifest);
         return fetch(dataBaseUrl + '/fire/sfide_archive_manifest.json?v=' + Date.now())
@@ -966,10 +1061,13 @@
             activeSats: getCheckedValues('.fire-sat-filter'),
             activeTypes: getCheckedValues('.fire-type-filter').map(Number),
             activeViirsConf: getCheckedValues('.fire-viirs-conf-filter'),
+            activeMtgFirResults: getCheckedValues('.fire-mtg-fir-result-filter'),
             viirsConfFilterCount: document.querySelectorAll('.fire-viirs-conf-filter').length,
+            mtgFirResultFilterCount: document.querySelectorAll('.fire-mtg-fir-result-filter').length,
             sfideMinConf: numberInputValue('fire-sfide-min-conf', 0),
             firmsModisMinConf: numberInputValue('fire-firms-modis-min-conf', 0),
             s3MinConf: numberInputValue('fire-s3-min-conf', 0),
+            mtgFirMinProb: numberInputValue('fire-mtg-fir-min-prob', 0),
             sfideMinFrpStr: textInputValue('fire-sfide-min-frp'),
             firmsMinFrpStr: textInputValue('fire-firms-min-frp'),
             s3MinFrpStr: textInputValue('fire-s3-min-frp')
@@ -980,6 +1078,7 @@
         var p = feature.properties || {};
         var isFirms = isFirmsFeature(p);
         var isS3 = isS3Feature(p);
+        var isMtgFir = isMtgFirFeature(p);
 
         if (!isSourceVisible(p)) return false;
 
@@ -988,7 +1087,7 @@
 
         if (state.activeSats.length > 0 && state.activeSats.indexOf(p.SATELLITE) === -1) return false;
 
-        if (!isFirms && !isS3 && (state.activeTypes.length === 0 || state.activeTypes.indexOf(p.TYPE) === -1)) return false;
+        if (!isFirms && !isS3 && !isMtgFir && (state.activeTypes.length === 0 || state.activeTypes.indexOf(p.TYPE) === -1)) return false;
 
         if (isFirms && p.VIIRS_CONFIDENCE) {
             if (state.viirsConfFilterCount > 0 && state.activeViirsConf.length === 0) return false;
@@ -997,9 +1096,15 @@
             if ((p.CONFIDENCE || 0) < state.firmsModisMinConf) return false;
         } else if (isS3) {
             if (p.CONFIDENCE != null && (p.CONFIDENCE || 0) < state.s3MinConf) return false;
+        } else if (isMtgFir) {
+            if (state.mtgFirResultFilterCount > 0 && state.activeMtgFirResults.length === 0) return false;
+            if (state.activeMtgFirResults.length > 0 && state.activeMtgFirResults.indexOf(String(p.FIRE_RESULT || '')) === -1) return false;
+            if (p.CONFIDENCE != null && (p.CONFIDENCE || 0) < state.mtgFirMinProb) return false;
         } else if ((p.CONFIDENCE || 0) < state.sfideMinConf) {
             return false;
         }
+
+        if (isMtgFir) return true;
 
         var frp = p.FRP_WOOSTER || 0;
         var minFrpStr = isS3 ? state.s3MinFrpStr : (isFirms ? state.firmsMinFrpStr : state.sfideMinFrpStr);
@@ -1100,17 +1205,22 @@
         var html = '<h3>' + (p.SATELLITE ? getSatelliteLabel(p.SATELLITE) : 'Fire') + ' Hotspot</h3><table>';
         html += '<tr><th>Source</th><td>' + (p.DATASET_LABEL || getDatasetLabel(p.DATASET || 'SFIDE')) + '</td></tr>';
         html += '<tr><th>Time (UTC)</th><td>' + formatUTC(date) + '</td></tr>';
-        if (!isFirmsFeature(p) && !isS3Feature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
-        html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
-        html += '<tr><th>Confidence</th><td>' + (p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE + '%' : 'N/A')) + '</td></tr>';
+        if (!isFirmsFeature(p) && !isS3Feature(p) && !isMtgFirFeature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
+        if (!isMtgFirFeature(p)) html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
+        var confidenceText = p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE + '%' : 'N/A');
+        if (isMtgFirFeature(p) && p.CONFIDENCE != null) confidenceText = p.CONFIDENCE + '%';
+        html += '<tr><th>' + (isMtgFirFeature(p) ? 'Fire Probability' : 'Confidence') + '</th><td>' + confidenceText + '</td></tr>';
+        if (isMtgFirFeature(p)) html += '<tr><th>Fire Result</th><td>' + (p.FIRE_RESULT != null ? p.FIRE_RESULT : 'N/A') + '</td></tr>';
         if (p.PRODUCT) html += '<tr><th>Product</th><td>' + p.PRODUCT + '</td></tr>';
         html += '<tr><th>Instrument</th><td>' + (p.INSTRUMENT || 'N/A') + '</td></tr>';
-        html += '<tr><th>Day/Night</th><td>' + (p.DAYNIGHT || 'N/A') + '</td></tr>';
-        html += '<tr><th>Bright MIR</th><td>' + (p.BRIGHT_MIR != null ? p.BRIGHT_MIR.toFixed(1) + ' K' : 'N/A') + '</td></tr>';
-        html += '<tr><th>Bright TIR</th><td>' + (p.BRIGHT_TIR != null ? p.BRIGHT_TIR.toFixed(1) + ' K' : 'N/A') + '</td></tr>';
+        if (!isMtgFirFeature(p)) html += '<tr><th>Day/Night</th><td>' + (p.DAYNIGHT || 'N/A') + '</td></tr>';
+        if (!isMtgFirFeature(p)) html += '<tr><th>Bright MIR</th><td>' + (p.BRIGHT_MIR != null ? p.BRIGHT_MIR.toFixed(1) + ' K' : 'N/A') + '</td></tr>';
+        if (!isMtgFirFeature(p)) html += '<tr><th>Bright TIR</th><td>' + (p.BRIGHT_TIR != null ? p.BRIGHT_TIR.toFixed(1) + ' K' : 'N/A') + '</td></tr>';
+        if (isMtgFirFeature(p)) html += '<tr><th>Completeness</th><td>' + (p.PROD_COMPLETE != null ? p.PROD_COMPLETE + '%' : 'N/A') + '</td></tr>';
+        if (isMtgFirFeature(p)) html += '<tr><th>Timeliness</th><td>' + (p.PROD_TIMELY != null ? p.PROD_TIMELY + '%' : 'N/A') + '</td></tr>';
         html += '<tr><th>Lat, Lon</th><td>' + p.LATITUDE.toFixed(4) + ', ' + p.LONGITUDE.toFixed(4) + '</td></tr>';
         html += '</table>';
-        html += '<div style="text-align:center;margin-top:6px;">' +
+        if (!isMtgFirFeature(p)) html += '<div style="text-align:center;margin-top:6px;">' +
                 '<a href="#" class="fire-ts-link text-xs" style="color:#2563eb;cursor:pointer;" ' +
                 'data-lat="' + p.LATITUDE + '" data-lon="' + p.LONGITUDE + '">' +
                 'Show FRP timeseries at this location</a></div>';
@@ -1133,8 +1243,9 @@
         var series = colocated.map(function (f) {
             var p = f.properties;
             var d = parseFeatureDate(p);
+            if (p.FRP_WOOSTER == null) return null;
             return { date: d, value: p.FRP_WOOSTER || 0, sat: p.SATELLITE };
-        }).filter(function (s) { return s.date !== null; })
+        }).filter(function (s) { return s && s.date !== null; })
           .sort(function (a, b) { return a.date - b.date; });
 
         if (!series.length) {
@@ -1157,11 +1268,13 @@
         var sfideContainer = document.getElementById('fire-sfide-sat-list');
         var firmsContainer = document.getElementById('fire-firms-sat-list');
         var s3Container = document.getElementById('fire-s3-sat-list');
+        var mtgFirContainer = document.getElementById('fire-mtg-fir-sat-list');
         var fallbackContainer = document.getElementById('fire-sat-list');
-        if (!sfideContainer && !firmsContainer && !s3Container && !fallbackContainer) return;
+        if (!sfideContainer && !firmsContainer && !s3Container && !mtgFirContainer && !fallbackContainer) return;
         if (sfideContainer) sfideContainer.innerHTML = '';
         if (firmsContainer) firmsContainer.innerHTML = '';
         if (s3Container) s3Container.innerHTML = '';
+        if (mtgFirContainer) mtgFirContainer.innerHTML = '';
         if (fallbackContainer) fallbackContainer.innerHTML = '';
 
         var sats = {};
@@ -1172,7 +1285,8 @@
 
         sorted.forEach(function (sat) {
             var target = sat.indexOf('FIRMS-') === 0 ? firmsContainer :
-                         (sat === 'S3A' || sat === 'S3B' ? s3Container : sfideContainer);
+                         (sat === 'S3A' || sat === 'S3B' ? s3Container :
+                         (sat === 'MTG-FIR' ? mtgFirContainer : sfideContainer));
             if (!target) target = fallbackContainer;
             if (!target) return;
             var div = document.createElement('label');
@@ -1288,6 +1402,29 @@
             '</div>';
         container.appendChild(s3Section);
 
+        var mtgFirSection = document.createElement('div');
+        mtgFirSection.id = 'fire-mtg-fir-controls';
+        mtgFirSection.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-mtg-fir hidden';
+        mtgFirSection.innerHTML =
+            '<div class="product-toolbar-title toolbar-source-title mtg-fir-title">MTG-FIR Hotspots <span class="toolbar-source-badge mtg-fir-badge">EUMETSAT official</span></div>' +
+            '<div class="toolbar-divider"></div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Satellites</span>' +
+            '  <div id="fire-mtg-fir-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Result</span>' +
+            '  <div class="toolbar-pill-list">' +
+            '    <label class="toolbar-pill"><input type="checkbox" value="1" class="fire-mtg-fir-result-filter" checked><span>1</span></label>' +
+            '    <label class="toolbar-pill"><input type="checkbox" value="2" class="fire-mtg-fir-result-filter" checked><span>2</span></label>' +
+            '    <label class="toolbar-pill"><input type="checkbox" value="3" class="fire-mtg-fir-result-filter" checked><span>3</span></label>' +
+            '  </div>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">Min prob</span><input type="number" id="fire-mtg-fir-min-prob" min="0" max="100" value="0" title="Minimum MTG-FIR fire probability (%)"></span>' +
+            '</div>';
+        container.appendChild(mtgFirSection);
+
         EV.updateProductToolbarVisibility();
         setDefaultCustomRange();
 
@@ -1344,7 +1481,11 @@
         document.getElementById('fire-firms-min-frp').addEventListener('change', applyFilters);
         document.getElementById('fire-s3-min-conf').addEventListener('change', applyFilters);
         document.getElementById('fire-s3-min-frp').addEventListener('change', applyFilters);
+        document.getElementById('fire-mtg-fir-min-prob').addEventListener('change', applyFilters);
         firmsSection.querySelectorAll('.fire-viirs-conf-filter').forEach(function (cb) {
+            cb.addEventListener('change', applyFilters);
+        });
+        mtgFirSection.querySelectorAll('.fire-mtg-fir-result-filter').forEach(function (cb) {
             cb.addEventListener('change', applyFilters);
         });
         updateFireControlVisibility();
@@ -1423,6 +1564,7 @@
         activeSats = activeSats.filter(function (sat) {
             if (sat.indexOf('FIRMS-') === 0) return firmsVisible;
             if (sat === 'S3A' || sat === 'S3B') return s3Visible;
+            if (sat === 'MTG-FIR') return mtgFirVisible;
             return sfideVisible;
         });
         if (!activeSats.length) {
@@ -1471,11 +1613,13 @@
         var sfide = document.getElementById('fire-sfide-controls');
         var firms = document.getElementById('fire-firms-controls');
         var s3 = document.getElementById('fire-s3-controls');
+        var mtgFir = document.getElementById('fire-mtg-fir-controls');
         var leg  = document.getElementById('fire-legend');
         if (common) common.classList.toggle('hidden', !anySourceVisible());
         if (sfide) sfide.classList.toggle('hidden', !sfideVisible);
         if (firms) firms.classList.toggle('hidden', !firmsVisible);
         if (s3) s3.classList.toggle('hidden', !s3Visible);
+        if (mtgFir) mtgFir.classList.toggle('hidden', !mtgFirVisible);
         if (leg) leg.style.display = anySourceVisible() ? '' : 'none';
         EV.updateProductToolbarVisibility();
     }
@@ -1485,6 +1629,8 @@
             firmsVisible = v;
         } else if (source === 'S3') {
             s3Visible = v;
+        } else if (source === 'MTG_FIR') {
+            mtgFirVisible = v;
         } else {
             sfideVisible = v;
         }
@@ -1539,9 +1685,10 @@
                 satellite: p.SATELLITE || '',
                 sensor: p.INSTRUMENT || SATELLITE_PRODUCTS[p.SATELLITE] || p.PRODUCT || '',
                 product: p.PRODUCT || SATELLITE_PRODUCTS[p.SATELLITE] || '',
-                fireType: (isFirmsFeature(p) || isS3Feature(p)) ? '' : typeConf.label,
+                fireType: (isFirmsFeature(p) || isS3Feature(p) || isMtgFirFeature(p)) ? '' : typeConf.label,
                 frp: p.FRP_WOOSTER != null ? Math.round(p.FRP_WOOSTER * 10) / 10 : '',
                 confidence: p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE : ''),
+                fireResult: p.FIRE_RESULT != null ? p.FIRE_RESULT : '',
                 brightMir: p.BRIGHT_MIR != null ? Math.round(p.BRIGHT_MIR * 10) / 10 : '',
                 brightTir: p.BRIGHT_TIR != null ? Math.round(p.BRIGHT_TIR * 10) / 10 : '',
                 dayNight: p.DAYNIGHT || '',
@@ -1556,6 +1703,7 @@
             var p = f.properties;
             var date = parseFeatureDate(p);
             if (!date) return;
+            if (p.FRP_WOOSTER == null) return;
             var key = date.toISOString().substring(0, 16);
             var sat = p.SATELLITE || 'Unknown';
             var frp = p.FRP_WOOSTER || 0;
@@ -1614,6 +1762,7 @@
             { key: 'product', label: 'Product', defaultVisible: false },
             { key: 'fireType', label: 'Fire Type', defaultVisible: false },
             { key: 'confidence', label: 'Confidence', defaultVisible: false },
+            { key: 'fireResult', label: 'MTG-FIR Result', defaultVisible: false },
             { key: 'brightMir', label: 'Bright MIR [K]', defaultVisible: false },
             { key: 'brightTir', label: 'Bright TIR [K]', defaultVisible: false },
             { key: 'dayNight', label: 'Day/Night', defaultVisible: false },
@@ -1661,6 +1810,8 @@
                 return loadFirmsNrt();
             }).then(function () {
                 return loadS3Nrt();
+            }).then(function () {
+                return loadMtgFirNrt();
             }).then(function () {
                 // If archive was loaded because 72h was empty, keep the default 24h view.
                 if (yearLoaded) {
@@ -1716,6 +1867,16 @@
         defaultVisible: false,
         setVisible: function (v, map) {
             setSourceVisible('S3', v, map);
+        }
+    };
+
+    EV.mtgFirHotspots = {
+        id: 'mtg-fir-fire',
+        name: 'MTG-FIR Hotspots',
+        type: 'point',
+        defaultVisible: false,
+        setVisible: function (v, map) {
+            setSourceVisible('MTG_FIR', v, map);
         }
     };
 

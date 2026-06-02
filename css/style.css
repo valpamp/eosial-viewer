@@ -185,6 +185,10 @@ body.dark {
     border-left: 4px solid #0891b2;
     background: rgba(236,254,255,0.96);
 }
+.fire-source-toolbar-mtg-fir {
+    border-left: 4px solid #db2777;
+    background: rgba(253,242,248,0.96);
+}
 .fire-source-toolbar .toolbar-pill {
     max-width: 340px;
     white-space: normal;
@@ -198,6 +202,9 @@ body.dark {
 }
 .s3-title {
     color: #0e7490;
+}
+.mtg-fir-title {
+    color: #be185d;
 }
 .toolbar-source-badge {
     padding: 2px 5px;
@@ -769,8 +776,13 @@ body.dark .fire-source-toolbar-s3 {
     background: rgba(22,78,99,0.28);
     border-left-color: #22d3ee;
 }
+body.dark .fire-source-toolbar-mtg-fir {
+    background: rgba(131,24,67,0.28);
+    border-left-color: #f472b6;
+}
 body.dark .firms-title { color: #86efac; }
 body.dark .s3-title { color: #67e8f9; }
+body.dark .mtg-fir-title { color: #f9a8d4; }
 body.dark .toolbar-source-badge {
     background: #14532d;
     border-color: #16a34a;
@@ -780,6 +792,11 @@ body.dark .s3-badge {
     background: #164e63;
     border-color: #0891b2;
     color: #cffafe;
+}
+body.dark .mtg-fir-badge {
+    background: #831843;
+    border-color: #db2777;
+    color: #fce7f3;
 }
 
 body.dark .map-toolbar {

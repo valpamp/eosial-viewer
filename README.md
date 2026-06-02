@@ -6,7 +6,7 @@ Interactive web viewer for satellite-derived environmental variables, developed 
 
 ## Features
 
-- **Fire hotspots** — Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), displayed as clustered markers and loaded by default over Italy
+- **Fire hotspots** — Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), plus external FIRMS, Sentinel-3, and official EUMETSAT MTG-FIR comparison layers
 - **LFMC layer** — Live Fuel Moisture Content maps rendered from Cloud Optimized GeoTIFFs (COGs), with date slider, animated playback, and multiple colormaps
 - **Timeseries queries** — Click a point or draw a rectangle to chart LFMC over time, with PNG export
 - **Distance measurement** — Multi-segment ruler tool with metric readout
@@ -100,6 +100,8 @@ The website looks for fire files in this order: FlatGeobuf (`.fgb`), zipped Shap
 - `sfide_aggregate_72h.*` — a small rolling subset used for the initial lightweight load.
 - `sfide_archive_manifest.json` — index of monthly archive chunks.
 - `archive/sfide_YYYY_MM.*` — rolling one-year archive split by month, loaded only when a selected time window needs older detections.
+- `firms_manifest.json`, `s3_manifest.json`, `mtg_fir_manifest.json` — external comparison layer indexes.
+- `firms/`, `s3/`, `mtg_fir/` — recent external hotspot files published for the website.
 
 Run the updater once:
 

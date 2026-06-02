@@ -2,8 +2,9 @@
 Update all web-facing hotspot databases for EOSIAL Viewer.
 
 This is the operational entry point for scheduled updates. It updates the
-native SFIDE database plus the external NASA FIRMS and Sentinel-3 NRT databases
-in one run, then optionally commits/pushes the combined data/fire changes.
+native SFIDE database plus the external NASA FIRMS, Sentinel-3 NRT, and
+official EUMETSAT MTG-FIR databases in one run, then optionally commits/pushes
+the combined data/fire changes.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import update_firms_database
+import update_mtg_fir_database
 import update_s3_database
 import update_sfide_database
 
@@ -109,15 +111,35 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         print(f"WARNING: Sentinel-3 source path not found; skipping Sentinel-3 update: {s3_source}", flush=True)
 
+    mtg_fir_source = args.mtg_fir_source_dir.resolve()
+    if mtg_fir_source.exists():
+        mtg_fir_args = argparse.Namespace(
+            source_dir=mtg_fir_source,
+            output_dir=output_dir,
+            recent_days=args.mtg_fir_recent_days,
+            lookahead_days=args.mtg_fir_lookahead_days,
+            full_rebuild=args.full_rebuild_mtg_fir,
+            git=False,
+            repo_root=args.repo_root,
+            git_exe=args.git_exe,
+            watch=False,
+            interval_minutes=args.interval_minutes,
+        )
+        print("Updating official EUMETSAT MTG-FIR hotspots...", flush=True)
+        update_mtg_fir_database.run_once(mtg_fir_args)
+    else:
+        print(f"WARNING: MTG-FIR source path not found; skipping MTG-FIR update: {mtg_fir_source}", flush=True)
+
     if args.git:
         commit_and_push(args.repo_root.resolve(), output_dir, args.git_exe)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Update SFIDE, NASA FIRMS, and Sentinel-3 hotspot databases for EOSIAL Viewer.")
+    parser = argparse.ArgumentParser(description="Update SFIDE, NASA FIRMS, Sentinel-3, and MTG-FIR hotspot databases for EOSIAL Viewer.")
     parser.add_argument("--sfide-source-dir", type=Path, default=update_sfide_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--firms-source-dir", type=Path, default=update_firms_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--s3-source-dir", type=Path, default=update_s3_database.DEFAULT_SOURCE_DIR)
+    parser.add_argument("--mtg-fir-source-dir", type=Path, default=update_mtg_fir_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_WEB_ROOT / "data" / "fire")
     parser.add_argument("--output-format", choices=("fgb", "geojson"), default="fgb")
     parser.add_argument("--also-geojson", action="store_true")
@@ -127,10 +149,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--full-rebuild-sfide", action="store_true")
     parser.add_argument("--full-rebuild-firms", action="store_true")
     parser.add_argument("--full-rebuild-s3", action="store_true")
+    parser.add_argument("--full-rebuild-mtg-fir", action="store_true")
     parser.add_argument("--firms-recent-days", type=int, default=4)
     parser.add_argument("--firms-lookahead-days", type=int, default=1)
     parser.add_argument("--s3-recent-days", type=int, default=4)
     parser.add_argument("--s3-lookahead-days", type=int, default=1)
+    parser.add_argument("--mtg-fir-recent-days", type=int, default=4)
+    parser.add_argument("--mtg-fir-lookahead-days", type=int, default=1)
     parser.add_argument("--incremental-overlap-hours", type=float, default=6.0)
     parser.add_argument("--incremental-lookahead-hours", type=float, default=3.0)
     parser.add_argument("--incremental-window-hours", type=float, default=96.0)

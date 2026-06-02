@@ -967,6 +967,7 @@
     registerLayer(EV.sfideHotspots);
     registerLayer(EV.firmsHotspots);
     registerLayer(EV.s3Hotspots);
+    registerLayer(EV.mtgFirHotspots);
     buildLayerToggles();
 
     // Initialise layers
