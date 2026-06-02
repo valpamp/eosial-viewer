@@ -1,6 +1,11 @@
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # OS
 .DS_Store
@@ -10,8 +15,24 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Local environment
+.env
+.env.*
+*.local
+
 # Runtime logs
 logs/
+*.log
+
+# Temporary scratch files
+tmp/
+tmp*/
+tmp*
+temp/
+temp*/
 
 # Legacy oversized SFIDE archive aggregates; use data/fire/archive/ monthly chunks instead.
 data/fire/sfide_aggregate_1Y.*
+
+# FGB is the deployed 72h SFIDE format; avoid re-adding stale GeoJSON duplicates.
+data/fire/sfide_aggregate_72h.geojson
