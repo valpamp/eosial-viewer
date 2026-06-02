@@ -36,6 +36,19 @@ The viewer is a static site — no build step or server required.
 
 3. **Open** `http://localhost:8000` in your browser.
 
+## Python environment
+
+The website itself is static, but the data update and preprocessing scripts use
+Python geospatial libraries. The recommended setup is conda with conda-forge:
+
+```bash
+conda env create -f environment.yml
+conda activate eosial-viewer
+```
+
+`requirements.txt` is provided as a pip fallback, but conda is preferred on
+Windows because it installs a consistent GDAL/rasterio/geopandas stack.
+
 ## Project structure
 
 ```

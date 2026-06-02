@@ -1,0 +1,15 @@
+name: eosial-viewer
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - geopandas
+  - pyogrio
+  - rasterio
+  - numpy
+  - gdal
+  - shapely
+  - pyproj
+  - fiona
+  - pandas
+  - pip

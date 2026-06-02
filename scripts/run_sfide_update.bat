@@ -16,7 +16,7 @@ set "FIRMS_SOURCE_DIR=X:\ftp\cufa\FIRMS_NRT\ITA\firms\fgb"
 set "S3_SOURCE_DIR=X:\ftp\cufa\S3_NRT\S3_FRP_CROPS"
 set "OUTPUT_DIR=%REPO_ROOT%\data\fire"
 set "CONDA_HOOK=C:\ProgramData\miniconda3\shell\condabin\conda-hook.ps1"
-set "CONDA_ENV=C:\Users\EOSIAL\.conda\envs\sfidenv_260417"
+set "CONDA_ENV=eosial-viewer"
 set "LOG_DIR=%REPO_ROOT%\logs"
 set "LOG_FILE=%LOG_DIR%\sfide_update.log"
 
@@ -72,5 +72,5 @@ echo.
 echo [%date% %time%] Hotspot database update finished with exit code %EXIT_CODE%.
 echo See log: %LOG_FILE%
 echo.
-cmd /k
+
 exit /b %EXIT_CODE%
