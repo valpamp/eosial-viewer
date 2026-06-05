@@ -30,11 +30,11 @@ except ImportError:
 
 # Path to the LFMC inference run directory
 # LFMC_RUN_DIR = r"F:\Valerio\lfmc\lfmc_inference_output\viirs_Europe"
-LFMC_RUN_DIR = r"F:\Valerio\lfmc\lfmc_inference_output\viirs_Western_USA"
+LFMC_RUN_DIR = r"U:/ftp/fireurisk/lfmc/products/viirs_vnp09h1/europe"
 
 # AOI identifier (used in output path)
-# AOI_NAME = "Europe"
-AOI_NAME = "Western USA"
+AOI_NAME = "Europe"
+# AOI_NAME = "Western USA"
 
 # Output root inside the web project's data\lfmc\cogs\ folder
 COG_OUTPUT_DIR = r"F:\Valerio\eosial-viewer\data\lfmc\cogs"
