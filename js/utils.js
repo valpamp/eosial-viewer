@@ -32,8 +32,21 @@ EV.updateProductToolbarVisibility = function () {
 /* ── LFMC colormaps ───────────────────────────────────────────── */
 
 EV.LFMC_COLORMAPS = {
+    'fire_status': {
+        label: 'Fire-spread status',
+        stops: [
+            [0,   [ 84,  28,  12]],
+            [30,  [127,  39,   4]],
+            [50,  [217,  95,  14]],
+            [80,  [254, 196,  79]],
+            [100, [217, 240, 163]],
+            [120, [120, 198, 121]],
+            [150, [ 35, 132,  67]],
+            [400, [ 35, 132,  67]]
+        ]
+    },
     'rao': {
-        label: 'GreenVeg',
+        label: 'Legacy GreenVeg',
         stops: [
             [0,   [115, 44,  2]],
             [40,  [184, 82, 18]],
@@ -43,11 +56,11 @@ EV.LFMC_COLORMAPS = {
             [120, [186,228,140]],
             [140, [105,189, 69]],
             [160, [ 40,150, 40]],
-            [200, [  0, 97, 18]],
+            [400, [  0, 97, 18]]
         ]
     },
     'rdylbu': {
-        label: 'Red–Yellow–Blue',
+        label: 'Legacy Red-Yellow-Blue',
         stops: [
             [0,   [165,  0, 38]],
             [40,  [215, 48, 39]],
@@ -57,11 +70,11 @@ EV.LFMC_COLORMAPS = {
             [120, [171,217,233]],
             [140, [116,173,209]],
             [160, [ 69,117,180]],
-            [200, [ 49, 54,149]],
+            [400, [ 49, 54,149]]
         ]
     },
     'turbo': {
-        label: 'Turbo',
+        label: 'Legacy Turbo',
         stops: [
             [0,   [ 48,  18, 59]],
             [30,  [ 70, 108,205]],
@@ -70,11 +83,11 @@ EV.LFMC_COLORMAPS = {
             [120, [219,210, 56]],
             [150, [250,142, 35]],
             [180, [219, 58, 27]],
-            [200, [122,  4,  3]],
+            [400, [122,  4,  3]]
         ]
     },
     'viridis': {
-        label: 'Viridis',
+        label: 'Legacy Viridis',
         stops: [
             [0,   [ 68,  1, 84]],
             [30,  [ 72, 36,117]],
@@ -83,18 +96,30 @@ EV.LFMC_COLORMAPS = {
             [120, [ 31,161,135]],
             [150, [ 74,194,109]],
             [180, [159,218, 58]],
-            [200, [253,231, 37]],
+            [400, [253,231, 37]]
         ]
-    },
+    }
 };
 
-EV.lfmcColormap = 'rao';   // default
+EV.LFMC_RANGES = {
+    'shrub_tree': {
+        label: 'Shrub/Tree (30-250%)',
+        min: 30,
+        max: 250,
+        ticks: [30, 50, 80, 100, 120, 150, 250]
+    },
+    'grass': {
+        label: 'Grass (0-400%)',
+        min: 0,
+        max: 400,
+        ticks: [0, 30, 50, 80, 100, 120, 150, 400]
+    }
+};
 
+EV.lfmcColormap = 'fire_status';
+EV.lfmcRange = 'shrub_tree';
 EV.LFMC_STOPS = EV.LFMC_COLORMAPS[EV.lfmcColormap].stops;
 
-/**
- * Switch the active LFMC colormap.
- */
 EV.setLfmcColormap = function (name) {
     if (!EV.LFMC_COLORMAPS[name]) return;
     EV.lfmcColormap = name;
@@ -102,16 +127,20 @@ EV.setLfmcColormap = function (name) {
     EV.emit('lfmc:colormapChanged', { colormap: name });
 };
 
-/**
- * Map an LFMC value (%) to [R, G, B, A] (0-255).
- * Values below 0 or equal to nodata → transparent.
- */
-EV.lfmcColor = function (val, nodata) {
-    if (val === nodata || val < 0 || isNaN(val)) return [0, 0, 0, 0];
-    var stops = EV.LFMC_STOPS;
-    if (val <= stops[0][0]) return stops[0][1].concat([255]);
-    if (val >= stops[stops.length - 1][0])
-        return stops[stops.length - 1][1].concat([255]);
+EV.setLfmcRange = function (name) {
+    if (!EV.LFMC_RANGES[name]) return;
+    EV.lfmcRange = name;
+    EV.emit('lfmc:rangeChanged', { range: name });
+};
+
+EV.getLfmcRange = function () {
+    return EV.LFMC_RANGES[EV.lfmcRange] || EV.LFMC_RANGES.shrub_tree;
+};
+
+EV._lfmcColorAt = function (val, stops) {
+    stops = stops || EV.LFMC_STOPS;
+    if (val <= stops[0][0]) return stops[0][1];
+    if (val >= stops[stops.length - 1][0]) return stops[stops.length - 1][1];
     for (var i = 1; i < stops.length; i++) {
         if (val <= stops[i][0]) {
             var t = (val - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]);
@@ -119,27 +148,39 @@ EV.lfmcColor = function (val, nodata) {
             return [
                 Math.round(a[0] + t * (b[0] - a[0])),
                 Math.round(a[1] + t * (b[1] - a[1])),
-                Math.round(a[2] + t * (b[2] - a[2])),
-                255
+                Math.round(a[2] + t * (b[2] - a[2]))
             ];
         }
     }
-    return stops[stops.length - 1][1].concat([255]);
+    return stops[stops.length - 1][1];
 };
 
-/**
- * Build a CSS linear-gradient string for the LFMC legend.
- */
+EV.lfmcColor = function (val, nodata) {
+    if (val === nodata || val < 0 || isNaN(val)) return [0, 0, 0, 0];
+    return EV._lfmcColorAt(val, EV.LFMC_STOPS).concat([255]);
+};
+
 EV.lfmcGradientCSS = function () {
     var parts = [];
     var stops = EV.LFMC_STOPS;
-    var lo = stops[0][0], hi = stops[stops.length - 1][0];
+    var range = EV.getLfmcRange();
+    var lo = range.min, hi = range.max;
+    var values = [lo, hi];
     for (var i = 0; i < stops.length; i++) {
-        var pct = ((stops[i][0] - lo) / (hi - lo) * 100).toFixed(1);
-        var c = stops[i][1];
+        if (stops[i][0] > lo && stops[i][0] < hi) values.push(stops[i][0]);
+    }
+    values.sort(function (a, b) { return a - b; });
+    values = values.filter(function (v, idx) { return idx === 0 || v !== values[idx - 1]; });
+    for (var j = 0; j < values.length; j++) {
+        var pct = ((values[j] - lo) / (hi - lo) * 100).toFixed(1);
+        var c = EV._lfmcColorAt(values[j], stops);
         parts.push('rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ') ' + pct + '%');
     }
     return 'linear-gradient(to right, ' + parts.join(', ') + ')';
+};
+
+EV.lfmcLegendTicks = function () {
+    return EV.getLfmcRange().ticks || [];
 };
 
 /* ── Simple pub/sub ────────────────────────────────────────────── */

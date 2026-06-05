@@ -99,11 +99,32 @@
 
     /* ── Pixel-value color function (shared) ──────────────────── */
 
-    function _pixelToColor(vals) {
+    function _pixelToColor(vals, georaster) {
         var v = vals[0];
-        if (v === NODATA || v === NODATA_U8 || v === null || v === undefined) return null;
-        var rgba = EV.lfmcColor(v, NODATA);
+        var nodata = getRasterNoData(georaster);
+        if (isLfmcNoData(v, georaster)) return null;
+        var rgba = EV.lfmcColor(v, nodata != null ? nodata : NODATA);
         return 'rgba(' + rgba[0] + ',' + rgba[1] + ',' + rgba[2] + ',' + (rgba[3] / 255) + ')';
+    }
+
+    function getRasterNoData(georaster) {
+        if (!georaster) return null;
+        if (georaster.noDataValue != null) return Number(georaster.noDataValue);
+        if (georaster.noDataValues && georaster.noDataValues.length) return Number(georaster.noDataValues[0]);
+        return null;
+    }
+
+    function isLegacyUint8NoData(v, georaster) {
+        var nodata = getRasterNoData(georaster);
+        return nodata === NODATA_U8 && Number(v) >= 254;
+    }
+
+    function isLfmcNoData(v, georaster) {
+        if (v === null || v === undefined || isNaN(v)) return true;
+        var nodata = getRasterNoData(georaster);
+        if (nodata != null && Number(v) === nodata) return true;
+        if (v === NODATA) return true;
+        return isLegacyUint8NoData(v, georaster);
     }
 
     /* ── Switch date ───────────────────────────────────────────── */
@@ -151,7 +172,7 @@
                 georaster: gr,
                 opacity: opacity,
                 resolution: 256,
-                pixelValuesToColorFn: _pixelToColor
+                pixelValuesToColorFn: function (vals) { return _pixelToColor(vals, gr); }
             });
             if (visible) rasterLayer.addTo(map);
             if (fitBounds) {
@@ -183,7 +204,7 @@
             if (url && !url.match(/^https?:\/\//)) url = EV.dataBaseUrl + '/' + url;
             return loadCOG(url).then(function (gr) {
                 var val = getPixelValue(gr, latlng);
-                return { date: new Date(d), value: val };
+                return { date: new Date(d), value: val, georaster: gr };
             }).catch(function () {
                 return { date: new Date(d), value: null };
             });
@@ -191,7 +212,7 @@
 
         return Promise.all(promises).then(function (results) {
             EV.hideLoading();
-            return results.filter(function (r) { return r.value !== null && r.value !== NODATA && r.value !== NODATA_U8; });
+            return results.filter(function (r) { return !isLfmcNoData(r.value, r.georaster); });
         });
     }
 
@@ -249,7 +270,7 @@
                 var vals = [];
                 for (var k = 0; k < samplePts.length; k++) {
                     var v = getPixelValue(gr, samplePts[k]);
-                    if (v !== null && v !== NODATA && v !== NODATA_U8 && !isNaN(v)) vals.push(v);
+                    if (!isLfmcNoData(v, gr)) vals.push(v);
                 }
                 if (vals.length === 0) return { date: new Date(d), mean: null, median: null, q25: null, q75: null };
                 vals.sort(function (a, b) { return a - b; });
@@ -363,6 +384,10 @@
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Color</span>' +
             '  <span class="toolbar-field"><select id="lfmc-cmap-select"></select></span>' +
+            '</div>' +
+            '<div class="product-toolbar-group">' +
+            '  <span class="product-toolbar-label">Range</span>' +
+            '  <span class="toolbar-field"><select id="lfmc-range-select"></select></span>' +
             '</div>' +
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Opacity</span>' +
@@ -482,6 +507,19 @@
             // Re-render the current raster with new colors
             if (currentDate) showDate(currentDate, map, false);
         });
+
+        var rangeSel = document.getElementById('lfmc-range-select');
+        Object.keys(EV.LFMC_RANGES).forEach(function (key) {
+            var opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = EV.LFMC_RANGES[key].label;
+            if (key === EV.lfmcRange) opt.selected = true;
+            rangeSel.appendChild(opt);
+        });
+        rangeSel.addEventListener('change', function () {
+            EV.setLfmcRange(this.value);
+            if (currentDate) showDate(currentDate, map, false);
+        });
     }
 
     function populateAoiSelect() {
@@ -589,17 +627,23 @@
             var div = document.getElementById('lfmc-legend');
             if (div) updateLegendContent(div);
         });
+        EV.on('lfmc:rangeChanged', function () {
+            var div = document.getElementById('lfmc-legend');
+            if (div) updateLegendContent(div);
+        });
 
         return legend;
     }
 
     function updateLegendContent(div) {
+        var ticks = EV.lfmcLegendTicks();
         div.innerHTML =
-            '<h4>LFMC (%)</h4>' +
+            '<h4>LFMC status (%)</h4>' +
             '<div class="legend-gradient" style="background:' + EV.lfmcGradientCSS() + ';"></div>' +
-            '<div class="legend-labels">' +
-            '  <span>0</span><span>50</span><span>100</span><span>150</span><span>200</span>' +
-            '</div>';
+            '<div class="legend-labels lfmc-status-labels">' +
+            ticks.map(function (tick) { return '<span>' + tick + '</span>'; }).join('') +
+            '</div>' +
+            '<div class="legend-caption">' + EV.getLfmcRange().label + '</div>';
     }
 
     /* ── Visibility toggle ─────────────────────────────────────── */
@@ -671,7 +715,7 @@
         getValueAt: function (latlng) {
             if (!activeGeoraster) return null;
             var v = getPixelValue(activeGeoraster, latlng);
-            if (v === null || v === NODATA || v === NODATA_U8 || isNaN(v)) return null;
+            if (isLfmcNoData(v, activeGeoraster)) return null;
             return v;
         },
     };

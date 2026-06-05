@@ -8,10 +8,12 @@ into the web data directory.
 
 Usage:
     python convert_to_cog.py
+    python convert_to_cog.py --overwrite
 
 Configure the paths below before running.
 """
 
+import argparse
 import os
 import re
 import sys
@@ -42,8 +44,9 @@ COG_OUTPUT_DIR = r"F:\Valerio\eosial-viewer\data\lfmc\cogs"
 # Nodata value used in the source LFMC TIFs
 NODATA = -9999
 
-# Nodata value for the uint8 output COGs (255 reserved as nodata)
-NODATA_OUT = 255
+# Output as uint16 so grass LFMC can keep the full 0-400% range.
+LFMC_OUTPUT_MAX = 400
+NODATA_OUT = 65535
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -112,7 +115,7 @@ def best_tif_per_date(poly_dir):
 
 
 def convert_one(src_path, dst_path):
-    """Convert a single LFMC TIF to a COG (EPSG:4326, uint8, DEFLATE)."""
+    """Convert a single LFMC TIF to a COG (EPSG:4326, uint16, DEFLATE)."""
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
     with rasterio.open(src_path) as src:
@@ -128,7 +131,7 @@ def convert_one(src_path, dst_path):
             transform=transform,
             width=width,
             height=height,
-            dtype='uint8',
+            dtype='uint16',
             nodata=NODATA_OUT,
             compress='deflate',
             tiled=True,
@@ -150,10 +153,15 @@ def convert_one(src_path, dst_path):
                     dst_crs=dst_crs,
                     resampling=Resampling.nearest,
                 )
-                # Round to nearest integer, clamp to 0-254 (255 = nodata)
-                valid = (data != NODATA) & np.isfinite(data)
-                out = np.full((height, width), NODATA_OUT, dtype=np.uint8)
-                out[valid] = np.clip(np.round(data[valid]), 0, 254).astype(np.uint8)
+                valid = np.isfinite(data) & (data >= 0)
+                src_nodata = src.nodata if src.nodata is not None else NODATA
+                if src_nodata is not None and np.isfinite(src_nodata):
+                    valid &= data != src_nodata
+
+                out = np.full((height, width), NODATA_OUT, dtype=np.uint16)
+                out[valid] = np.clip(
+                    np.round(data[valid]), 0, LFMC_OUTPUT_MAX
+                ).astype(np.uint16)
                 dst.write(out, band)
 
         # Add overviews for COG performance
@@ -177,6 +185,14 @@ def convert_one(src_path, dst_path):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    parser = argparse.ArgumentParser(description="Convert LFMC GeoTIFFs to web COGs.")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Rebuild existing COGs instead of skipping them.",
+    )
+    args = parser.parse_args()
+
     run_dir = LFMC_RUN_DIR
     if not os.path.isdir(run_dir):
         sys.exit(f"ERROR: directory not found: {run_dir}")
@@ -200,7 +216,7 @@ def main():
             out_dir = os.path.join(COG_OUTPUT_DIR, AOI_NAME, poly_label)
             out_path = os.path.join(out_dir, date_str + '.tif')
 
-            if os.path.exists(out_path):
+            if os.path.exists(out_path) and not args.overwrite:
                 skipped += 1
                 continue
 

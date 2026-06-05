@@ -286,6 +286,15 @@ body.dark {
     font-size: 11px; margin-top: 3px; color: #444;
     font-weight: 500;
 }
+.legend-caption {
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 10px;
+    text-align: center;
+}
+.lfmc-status-labels {
+    font-size: 10px;
+}
 
 /* ── Layer toggle switches ────────────────────────────────────── */
 .layer-toggle {
@@ -711,6 +720,7 @@ body.dark .legend {
 }
 body.dark .legend h4 { color: #e4e4e7; }
 body.dark .legend-labels { color: #a1a1aa; }
+body.dark .legend-caption { color: #a1a1aa; }
 body.dark .legend-gradient { border-color: #555; }
 body.dark .ts-view-tabs,
 body.dark .ts-field-controls,

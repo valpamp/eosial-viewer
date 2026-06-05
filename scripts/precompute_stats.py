@@ -2,9 +2,9 @@
 """
 Pre-compute LFMC statistics for all COGs listed in manifest.json.
 
-For each AOI / polygon / date, loads the uint8 COG with rasterio,
-masks nodata pixels (value 255), and computes mean, median, Q25, Q75
-over all valid pixels.  Results are written to data/lfmc/stats.json.
+For each AOI / polygon / date, loads the COG with rasterio, masks nodata
+pixels, and computes mean, median, Q25, Q75 over all valid pixels. Results
+are written to data/lfmc/stats.json.
 
 The EOSIAL Viewer loads this file at startup and uses it for timeseries
 charts instead of downloading full COGs — critical for large AOIs like
@@ -12,10 +12,12 @@ Europe where individual files are 14–16 MB.
 
 Usage:
     python precompute_stats.py
+    python precompute_stats.py --force
 
 Re-run whenever new COGs are added or manifest.json changes.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -33,8 +35,10 @@ except ImportError:
 # Root of the web project (contains data/, scripts/, etc.)
 WEB_ROOT = r"F:\Valerio\eosial-viewer"
 
-# Nodata value used in uint8 COGs (matches NODATA_OUT in convert_to_cog.py)
-NODATA_U8 = 255
+# Legacy uint8 COGs used 255 as nodata, while some background pixels were
+# written as 254. New uint16 COGs use their explicit nodata metadata only.
+LEGACY_UINT8_NODATA = 255
+LEGACY_UINT8_BACKGROUND = 254
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -44,11 +48,19 @@ def compute_stats(tif_path):
     try:
         with rasterio.open(tif_path) as src:
             data = src.read(1).astype(np.float32)
+            nodata = src.nodata
+            dtype = src.dtypes[0]
     except Exception as e:
         print(f"    [ERROR reading] {e}")
         return None
 
-    valid = data[data != NODATA_U8]
+    valid_mask = np.isfinite(data) & (data >= 0)
+    if nodata is not None and np.isfinite(nodata):
+        valid_mask &= data != nodata
+    if dtype == "uint8" and nodata == LEGACY_UINT8_NODATA:
+        valid_mask &= data < LEGACY_UINT8_BACKGROUND
+
+    valid = data[valid_mask]
     if len(valid) == 0:
         return None
 
@@ -64,6 +76,14 @@ def compute_stats(tif_path):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    parser = argparse.ArgumentParser(description="Pre-compute LFMC raster statistics.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Recompute existing stats entries instead of skipping them.",
+    )
+    args = parser.parse_args()
+
     manifest_path = os.path.join(WEB_ROOT, "data", "lfmc", "manifest.json")
     stats_path    = os.path.join(WEB_ROOT, "data", "lfmc", "stats.json")
     data_root     = os.path.join(WEB_ROOT, "data")
@@ -99,7 +119,7 @@ def main():
 
             for date_str, rel_path in sorted(dates.items()):
                 # Skip already-computed dates
-                if date_str in stats[aoi_key][poly_key]:
+                if date_str in stats[aoi_key][poly_key] and not args.force:
                     skipped += 1
                     continue
 
