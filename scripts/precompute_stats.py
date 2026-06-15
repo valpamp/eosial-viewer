@@ -75,15 +75,7 @@ def compute_stats(tif_path):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def main():
-    parser = argparse.ArgumentParser(description="Pre-compute LFMC raster statistics.")
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Recompute existing stats entries instead of skipping them.",
-    )
-    args = parser.parse_args()
-
+def main_with_args(args):
     manifest_path = os.path.join(WEB_ROOT, "data", "lfmc", "manifest.json")
     stats_path    = os.path.join(WEB_ROOT, "data", "lfmc", "stats.json")
     data_root     = os.path.join(WEB_ROOT, "data")
@@ -147,6 +139,16 @@ def main():
     print(f"\n[STATS] Done.  Computed: {total},  Skipped (existing): {skipped},  "
           f"Errors/missing: {errors}")
     print(f"[STATS] Written to: {stats_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Pre-compute LFMC raster statistics.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Recompute existing stats entries instead of skipping them.",
+    )
+    main_with_args(parser.parse_args())
 
 
 if __name__ == "__main__":

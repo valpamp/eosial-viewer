@@ -71,34 +71,16 @@ def best_tif_per_date(poly_dir):
     tifs_by_date = {}      # date -> list of paths
     merged_by_date = {}    # date -> merged path
 
-    for fname in os.listdir(poly_dir):
-        if not fname.lower().endswith('.tif'):
-            continue
-        m = _DATE_RE.search(fname)
-        if not m:
-            continue
-        d = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-        fpath = os.path.join(poly_dir, fname)
-        if _MERGED_RE.search(fname):
-            merged_by_date[d] = fpath
-        else:
-            tifs_by_date.setdefault(d, []).append(fpath)
-
-    # Also check year subdirs  (poly_dir/2025/...)
-    for sub in os.listdir(poly_dir):
-        sub_path = os.path.join(poly_dir, sub)
-        if not os.path.isdir(sub_path):
-            continue
-        if not (len(sub) == 4 and sub.isdigit()):
-            continue
-        for fname in os.listdir(sub_path):
+    for root, dirs, files in os.walk(poly_dir):
+        dirs[:] = [d for d in dirs if d not in ('visualize', 'viz')]
+        for fname in files:
             if not fname.lower().endswith('.tif'):
                 continue
             m = _DATE_RE.search(fname)
             if not m:
                 continue
             d = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-            fpath = os.path.join(sub_path, fname)
+            fpath = os.path.join(root, fname)
             if _MERGED_RE.search(fname):
                 merged_by_date[d] = fpath
             else:
@@ -166,9 +148,13 @@ def convert_one(src_path, dst_path):
 
         # Add overviews for COG performance
         with rasterio.open(tmp_path, 'r+') as dst:
-            overview_levels = [2, 4, 8, 16]
-            dst.build_overviews(overview_levels, Resampling.nearest)
-            dst.update_tags(ns='rio_overview', resampling='nearest')
+            overview_levels = [
+                level for level in (2, 4, 8, 16)
+                if dst.width // level >= 2 and dst.height // level >= 2
+            ]
+            if overview_levels:
+                dst.build_overviews(overview_levels, Resampling.nearest)
+                dst.update_tags(ns='rio_overview', resampling='nearest')
 
         # Copy with COG layout (internal tiling + overview interleaving)
         # rasterio's copy with driver='COG' handles this if available

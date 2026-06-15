@@ -41,7 +41,7 @@
         var datasets;
         var showLegend = false;
         var isHourly = opts.timeUnit === 'hour' || opts.timeUnit === 'minute';
-        var xTickLimit = opts.maxXTicks || (isHourly ? 6 : 8);
+        var xTickLimit = opts.maxXTicks || (isHourly ? 5 : 6);
 
         if (opts.datasets) {
             // Custom datasets passed directly
@@ -55,7 +55,7 @@
                     label: 'Mean',
                     data: series.map(function (d) { return d.mean; }),
                     borderColor: '#2563eb',
-                    backgroundColor: '#2563eb33',
+                    backgroundColor: colorWithAlpha('#2563eb', 0.18),
                     fill: false,
                     tension: 0.25,
                     pointRadius: 4,
@@ -66,7 +66,7 @@
                     label: 'Median',
                     data: series.map(function (d) { return d.median; }),
                     borderColor: '#059669',
-                    backgroundColor: '#05966933',
+                    backgroundColor: colorWithAlpha('#059669', 0.18),
                     fill: false,
                     tension: 0.25,
                     pointRadius: 3,
@@ -102,7 +102,7 @@
                 label: opts.label || 'Value',
                 data: series.map(function (d) { return d.value; }),
                 borderColor: opts.color || '#2563eb',
-                backgroundColor: (opts.color || '#2563eb') + '33',
+                backgroundColor: colorWithAlpha(opts.color || '#2563eb', 0.14),
                 fill: true,
                 tension: 0.25,
                 pointRadius: 4,
@@ -110,18 +110,39 @@
             }];
         }
 
+        datasets = datasets.map(function (dataset) {
+            return Object.assign({
+                borderWidth: 2.5,
+                borderCapStyle: 'round',
+                borderJoinStyle: 'round',
+                pointStyle: 'circle',
+                pointRadius: isHourly ? 3.5 : 3,
+                pointHoverRadius: 6,
+                pointHitRadius: 10,
+                pointBorderWidth: 2,
+                pointBackgroundColor: '#ffffff',
+                spanGaps: false
+            }, dataset);
+        });
+
         chart = new Chart(canvas.getContext('2d'), {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: datasets
             },
+            plugins: [chartCanvasBackgroundPlugin(), chartAreaBackgroundPlugin()],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: { duration: 220 },
                 interaction: { mode: 'index', intersect: false },
                 layout: {
-                    padding: { top: 8, right: 14, bottom: 4, left: 4 }
+                    padding: { top: 18, right: 28, bottom: 12, left: 14 }
+                },
+                elements: {
+                    line: { tension: 0.22 },
+                    point: { hoverBorderWidth: 2.5 }
                 },
                 plugins: {
                     legend: {
@@ -132,9 +153,9 @@
                             usePointStyle: true,
                             boxWidth: 9,
                             boxHeight: 9,
-                            padding: 16,
-                            color: '#374151',
-                            font: { size: 11, weight: '500' },
+                            padding: 18,
+                            color: '#334155',
+                            font: { size: 13, weight: '650' },
                             filter: function (item) {
                                 // Hide Q25 from legend — IQR label covers the band
                                 return item.text !== 'Q25';
@@ -153,22 +174,23 @@
                         }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(17,24,39,0.92)',
-                        padding: 10,
-                        cornerRadius: 6,
-                        titleFont: { size: 12, weight: '600' },
-                        bodyFont: { size: 12 },
+                        backgroundColor: 'rgba(15,23,42,0.95)',
+                        padding: 14,
+                        cornerRadius: 9,
+                        titleFont: { size: 14, weight: '700' },
+                        bodyFont: { size: 14 },
                         displayColors: true,
+                        boxPadding: 4,
                         callbacks: {
                             title: function (items) {
                                 if (!items.length) return '';
                                 var d = new Date(items[0].parsed.x);
-                                return formatChartDate(d, opts.timeUnit === 'hour');
+                                return formatChartDate(d, isHourly);
                             },
                             label: function (ctx) {
                                 if (ctx.parsed.y == null) return '';
                                 var suffix = opts.unit ? ' ' + opts.unit : '';
-                                return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + suffix;
+                                return ctx.dataset.label + ': ' + formatNumber(ctx.parsed.y) + suffix;
                             }
                         },
                         filter: function (item) {
@@ -184,8 +206,8 @@
                             tooltipFormat: opts.timeUnit === 'hour' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy',
                             unit: opts.timeUnit || 'day',
                             displayFormats: {
-                                minute: 'dd/MM HH:mm',
-                                hour: 'dd/MM HH:mm',
+                                minute: 'HH:mm',
+                                hour: 'HH:mm',
                                 day: 'dd/MM/yyyy',
                                 week: 'dd/MM/yyyy',
                                 month: 'MM/yyyy'
@@ -193,13 +215,13 @@
                         },
                         ticks: {
                             maxRotation: 0,
+                            minRotation: 0,
                             autoSkip: true,
                             maxTicksLimit: xTickLimit,
-                            color: '#4b5563',
-                            font: { size: 11 },
-                            padding: 8,
+                            color: '#334155',
+                            font: { size: 13, weight: '700' },
+                            padding: 12,
                             callback: function (value) {
-                                if (!opts.compactTimeTicks) return this.getLabelForValue(value);
                                 var d = new Date(value);
                                 if (!(d instanceof Date) || isNaN(d)) return this.getLabelForValue(value);
                                 if (isHourly) {
@@ -214,41 +236,117 @@
                             }
                         },
                         grid: {
-                            color: 'rgba(148,163,184,0.22)',
-                            drawTicks: false
+                            color: 'rgba(100,116,139,0.38)',
+                            lineWidth: 1.05,
+                            drawTicks: true,
+                            tickLength: 5,
+                            tickColor: 'rgba(100,116,139,0.55)'
                         },
-                        border: { color: '#d1d5db' },
+                        border: { color: '#cbd5e1', width: 1 },
                         title: {
                             display: true,
                             text: opts.xLabel || (opts.timeUnit === 'hour' ? 'Date / Time (UTC)' : 'Date'),
-                            color: '#4b5563',
-                            font: { size: 12, weight: '500' },
-                            padding: { top: 8 }
+                            color: '#1f2937',
+                            font: { size: 15, weight: '800' },
+                            padding: { top: 16 }
                         }
                     },
                     y: {
                         title: {
                             display: true,
                             text: opts.yLabel || opts.label || 'Value',
-                            color: '#374151',
-                            font: { size: 12, weight: '500' },
-                            padding: { bottom: 6 }
+                            color: '#1f2937',
+                            font: { size: 15, weight: '800' },
+                            padding: { bottom: 12 }
                         },
                         beginAtZero: opts.beginAtZero === undefined ? false : opts.beginAtZero,
+                        grace: opts.yGrace || '8%',
                         ticks: {
-                            color: '#4b5563',
-                            font: { size: 11 },
-                            padding: 8
+                            color: '#334155',
+                            font: { size: 13, weight: '700' },
+                            padding: 12,
+                            callback: function (value) {
+                                return formatNumber(value);
+                            }
                         },
                         grid: {
-                            color: 'rgba(148,163,184,0.26)',
-                            drawTicks: false
+                            color: 'rgba(100,116,139,0.44)',
+                            lineWidth: 1.2,
+                            drawTicks: true,
+                            tickLength: 5,
+                            tickColor: 'rgba(100,116,139,0.6)'
                         },
-                        border: { color: '#d1d5db' },
+                        border: { color: '#cbd5e1', width: 1 },
                     }
                 }
             }
         });
+    }
+
+    function colorWithAlpha(color, alpha) {
+        if (!color) return 'rgba(37,99,235,' + alpha + ')';
+        if (color.indexOf('#') === 0 && (color.length === 7 || color.length === 4)) {
+            var hex = color.length === 4
+                ? color.replace(/^#(.)(.)(.)$/, '#$1$1$2$2$3$3')
+                : color;
+            var r = parseInt(hex.slice(1, 3), 16);
+            var g = parseInt(hex.slice(3, 5), 16);
+            var b = parseInt(hex.slice(5, 7), 16);
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+        }
+        if (color.indexOf('rgb(') === 0) {
+            return color.replace('rgb(', 'rgba(').replace(')', ',' + alpha + ')');
+        }
+        if (color.indexOf('rgba(') === 0) {
+            return color.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgba($1,$2,$3,' + alpha + ')');
+        }
+        return color;
+    }
+
+    function chartCanvasBackgroundPlugin() {
+        return {
+            id: 'tsCanvasBackground',
+            beforeDraw: function (c) {
+                var ctx = c.ctx;
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, c.width, c.height);
+                ctx.restore();
+            }
+        };
+    }
+
+    function chartAreaBackgroundPlugin() {
+        return {
+            id: 'tsChartAreaBackground',
+            beforeDraw: function (c) {
+                if (!c.chartArea) return;
+                var ctx = c.ctx;
+                var area = c.chartArea;
+                ctx.save();
+                var gradient = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                gradient.addColorStop(0, '#f8fafc');
+                gradient.addColorStop(0.52, '#ffffff');
+                gradient.addColorStop(1, '#ffffff');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+                ctx.restore();
+            }
+        };
+    }
+
+    function chartImageWithWhiteBackground() {
+        if (!chart) return '';
+        var source = chart.canvas;
+        var out = document.createElement('canvas');
+        out.width = source.width;
+        out.height = source.height;
+        var ctx = out.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(source, 0, 0);
+        return out.toDataURL('image/png');
     }
 
     function pad2(n) {
@@ -264,6 +362,14 @@
             text += ' ' + pad2(date.getUTCHours()) + ':' + pad2(date.getUTCMinutes()) + ' UTC';
         }
         return text;
+    }
+
+    function formatNumber(value) {
+        var n = Number(value);
+        if (!isFinite(n)) return '';
+        if (Math.abs(n) >= 100) return Math.round(n).toString();
+        if (Math.abs(n) >= 10) return (Math.round(n * 10) / 10).toString();
+        return (Math.round(n * 100) / 100).toString();
     }
 
     function setupTable(opts) {
@@ -283,7 +389,7 @@
         var tabs = document.getElementById('ts-view-tabs');
         if (tabs) tabs.classList.toggle('hidden', !tableRows.length);
         renderFieldControls();
-        renderTable();
+        renderTable(true);
     }
 
     function inferColumns(rows) {
@@ -363,12 +469,12 @@
                     cb.checked = true;
                     selectedTableColumns.push(cb.value);
                 }
-                renderTable();
+                renderTable(true);
             });
         });
     }
 
-    function renderTable() {
+    function renderTable(resetScroll) {
         var table = document.getElementById('ts-table');
         var summary = document.getElementById('ts-table-summary');
         var status = document.getElementById('ts-table-page-status');
@@ -405,6 +511,14 @@
         if (status) status.textContent = (start + 1) + '-' + end + ' of ' + tableRows.length;
         if (prev) prev.disabled = tablePage <= 0;
         if (next) next.disabled = tablePage >= totalPages - 1;
+        if (resetScroll) resetTableScroll();
+    }
+
+    function resetTableScroll() {
+        var wrap = document.querySelector('.ts-table-wrap');
+        if (!wrap) return;
+        wrap.scrollTop = 0;
+        wrap.scrollLeft = 0;
     }
 
     /** Close modal */
@@ -446,7 +560,6 @@
     function downloadChartCSV() {
         if (!chart) return;
         var datasets = chart.data.datasets;
-        var labels   = chart.data.labels;
         // Collect visible datasets; skip the internal Q25 fill-target series
         var visible = [];
         for (var i = 0; i < datasets.length; i++) {
@@ -457,19 +570,43 @@
         if (!visible.length) return;
         var header = ['Date'].concat(visible.map(function (ds) { return ds.label; }));
         var rows = [header.join(',')];
-        for (var j = 0; j < labels.length; j++) {
-            var d = labels[j];
-            var dateStr = (d instanceof Date)
-                ? d.toISOString().substring(0, 16).replace('T', ' ')
-                : String(d);
-            var row = ['"' + dateStr + '"'];
-            for (var k = 0; k < visible.length; k++) {
-                var v = visible[k].data[j];
+
+        var keyed = visible.map(function (ds) {
+            var values = {};
+            (ds.data || []).forEach(function (entry, idx) {
+                var key = chartDataDateKey(entry, chart.data.labels[idx]);
+                if (!key) return;
+                values[key] = chartDataValue(entry);
+            });
+            return values;
+        });
+        var keys = {};
+        keyed.forEach(function (values) {
+            Object.keys(values).forEach(function (key) { keys[key] = true; });
+        });
+
+        Object.keys(keys).sort().forEach(function (key) {
+            var row = ['"' + key.replace('T', ' ') + '"'];
+            for (var k = 0; k < keyed.length; k++) {
+                var v = keyed[k][key];
                 row.push(v != null ? String(Math.round(v * 100) / 100) : '');
             }
             rows.push(row.join(','));
-        }
+        });
         triggerCSV(rows.join('\r\n'), 'timeseries.csv');
+    }
+
+    function chartDataDateKey(entry, fallbackLabel) {
+        var raw = entry && typeof entry === 'object' && entry.x !== undefined ? entry.x : fallbackLabel;
+        if (raw == null) return '';
+        var d = raw instanceof Date ? raw : new Date(raw);
+        if (d instanceof Date && !isNaN(d)) return d.toISOString().substring(0, 16);
+        return String(raw);
+    }
+
+    function chartDataValue(entry) {
+        if (entry && typeof entry === 'object' && entry.y !== undefined) return entry.y;
+        return entry;
     }
 
     function downloadCSV() {
@@ -494,16 +631,16 @@
         });
         document.getElementById('ts-table-prev').addEventListener('click', function () {
             tablePage -= 1;
-            renderTable();
+            renderTable(true);
         });
         document.getElementById('ts-table-next').addEventListener('click', function () {
             tablePage += 1;
-            renderTable();
+            renderTable(true);
         });
         document.getElementById('ts-save-png').addEventListener('click', function () {
             if (!chart) return;
             var a = document.createElement('a');
-            a.href = chart.toBase64Image();
+            a.href = chartImageWithWhiteBackground();
             a.download = 'timeseries.png';
             a.click();
         });

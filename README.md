@@ -81,17 +81,51 @@ eosial-viewer/
 
 ### LFMC
 
-1. Run LFMC inference (external) to produce GeoTIFF outputs.
-2. **Convert to COGs:**
+Run LFMC inference/product creation externally, then update the website database:
+
+```bash
+python scripts/update_lfmc_database.py --source-dir U:\ftp\fireurisk\lfmc\products\viirs_vnp09h1\europe --aoi-name Europe
+```
+
+The updater is incremental by default. It converts only new or changed LFMC GeoTIFFs to COGs, refreshes `data/lfmc/manifest.json`, updates `data/lfmc/stats.json` for changed dates, and records source file signatures in `data/lfmc/lfmc_update_state.json`.
+
+For a full rebuild:
+
+```bash
+python scripts/update_lfmc_database.py --source-dir U:\ftp\fireurisk\lfmc\products\viirs_vnp09h1\europe --aoi-name Europe --full-rebuild --recompute-all-stats
+```
+
+With `--git`, the updater commits and pushes changed `data/lfmc` files:
+
+```bash
+python scripts/update_lfmc_database.py --source-dir U:\ftp\fireurisk\lfmc\products\viirs_vnp09h1\europe --aoi-name Europe --git
+```
+
+For Windows Task Scheduler, use:
+
+```text
+Program/script: F:\Valerio\eosial-viewer\scripts\run_lfmc_update.bat
+Start in:       F:\Valerio\eosial-viewer
+Trigger:        Repeat after your LFMC product creator completes
+```
+
+Lower-level maintenance scripts are still available:
+
+1. **Convert to COGs:**
    ```bash
    python scripts/convert_to_cog.py
    ```
-   Reprojects to EPSG:4326, rounds to uint8 (0–254, 255 = nodata), compresses with DEFLATE, and adds overviews.
-3. **Generate manifest:**
+   Reprojects to EPSG:4326, rounds to uint16 LFMC values, uses 65535 as nodata, compresses with DEFLATE, and adds overviews.
+2. **Generate manifest:**
    ```bash
    python scripts/generate_manifest.py
    ```
    Scans `data/lfmc/cogs/` and writes `data/lfmc/manifest.json`.
+3. **Precompute stats:**
+   ```bash
+   python scripts/precompute_stats.py
+   ```
+   Computes LFMC mean, median, Q25, and Q75 for the timeseries tool.
 
 ### Fire hotspots
 

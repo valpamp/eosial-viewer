@@ -215,6 +215,10 @@
         return props && props.DATASET === 'MTG_FIR';
     }
 
+    function isPolarTimeseriesSource(dataset) {
+        return dataset === 'FIRMS' || dataset === 'S3';
+    }
+
     function isSourceVisible(props) {
         if (isFirmsFeature(props)) return firmsVisible;
         if (isS3Feature(props)) return s3Visible;
@@ -1673,6 +1677,7 @@
 
         var byTime = {};
         var bySatellite = {};
+        var satelliteDatasets = {};
         var satelliteTotals = {};
         var tableRows = filtered.map(function (f) {
             var p = f.properties || {};
@@ -1706,6 +1711,7 @@
             if (p.FRP_WOOSTER == null) return;
             var key = date.toISOString().substring(0, 16);
             var sat = p.SATELLITE || 'Unknown';
+            var dataset = p.DATASET || 'SFIDE';
             var frp = p.FRP_WOOSTER || 0;
             if (!byTime[key]) byTime[key] = { date: date, value: 0, detections: 0 };
             byTime[key].value += frp;
@@ -1714,6 +1720,7 @@
             if (!bySatellite[sat][key]) bySatellite[sat][key] = { value: 0, detections: 0 };
             bySatellite[sat][key].value += frp;
             bySatellite[sat][key].detections += 1;
+            satelliteDatasets[sat] = dataset;
             satelliteTotals[sat] = (satelliteTotals[sat] || 0) + 1;
         });
 
@@ -1726,29 +1733,50 @@
             };
         }).sort(function (a, b) { return a.date - b.date; });
 
-        var timeKeys = series.map(function (item) {
-            return item.date.toISOString().substring(0, 16);
-        });
         var satellites = Object.keys(bySatellite).sort();
         series.datasets = satellites.map(function (sat) {
             var color = paletteSample(sat);
+            var satKeys = Object.keys(bySatellite[sat]).sort();
+            var isPolar = isPolarTimeseriesSource(satelliteDatasets[sat]);
+            var points = satKeys.map(function (key) {
+                var item = bySatellite[sat][key];
+                return {
+                    x: new Date(key + ':00Z'),
+                    y: Math.round(item.value * 10) / 10
+                };
+            });
+            if (isPolar) {
+                return {
+                    type: 'scatter',
+                    label: getSatelliteLabel(sat),
+                    data: points,
+                    borderColor: color,
+                    backgroundColor: color,
+                    fill: false,
+                    showLine: false,
+                    pointStyle: 'circle',
+                    pointRadius: 6,
+                    pointHoverRadius: 9,
+                    pointBackgroundColor: color,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    borderWidth: 0
+                };
+            }
             return {
                 label: getSatelliteLabel(sat),
-                data: timeKeys.map(function (key) {
-                    var item = bySatellite[sat][key];
-                    return item ? Math.round(item.value * 10) / 10 : null;
-                }),
+                data: points,
                 borderColor: color,
                 backgroundColor: color.replace('rgb', 'rgba').replace(')', ',0.16)'),
                 fill: false,
-                tension: 0.18,
-                pointRadius: 3,
-                pointHoverRadius: 6,
+                tension: 0.24,
+                pointRadius: 3.5,
+                pointHoverRadius: 7,
                 pointBackgroundColor: '#ffffff',
                 pointBorderColor: color,
                 pointBorderWidth: 2,
-                borderWidth: 2.25,
-                spanGaps: false
+                borderWidth: 2.75,
+                spanGaps: true
             };
         });
         series.satelliteDetections = satelliteTotals;
