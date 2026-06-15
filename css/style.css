@@ -353,8 +353,8 @@ body.querying .leaflet-container { cursor: crosshair !important; }
     border: 1px solid rgba(148, 163, 184, 0.35);
 }
 #ts-chart-panel {
-    height: min(60vh, 560px);
-    min-height: 430px;
+    height: min(62vh, 590px);
+    min-height: 460px;
     padding: 6px 8px 2px;
     border-radius: 8px;
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 72%);

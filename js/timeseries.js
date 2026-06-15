@@ -138,7 +138,7 @@
                 animation: { duration: 220 },
                 interaction: { mode: 'index', intersect: false },
                 layout: {
-                    padding: { top: 18, right: 28, bottom: 12, left: 14 }
+                    padding: { top: 18, right: 28, bottom: 24, left: 14 }
                 },
                 elements: {
                     line: { tension: 0.22 },
@@ -202,6 +202,9 @@
                 scales: {
                     x: {
                         type: 'time',
+                        afterFit: function (scale) {
+                            scale.height = Math.max(scale.height, isHourly ? 82 : 66);
+                        },
                         time: {
                             tooltipFormat: opts.timeUnit === 'hour' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy',
                             unit: opts.timeUnit || 'day',
@@ -220,7 +223,7 @@
                             maxTicksLimit: xTickLimit,
                             color: '#334155',
                             font: { size: 13, weight: '700' },
-                            padding: 12,
+                            padding: 10,
                             callback: function (value) {
                                 var d = new Date(value);
                                 if (!(d instanceof Date) || isNaN(d)) return this.getLabelForValue(value);
@@ -248,7 +251,7 @@
                             text: opts.xLabel || (opts.timeUnit === 'hour' ? 'Date / Time (UTC)' : 'Date'),
                             color: '#1f2937',
                             font: { size: 15, weight: '800' },
-                            padding: { top: 16 }
+                            padding: { top: 12 }
                         }
                     },
                     y: {
