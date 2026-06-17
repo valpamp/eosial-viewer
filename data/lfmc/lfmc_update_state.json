@@ -710,6 +710,11 @@
       "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-06-02.tif"
     }
   },
-  "updated_at": "2026-06-17T14:58:11+00:00",
-  "source_dir": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa"
+  "updated_at": "2026-06-17T14:59:22+00:00",
+  "source_dir": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa",
+  "metadata": {
+    "source_dirs": {
+      "Europe": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe"
+    }
+  }
 }
