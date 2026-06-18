@@ -1,86 +1,11 @@
 {
-  "generated": "2026-06-17T23:30:28.789611+00:00",
+  "generated": "2026-06-18T00:00:22.786015+00:00",
   "source": "Sentinel-3 SLSTR NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
   "latest_hotspot": "2026-06-17T20:33:54+00:00",
-  "feature_count": 265,
+  "feature_count": 136,
   "files": [
-    {
-      "path": "s3/S3_FRP_S3A_ITA_20260614200717.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3A_ITA_20260614200717",
-      "date": "2026-06-14",
-      "start": "2026-06-14T20:09:41+00:00",
-      "end": "2026-06-14T20:10:33+00:00",
-      "count": 62,
-      "satellites": {
-        "S3A": 62
-      },
-      "products": {
-        "S3A_SL_2_FRP____20260614T200717_20260614T201017_20260614T222444_0179_140_285______MAR_O_NR_003.SEN3.zip": 62
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3A_ITA_20260614201017.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3A_ITA_20260614201017",
-      "date": "2026-06-14",
-      "start": "2026-06-14T20:12:13+00:00",
-      "end": "2026-06-14T20:12:16+00:00",
-      "count": 6,
-      "satellites": {
-        "S3A": 6
-      },
-      "products": {
-        "S3A_SL_2_FRP____20260614T201017_20260614T201317_20260614T222734_0179_140_285______MAR_O_NR_003.SEN3.zip": 6
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20260614094942.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20260614094942",
-      "date": "2026-06-14",
-      "start": "2026-06-14T09:51:22+00:00",
-      "end": "2026-06-14T09:51:23+00:00",
-      "count": 5,
-      "satellites": {
-        "S3B": 5
-      },
-      "products": {
-        "S3B_SL_2_FRP____20260614T094942_20260614T095242_20260614T114759_0180_121_136______MAR_O_NR_003.SEN3.zip": 5
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20260614210936.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20260614210936",
-      "date": "2026-06-14",
-      "start": "2026-06-14T21:11:36+00:00",
-      "end": "2026-06-14T21:11:54+00:00",
-      "count": 47,
-      "satellites": {
-        "S3B": 47
-      },
-      "products": {
-        "S3B_SL_2_FRP____20260614T210936_20260614T211236_20260614T232607_0180_121_143______MAR_O_NR_003.SEN3.zip": 47
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20260614211236.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20260614211236",
-      "date": "2026-06-14",
-      "start": "2026-06-14T21:13:34+00:00",
-      "end": "2026-06-14T21:14:06+00:00",
-      "count": 9,
-      "satellites": {
-        "S3B": 9
-      },
-      "products": {
-        "S3B_SL_2_FRP____20260614T211236_20260614T211536_20260614T232655_0179_121_143______MAR_O_NR_003.SEN3.zip": 9
-      }
-    },
     {
       "path": "s3/S3_FRP_S3A_ITA_20260615100211.fgb",
       "format": "fgb",
