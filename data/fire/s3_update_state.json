@@ -1,18 +1,12 @@
 {
-  "generated": "2026-06-27T23:30:33.530533+00:00",
-  "latest_hotspot": "2026-06-27T20:36:19+00:00",
+  "generated": "2026-06-28T00:00:32.562783+00:00",
+  "latest_hotspot": "2026-06-27T21:15:03+00:00",
   "latest_by_satellite": {
-    "S3A": "2026-06-27T09:52:54+00:00",
+    "S3A": "2026-06-27T21:15:03+00:00",
     "S3B": "2026-06-27T20:36:19+00:00"
   },
-  "feature_count": 292,
+  "feature_count": 221,
   "files": [
-    "s3/S3_FRP_S3A_ITA_20260624092832.fgb",
-    "s3/S3_FRP_S3A_ITA_20260624204826.fgb",
-    "s3/S3_FRP_S3A_ITA_20260624205126.fgb",
-    "s3/S3_FRP_S3B_ITA_20260624103051.fgb",
-    "s3/S3_FRP_S3B_ITA_20260624200947.fgb",
-    "s3/S3_FRP_S3B_ITA_20260624201247.fgb",
     "s3/S3_FRP_S3A_ITA_20260625090521.fgb",
     "s3/S3_FRP_S3A_ITA_20260625202216.fgb",
     "s3/S3_FRP_S3A_ITA_20260626101709.fgb",
@@ -21,6 +15,8 @@
     "s3/S3_FRP_S3B_ITA_20260626205824.fgb",
     "s3/S3_FRP_S3B_ITA_20260626210124.fgb",
     "s3/S3_FRP_S3A_ITA_20260627095059.fgb",
+    "s3/S3_FRP_S3A_ITA_20260627211053.fgb",
+    "s3/S3_FRP_S3A_ITA_20260627211353.fgb",
     "s3/S3_FRP_S3B_ITA_20260627091218.fgb",
     "s3/S3_FRP_S3B_ITA_20260627091518.fgb",
     "s3/S3_FRP_S3B_ITA_20260627203213.fgb",
