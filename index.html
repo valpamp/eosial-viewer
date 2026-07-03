@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EOSIAL Viewer</title>
+    <title>EOSIAL Active Fire Viewer</title>
 
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -28,12 +28,7 @@
     <script src="https://unpkg.com/shpjs@6.2.0/dist/shp.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
     <!-- sql.js (for GeoPackage) is lazy-loaded only when a .gpkg file is detected -->
-
-    <!-- GeoRaster + GeoRaster-layer-for-leaflet (COG rendering) -->
-    <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
-    <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>
-
-    <!-- Tailwind CSS -->
+<!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Chart.js -->
@@ -59,7 +54,7 @@
 
         <!-- Title -->
         <div class="flex-shrink-0">
-            <h1 class="text-2xl font-bold text-gray-800 mb-1">EOSIAL Viewer</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-1">EOSIAL Active Fire Viewer</h1>
             <p class="text-xs text-gray-500 mb-3">A viewer for the satellite wildfire management products created and maintained by the EOSIAL Laboratory of the School of Aerospace Engineering</p>
         </div>
 
@@ -186,16 +181,15 @@
                                  flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div class="p-4 border-b flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-800">About EOSIAL Viewer</h3>
+                <h3 class="text-lg font-semibold text-gray-800">About EOSIAL Active Fire Viewer</h3>
                 <button id="about-modal-close"
                         class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
             </div>
             <div class="p-4 text-sm text-gray-700 space-y-3">
-                <p>Interactive viewer for satellite-derived environmental variables produced by
+                <p>Interactive active fire viewer for satellite wildfire management products produced by
                    the EOSIAL Laboratory at Sapienza University of Rome.</p>
                 <p><b>Available layers:</b></p>
                 <ul class="list-disc pl-5 space-y-1">
-                    <li><b>Live Fuel Moisture Content</b> &mdash; Estimated from Sentinel-2 L2A, Landsat 8/9, VIIRS VNP09H1 or Sentinel-3 Synergy 10-Day aggregate imagery.</li>
                     <li><b>SFIDE Hotspots</b> &mdash; Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm).</li>
                     <li><b>FIRMS Hotspots</b> &mdash; External NASA FIRMS near-real-time detections for comparison with SFIDE products.</li>
                     <li><b>Sentinel-3 Hotspots</b> &mdash; External Sentinel-3 SLSTR near-real-time FRP detections for comparison with geostationary products.</li>
@@ -240,9 +234,9 @@
     </div>
 
     <!-- App scripts (standard scripts, not ES modules, for compatibility with UMD libs) -->
+    <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/timeseries.js"></script>
-    <script src="js/layers/lfmc.js"></script>
     <script src="js/layers/admin-boundaries.js"></script>
     <script src="js/layers/fire-hotspots.js"></script>
     <script src="js/app.js"></script>

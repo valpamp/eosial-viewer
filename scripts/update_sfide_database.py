@@ -11,8 +11,9 @@ Supported input formats:
   - FlatGeobuf, Shapefile, zipped Shapefile, and GeoPackage with geopandas
 
 FlatGeobuf output is preferred for the website. The 72-hour file is written as
-a single aggregate, while the one-year archive is split into monthly files with
-a small manifest so GitHub Pages never has to host a single giant vector file.
+a single aggregate, while the one-year archive is split into weekly files by
+default with a small manifest so GitHub Pages never has to host a single giant
+vector file.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ DEFAULT_WEB_ROOT = Path(__file__).resolve().parents[1]
 PROGRESS_BAR_WIDTH = 28
 ARCHIVE_MANIFEST = "sfide_archive_manifest.json"
 UPDATE_STATE = "sfide_update_state.json"
+DEFAULT_ARCHIVE_PERIOD = "week"
 
 
 def try_import_geopandas():
@@ -464,23 +466,30 @@ def write_flatgeobuf(features: list[dict[str, Any]], path: Path) -> None:
     print(f"Finished {path.name}", flush=True)
 
 
-def month_key(feature: dict[str, Any]) -> str:
+def archive_key(feature: dict[str, Any], archive_period: str) -> str:
     dt = parse_feature_date(feature["properties"])
     if dt is None:
         return "unknown"
+    if archive_period == "day":
+        return dt.strftime("%Y_%m_%d")
+    if archive_period == "week":
+        iso = dt.isocalendar()
+        return f"{iso.year:04d}_W{iso.week:02d}"
     return dt.strftime("%Y_%m")
 
 
-def month_label(key: str) -> str:
+def archive_label(key: str) -> str:
     if key == "unknown":
         return "Unknown date"
+    if "_W" in key:
+        return key.replace("_W", " week ")
     return key.replace("_", "-")
 
 
-def group_by_month(features: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+def group_by_archive_period(features: list[dict[str, Any]], archive_period: str) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for feature in features:
-        grouped.setdefault(month_key(feature), []).append(feature)
+        grouped.setdefault(archive_key(feature, archive_period), []).append(feature)
     return dict(sorted(grouped.items()))
 
 
@@ -613,14 +622,15 @@ def remove_legacy_one_year_aggregates(output_dir: Path) -> None:
             print(f"Removed legacy oversized archive aggregate {path.name}", flush=True)
 
 
-def write_archive_manifest(output_dir: Path, months: list[dict[str, Any]], output_format: str) -> None:
+def write_archive_manifest(output_dir: Path, months: list[dict[str, Any]], output_format: str, archive_period: str) -> None:
     payload = {
         "generated": datetime.now(timezone.utc).isoformat(),
         "format": output_format,
+        "archive_period": archive_period,
         "months": months,
     }
     path = output_dir / ARCHIVE_MANIFEST
-    print(f"Writing {path.name} ({len(months)} monthly chunks)...", flush=True)
+    print(f"Writing {path.name} ({len(months)} {archive_period} archive chunks)...", flush=True)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=path.parent, suffix=".json") as tmp:
         json.dump(payload, tmp, indent=2)
         temp_name = tmp.name
@@ -688,6 +698,7 @@ def write_update_state(
     output_dir: Path,
     features: list[dict[str, Any]],
     output_format: str,
+    archive_period: str,
     feature_count: int | None = None,
     latest: datetime | None = None,
     latest_by_satellite: dict[str, datetime] | None = None,
@@ -703,6 +714,7 @@ def write_update_state(
         },
         "feature_count": len(features) if feature_count is None else feature_count,
         "format": output_format,
+        "archive_period": archive_period,
         "archive_manifest": ARCHIVE_MANIFEST,
     }
     path = output_dir / UPDATE_STATE
@@ -739,7 +751,7 @@ def make_month_entry(
     dates = [d for d in dates if d]
     return {
         "key": key,
-        "label": month_label(key),
+        "label": archive_label(key),
         "start": min(dates).isoformat() if dates else None,
         "end": max(dates).isoformat() if dates else None,
         "count": len(month_features),
@@ -747,7 +759,13 @@ def make_month_entry(
     }
 
 
-def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_format: str, also_geojson: bool) -> None:
+def write_outputs(
+    features: list[dict[str, Any]],
+    output_dir: Path,
+    output_format: str,
+    also_geojson: bool,
+    archive_period: str,
+) -> None:
     now = datetime.now(timezone.utc)
     one_year_ago = now - timedelta(days=365)
     seventy_two_hours_ago = now - timedelta(hours=72)
@@ -764,7 +782,7 @@ def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_forma
     archive_dir.mkdir(parents=True, exist_ok=True)
     months_payload: list[dict[str, Any]] = []
     keep_paths: set[Path] = set()
-    grouped = group_by_month(one_year)
+    grouped = group_by_archive_period(one_year, archive_period)
 
     for key, month_features in grouped.items():
         files: dict[str, str] = {}
@@ -777,14 +795,14 @@ def write_outputs(features: list[dict[str, Any]], output_dir: Path, output_forma
 
     remove_stale_archive_files(archive_dir, keep_paths)
     remove_legacy_one_year_aggregates(output_dir)
-    write_archive_manifest(output_dir, months_payload, output_format)
+    write_archive_manifest(output_dir, months_payload, output_format, archive_period)
 
     print(
         f"Wrote {len(last_72h)} hotspots from the last 72 hours and "
-        f"{len(one_year)} one-year hotspots split across {len(grouped)} monthly archive files.",
+        f"{len(one_year)} one-year hotspots split across {len(grouped)} {archive_period} archive files.",
         flush=True,
     )
-    write_update_state(output_dir, one_year, output_format)
+    write_update_state(output_dir, one_year, output_format, archive_period)
 
 
 def write_incremental_outputs(
@@ -793,6 +811,7 @@ def write_incremental_outputs(
     output_format: str,
     also_geojson: bool,
     latest_by_satellite: dict[str, datetime],
+    archive_period: str,
 ) -> None:
     now = datetime.now(timezone.utc)
     one_year_ago = now - timedelta(days=365)
@@ -800,6 +819,23 @@ def write_incremental_outputs(
     writers = get_writers(output_format, also_geojson)
 
     manifest = read_archive_manifest(output_dir)
+    manifest_period = manifest.get("archive_period") or "month"
+    if manifest.get("months") and manifest_period != archive_period:
+        print(
+            f"Archive period changed from {manifest_period} to {archive_period}; "
+            "rechunking existing SFIDE archive once.",
+            flush=True,
+        )
+        existing_features = load_existing_database(output_dir)
+        write_outputs(
+            merge_feature_lists(existing_features, new_features),
+            output_dir,
+            output_format,
+            also_geojson,
+            archive_period,
+        )
+        return
+
     month_entries: dict[str, dict[str, Any]] = {
         month.get("key"): month
         for month in manifest.get("months", [])
@@ -827,7 +863,7 @@ def write_incremental_outputs(
     archive_dir.mkdir(parents=True, exist_ok=True)
     updated_months = 0
 
-    for key, incoming in group_by_month(new_one_year).items():
+    for key, incoming in group_by_archive_period(new_one_year, archive_period).items():
         existing_path = choose_month_existing_path(output_dir, month_entries.get(key, {}))
         existing_month = read_existing_features_from_path(existing_path)
         month_features = [
@@ -858,7 +894,7 @@ def write_incremental_outputs(
             print(f"Removed stale archive file {path.name}", flush=True)
 
     remove_legacy_one_year_aggregates(output_dir)
-    write_archive_manifest(output_dir, active_months, output_format)
+    write_archive_manifest(output_dir, active_months, output_format, archive_period)
     updated_satellites = dict(latest_by_satellite)
     for sat, dt in latest_feature_dates_by_satellite(new_features).items():
         if sat not in updated_satellites or dt > updated_satellites[sat]:
@@ -869,6 +905,7 @@ def write_incremental_outputs(
         output_dir,
         [],
         output_format,
+        archive_period,
         feature_count=feature_count,
         latest=latest,
         latest_by_satellite=updated_satellites,
@@ -876,7 +913,7 @@ def write_incremental_outputs(
 
     print(
         f"Incremental update wrote {len(last_72h)} hotspots in the 72h aggregate "
-        f"and refreshed {updated_months} monthly archive chunk(s).",
+        f"and refreshed {updated_months} {archive_period} archive chunk(s).",
         flush=True,
     )
 
@@ -890,7 +927,7 @@ def run_once(args: argparse.Namespace) -> None:
     if args.full_rebuild:
         print("Full rebuild requested; scanning the full source tree.", flush=True)
         features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
-        write_outputs(features, output_dir, args.output_format, args.also_geojson)
+        write_outputs(features, output_dir, args.output_format, args.also_geojson, args.archive_period)
     else:
         state = read_update_state(output_dir)
         latest_existing = parse_state_datetime(state.get("latest_hotspot"))
@@ -907,19 +944,19 @@ def run_once(args: argparse.Namespace) -> None:
                 existing_features = load_existing_database(output_dir)
                 latest_by_satellite = latest_feature_dates_by_satellite(existing_features)
                 if latest_by_satellite:
-                    write_update_state(output_dir, existing_features, args.output_format)
+                    write_update_state(output_dir, existing_features, args.output_format, args.archive_period)
         else:
             print(f"No usable {UPDATE_STATE}; bootstrapping state from existing web database.", flush=True)
             existing_features = load_existing_database(output_dir)
             latest_existing = latest_feature_date(existing_features)
             latest_by_satellite = latest_feature_dates_by_satellite(existing_features)
             if latest_existing:
-                write_update_state(output_dir, existing_features, args.output_format)
+                write_update_state(output_dir, existing_features, args.output_format, args.archive_period)
 
         if latest_existing is None:
             print("No existing hotspot timestamp found; falling back to a full rebuild.", flush=True)
             features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
-            write_outputs(features, output_dir, args.output_format, args.also_geojson)
+            write_outputs(features, output_dir, args.output_format, args.also_geojson, args.archive_period)
         else:
             recent_floor = datetime.now(timezone.utc) - timedelta(hours=args.incremental_window_hours)
             satellite_start_dates = {
@@ -945,7 +982,14 @@ def run_once(args: argparse.Namespace) -> None:
                 end_date,
                 satellite_start_dates,
             )
-            write_incremental_outputs(new_features, output_dir, args.output_format, args.also_geojson, latest_by_satellite)
+            write_incremental_outputs(
+                new_features,
+                output_dir,
+                args.output_format,
+                args.also_geojson,
+                latest_by_satellite,
+                args.archive_period,
+            )
 
     if args.copy_to:
         copy_to = args.copy_to.resolve()
@@ -999,7 +1043,13 @@ def parse_args() -> argparse.Namespace:
         help="Website data/fire directory.",
     )
     parser.add_argument("--output-format", choices=("fgb", "geojson"), default="fgb", help="Primary website format.")
-    parser.add_argument("--also-geojson", action="store_true", help="Also write GeoJSON copies of 72h and monthly archive files.")
+    parser.add_argument("--also-geojson", action="store_true", help="Also write GeoJSON copies of 72h and archive files.")
+    parser.add_argument(
+        "--archive-period",
+        choices=("day", "week", "month"),
+        default=DEFAULT_ARCHIVE_PERIOD,
+        help="Time chunk size for the one-year SFIDE archive. Weekly is the default to keep GitHub Pages files small.",
+    )
     parser.add_argument("--copy-to", type=Path, help="Optional extra directory to receive the aggregate files.")
     parser.add_argument("--git", action="store_true", help="Commit and push changed aggregate files after each update.")
     parser.add_argument("--repo-root", type=Path, default=DEFAULT_WEB_ROOT, help="Git repository root for --git.")

@@ -1,5 +1,5 @@
 /**
- * EOSIAL Viewer — main application
+ * EOSIAL Active Fire Viewer — main application
  *
  * Initialises the Leaflet map, registers layers, wires sidebar and query tools.
  */
@@ -534,7 +534,7 @@
         ctx.font         = Math.round(8 * s) + 'px Arial, sans-serif';
         ctx.textAlign    = 'left';
         ctx.textBaseline = 'bottom';
-        ctx.fillText('EOSIAL Viewer \u2014 ' + new Date().toISOString().substring(0, 10),
+        ctx.fillText('EOSIAL Active Fire Viewer \u2014 ' + new Date().toISOString().substring(0, 10),
                      ML + 4 * s, TH + MT + h - 3 * s);
 
         return dst;
@@ -654,13 +654,14 @@
             label.className = 'layer-toggle';
             var cb = document.createElement('input');
             cb.type = 'checkbox';
+            cb.dataset.layerId = lyr.id;
             cb.checked = lyr.defaultVisible;
             cb.addEventListener('change', function () {
                 lyr.setVisible(this.checked, map);
             });
             var span = document.createElement('span');
             span.className = 'layer-name';
-            span.textContent = lyr.id === 'lfmc' ? 'Live Fuel Moisture Content' : lyr.name;
+            span.textContent = lyr.name;
             label.appendChild(cb);
             label.appendChild(span);
             container.appendChild(label);
@@ -702,25 +703,7 @@
         document.getElementById('btn-draw-point').classList.remove('active');
         document.body.classList.remove('querying');
 
-        // Query the active raster layer
-        if (EV.lfmc && EV.lfmc.getDates().length) {
-            var marker = L.marker(e.latlng).addTo(drawnItems);
-            EV.lfmc.queryPoint(e.latlng, map).then(function (series) {
-                drawnItems.removeLayer(marker);
-                if (!series.length) {
-                    alert('No LFMC data at this location.');
-                    return;
-                }
-                var infoHtml = 'Lat: ' + e.latlng.lat.toFixed(5) +
-                               ', Lon: ' + e.latlng.lng.toFixed(5) +
-                               '<br>Dates with data: ' + series.length;
-                EV.showTimeseries(
-                    'LFMC at Point',
-                    series,
-                    { unit: '%', label: 'LFMC (%)', color: '#2563eb', info: infoHtml }
-                );
-            });
-        }
+        alert('Use the polygon tool to query active fire FRP timeseries.');
     });
 
     // Polygon query (rectangle)
@@ -772,11 +755,8 @@
         var bounds = e.layer.getBounds();
         drawnItems.addLayer(e.layer);
 
-        var area = bounds.getSouthWest().distanceTo(bounds.getSouthEast()) *
-                   bounds.getSouthWest().distanceTo(bounds.getNorthWest()) / 1e6;
 
-        // Check which layers are active and query accordingly
-        var lfmcActive = EV.lfmc && EV.lfmc.getDates().length;
+        // Check whether active fire layers are queryable.
         var fireActive = EV.fireHotspots && document.getElementById('fire-controls') &&
                          !document.getElementById('fire-controls').classList.contains('hidden');
 
@@ -819,23 +799,6 @@
             }
         }
 
-        if (lfmcActive) {
-            EV.lfmc.queryPolygon(bounds, map).then(function (series) {
-                drawnItems.removeLayer(e.layer);
-                if (!series.length) {
-                    alert('No LFMC data in this area.');
-                    return;
-                }
-                var infoHtml = 'Area: ~' + area.toFixed(2) + ' km&sup2;' +
-                               '<br>Dates with data: ' + series.length;
-                EV.showTimeseries(
-                    'LFMC — Polygon Statistics',
-                    series,
-                    { unit: '%', label: 'LFMC (%)', info: infoHtml }
-                );
-            });
-            return;
-        }
 
         drawnItems.removeLayer(e.layer);
         alert('No active queryable layer.');
@@ -848,11 +811,6 @@
         var url = location.origin + location.pathname +
                   '?lat=' + c.lat.toFixed(5) + '&lng=' + c.lng.toFixed(5) +
                   '&z=' + map.getZoom();
-        // Include current LFMC state
-        var curDate = EV.lfmc.getCurrentDate && EV.lfmc.getCurrentDate();
-        if (curDate) url += '&date=' + curDate;
-        var aoiSel = document.getElementById('lfmc-aoi-select');
-        if (aoiSel && aoiSel.value) url += '&aoi=' + encodeURIComponent(aoiSel.value);
         navigator.clipboard.writeText(url).then(function () {
             alert('Link copied to clipboard!');
         });
@@ -879,9 +837,6 @@
         var z   = parseInt(params.get('z'));
         if (!isNaN(lat) && !isNaN(lng)) map.setView([lat, lng], isNaN(z) ? 10 : z);
 
-        // Store for later use after LFMC init
-        EV._urlAoi  = params.get('aoi')  || null;
-        EV._urlDate = params.get('date') || null;
     }
 
     /* ── Cursor info (coords + hover value) ───────────────────── */
@@ -896,16 +851,7 @@
         valueEl.textContent = '';
     }
 
-    map.on('mousemove', EV.debounce(function (e) {
-        if (EV.lfmc && EV.lfmc.getValueAt) {
-            var v = EV.lfmc.getValueAt(e.latlng);
-            if (v !== null) {
-                coordsEl.textContent = e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5);
-                valueEl.textContent = 'Live Fuel Moisture Content: ' + Math.round(v) + ' %';
-                if (infoBar) infoBar.classList.remove('hidden');
-                return;
-            }
-        }
+    map.on('mousemove', EV.debounce(function () {
         hideCursorInfo();
     }, 30));
 
@@ -963,15 +909,14 @@
     applyUrlParams();
 
     // Register layers
-    registerLayer(EV.lfmc);
     registerLayer(EV.sfideHotspots);
     registerLayer(EV.firmsHotspots);
     registerLayer(EV.s3Hotspots);
     registerLayer(EV.mtgFirHotspots);
+    if (EV.adminL0) registerLayer(EV.adminL0);
     buildLayerToggles();
 
     // Initialise layers
-    EV.lfmc.init(map, DATA_BASE);
     if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
     EV.fireHotspots.init(map, DATA_BASE);
 

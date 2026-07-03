@@ -1,5 +1,5 @@
 /**
- * EOSIAL Viewer — Fire Hotspots layer
+ * EOSIAL Active Fire Viewer — Fire Hotspots layer
  *
  * Loads SFIDE GeoJSON fire detections and renders as clustered markers
  * with full filtering: time window, satellite, fire type, confidence, FRP.
@@ -17,10 +17,10 @@
     };
 
     var DEFAULT_MIN_FRP = {
-        'MTG-1': 10,
-        'MET-11': 10,
-        'MET-10': 10,
-        'MET-09': 10,
+        'MTG-1': 20,
+        'MET-11': 20,
+        'MET-10': 20,
+        'MET-09': 20,
         'FIRMS-MODIS-AQUA': 0,
         'FIRMS-MODIS-TERRA': 0,
         'FIRMS-NPP': 0,
@@ -28,7 +28,7 @@
         'FIRMS-NOAA21': 0,
         'S3A': 0,
         'S3B': 0,
-        'MTG-FIR': 0
+        'MTG-FIR': 20
     };
 
     var SATELLITE_PRODUCTS = {
@@ -162,6 +162,7 @@
     var firmsVisible  = false;
     var s3Visible     = false;
     var mtgFirVisible = false;
+    var activeFireSourceTab = 'SFIDE';
     var allFeatures   = [];
     var featureIds    = {};
     var yearLoaded    = false;
@@ -1019,7 +1020,7 @@
                 var months = archiveMonthsForRange(manifest, range);
                 var pending = months.filter(function (m) { return !loadedArchiveMonths[m.key]; });
                 if (!pending.length) return allFeatures;
-                EV.showLoading('Loading fire archive (' + pending.length + ' month' + (pending.length !== 1 ? 's' : '') + ')...');
+                EV.showLoading('Loading fire archive (' + pending.length + ' chunk' + (pending.length !== 1 ? 's' : '') + ')...');
                 return Promise.all(pending.map(loadArchiveMonth)).then(function () {
                     EV.hideLoading();
                     yearLoaded = (Object.keys(loadedArchiveMonths).length >= (manifest.months || []).length);
@@ -1122,6 +1123,8 @@
     }
 
     function applyFilters() {
+        if (!clusterGroup) return;
+
         var range = getTimeRange();
 
         // SFIDE archive data is separate from the recent FIRMS/S3 files.
@@ -1311,47 +1314,95 @@
 
     /* ── Sidebar controls ──────────────────────────────────────── */
 
+    function getSourceVisible(source) {
+        if (source === 'FIRMS') return firmsVisible;
+        if (source === 'S3') return s3Visible;
+        if (source === 'MTG_FIR') return mtgFirVisible;
+        return sfideVisible;
+    }
+
+    function sourceLayerId(source) {
+        if (source === 'FIRMS') return 'firms-fire';
+        if (source === 'S3') return 's3-fire';
+        if (source === 'MTG_FIR') return 'mtg-fir-fire';
+        return 'sfide-fire';
+    }
+
+    function syncSidebarLayerToggle(source, visible) {
+        var cb = document.querySelector('.layer-toggle input[data-layer-id="' + sourceLayerId(source) + '"]');
+        if (cb) cb.checked = visible;
+    }
+
+    function firstVisibleSource() {
+        var order = ['SFIDE', 'FIRMS', 'S3', 'MTG_FIR'];
+        for (var i = 0; i < order.length; i++) {
+            if (getSourceVisible(order[i])) return order[i];
+        }
+        return 'SFIDE';
+    }
+
+    function selectFireSourceTab(source) {
+        activeFireSourceTab = source || firstVisibleSource();
+        updateFireControlVisibility();
+    }
+
+    function updateSourceTabState() {
+        document.querySelectorAll('.fire-source-tab').forEach(function (tab) {
+            var source = tab.getAttribute('data-source');
+            var visible = getSourceVisible(source);
+            var active = source === activeFireSourceTab;
+            tab.classList.toggle('active', active);
+            tab.classList.toggle('off', !visible);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            tab.setAttribute('aria-pressed', visible ? 'true' : 'false');
+            var cb = tab.querySelector('.fire-source-toggle');
+            if (cb) cb.checked = visible;
+        });
+    }
+
     function buildControls(map) {
         var container = document.getElementById('product-toolbar-content') || document.getElementById('layer-controls');
         var section = document.createElement('div');
         section.id = 'fire-controls';
-        section.className = 'product-toolbar-section fire-toolbar-window';
+        section.className = 'product-toolbar-section fire-toolbar-window fire-toolbar-unified';
         section.innerHTML =
-            '<div class="product-toolbar-title">Hotspot Window</div>' +
-            '<div class="toolbar-divider"></div>' +
-
-            /* Time presets */
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Time</span>' +
-            '  <div class="toolbar-pill-list">' +
-            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="6">6h</button>' +
-            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="12">12h</button>' +
-            '    <button class="fire-time-btn toolbar-btn-compact active" data-hours="24">24h</button>' +
-            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="72">72h</button>' +
-            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="168">7d</button>' +
-            '    <button class="fire-time-btn toolbar-btn-compact" data-hours="0">All</button>' +
+            '<div class="fire-toolbar-topline">' +
+            '  <div class="product-toolbar-title">Active Fire Window</div>' +
+            '  <div class="toolbar-divider"></div>' +
+            '  <div class="product-toolbar-group">' +
+            '    <span class="product-toolbar-label">Time</span>' +
+            '    <div class="toolbar-pill-list">' +
+            '      <button class="fire-time-btn toolbar-btn-compact active" data-hours="6">6h</button>' +
+            '      <button class="fire-time-btn toolbar-btn-compact" data-hours="12">12h</button>' +
+            '      <button class="fire-time-btn toolbar-btn-compact" data-hours="24">24h</button>' +
+            '      <button class="fire-time-btn toolbar-btn-compact" data-hours="72">72h</button>' +
+            '      <button class="fire-time-btn toolbar-btn-compact" data-hours="168">7d</button>' +
+            '      <button class="fire-time-btn toolbar-btn-compact" data-hours="0">All</button>' +
+            '    </div>' +
             '  </div>' +
+            '  <div class="product-toolbar-group">' +
+            '    <span class="product-toolbar-label">Range</span>' +
+            '    <span class="toolbar-field"><input type="text" id="fire-start-time" placeholder="dd/mm/yyyy hh:mm"></span>' +
+            '    <span class="toolbar-field"><input type="text" id="fire-end-time" placeholder="dd/mm/yyyy hh:mm"></span>' +
+            '    <button id="fire-apply-custom" class="toolbar-btn-compact">Apply</button>' +
+            '  </div>' +
+            '  <div class="toolbar-status"><span id="fire-count">-</span><br><span id="fire-last-update">Loading...</span></div>' +
             '</div>' +
-
-            /* Custom date range */
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Range</span>' +
-            '  <span class="toolbar-field"><input type="text" id="fire-start-time" placeholder="dd/mm/yyyy hh:mm"></span>' +
-            '  <span class="toolbar-field"><input type="text" id="fire-end-time" placeholder="dd/mm/yyyy hh:mm"></span>' +
-            '  <button id="fire-apply-custom" class="toolbar-btn-compact">Apply</button>' +
+            '<div class="fire-source-tabs" role="tablist" aria-label="Hotspot source filters">' +
+            '  <div class="fire-source-tab active" data-source="SFIDE" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="SFIDE" checked><span class="fire-source-dot sfide"></span><span>SFIDE</span></div>' +
+            '  <div class="fire-source-tab" data-source="FIRMS" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="FIRMS"><span class="fire-source-dot firms"></span><span>NASA FIRMS</span><small>external</small></div>' +
+            '  <div class="fire-source-tab" data-source="S3" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="S3"><span class="fire-source-dot s3"></span><span>Sentinel-3</span><small>external</small></div>' +
+            '  <div class="fire-source-tab" data-source="MTG_FIR" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="MTG_FIR"><span class="fire-source-dot mtg-fir"></span><span>MTG-FIR</span><small>EUMETSAT</small></div>' +
             '</div>' +
-
-            /* Count display */
-            '<div class="toolbar-status"><span id="fire-count">-</span><br><span id="fire-last-update">Loading...</span></div>';
+            '<div id="fire-source-panels" class="fire-source-panels"></div>';
 
         container.appendChild(section);
+        var panelWrap = section.querySelector('#fire-source-panels');
 
         var sfideSection = document.createElement('div');
         sfideSection.id = 'fire-sfide-controls';
-        sfideSection.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-sfide';
+        sfideSection.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-sfide';
         sfideSection.innerHTML =
-            '<div class="product-toolbar-title toolbar-source-title">SFIDE Hotspots</div>' +
-            '<div class="toolbar-divider"></div>' +
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Satellites</span>' +
             '  <div id="fire-sfide-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
@@ -1362,16 +1413,14 @@
             '</div>' +
             '<div class="product-toolbar-group">' +
             '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-sfide-min-conf" min="0" max="100" value="40" title="Minimum SFIDE confidence (%)"></span>' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-sfide-min-frp" min="0" step="0.1" value="10" title="Minimum SFIDE FRP (MW)"></span>' +
+            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-sfide-min-frp" min="0" step="0.1" value="20" title="Minimum SFIDE FRP (MW)"></span>' +
             '</div>';
-        container.appendChild(sfideSection);
+        panelWrap.appendChild(sfideSection);
 
         var firmsSection = document.createElement('div');
         firmsSection.id = 'fire-firms-controls';
-        firmsSection.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-firms hidden';
+        firmsSection.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-firms hidden';
         firmsSection.innerHTML =
-            '<div class="product-toolbar-title toolbar-source-title firms-title">FIRMS Hotspots <span class="toolbar-source-badge">NASA external</span></div>' +
-            '<div class="toolbar-divider"></div>' +
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Satellites</span>' +
             '  <div id="fire-firms-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
@@ -1388,14 +1437,12 @@
             '  <span class="toolbar-field"><span class="product-toolbar-label">MODIS conf</span><input type="number" id="fire-firms-modis-min-conf" min="0" max="100" value="0" title="Minimum NASA FIRMS MODIS confidence (%)"></span>' +
             '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-firms-min-frp" min="0" step="0.1" value="0" title="Minimum NASA FIRMS FRP (MW)"></span>' +
             '</div>';
-        container.appendChild(firmsSection);
+        panelWrap.appendChild(firmsSection);
 
         var s3Section = document.createElement('div');
         s3Section.id = 'fire-s3-controls';
-        s3Section.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-s3 hidden';
+        s3Section.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-s3 hidden';
         s3Section.innerHTML =
-            '<div class="product-toolbar-title toolbar-source-title s3-title">Sentinel-3 Hotspots <span class="toolbar-source-badge s3-badge">external</span></div>' +
-            '<div class="toolbar-divider"></div>' +
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Satellites</span>' +
             '  <div id="fire-s3-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
@@ -1404,14 +1451,12 @@
             '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-s3-min-conf" min="0" max="100" value="0" title="Minimum Sentinel-3 confidence, when available"></span>' +
             '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-s3-min-frp" min="0" step="0.1" value="0" title="Minimum Sentinel-3 FRP (MW)"></span>' +
             '</div>';
-        container.appendChild(s3Section);
+        panelWrap.appendChild(s3Section);
 
         var mtgFirSection = document.createElement('div');
         mtgFirSection.id = 'fire-mtg-fir-controls';
-        mtgFirSection.className = 'product-toolbar-section fire-source-toolbar fire-source-toolbar-mtg-fir hidden';
+        mtgFirSection.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-mtg-fir hidden';
         mtgFirSection.innerHTML =
-            '<div class="product-toolbar-title toolbar-source-title mtg-fir-title">MTG-FIR Hotspots <span class="toolbar-source-badge mtg-fir-badge">EUMETSAT official</span></div>' +
-            '<div class="toolbar-divider"></div>' +
             '<div class="product-toolbar-group">' +
             '  <span class="product-toolbar-label">Satellites</span>' +
             '  <div id="fire-mtg-fir-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
@@ -1427,34 +1472,45 @@
             '<div class="product-toolbar-group">' +
             '  <span class="toolbar-field"><span class="product-toolbar-label">Min prob</span><input type="number" id="fire-mtg-fir-min-prob" min="0" max="100" value="0" title="Minimum MTG-FIR fire probability (%)"></span>' +
             '</div>';
-        container.appendChild(mtgFirSection);
+        panelWrap.appendChild(mtgFirSection);
 
         EV.updateProductToolbarVisibility();
         setDefaultCustomRange();
 
-        // Wire time preset buttons
+        section.querySelectorAll('.fire-source-tab').forEach(function (tab) {
+            tab.addEventListener('click', function (e) {
+                var source = tab.getAttribute('data-source');
+                if (e.target && e.target.classList.contains('fire-source-toggle')) return;
+                selectFireSourceTab(source);
+            });
+            tab.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectFireSourceTab(tab.getAttribute('data-source'));
+                }
+            });
+        });
+        section.querySelectorAll('.fire-source-toggle').forEach(function (cb) {
+            cb.addEventListener('click', function (e) { e.stopPropagation(); });
+            cb.addEventListener('change', function () {
+                var source = cb.getAttribute('data-source');
+                setSourceVisible(source, cb.checked, map);
+            });
+        });
+
         section.querySelectorAll('.fire-time-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 section.querySelectorAll('.fire-time-btn').forEach(function (b) {
                     b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
                     b.classList.add('bg-gray-100', 'text-gray-700');
                 });
-                var hours = parseInt(btn.getAttribute('data-hours'));
-                if (hours > 0) {
-                    btn.classList.add('active', 'bg-blue-100', 'text-blue-700');
-                    btn.classList.remove('bg-gray-100', 'text-gray-700');
-                } else {
-                    // "All" — clear presets, load archive
-                    btn.classList.add('active', 'bg-blue-100', 'text-blue-700');
-                    btn.classList.remove('bg-gray-100', 'text-gray-700');
-                }
+                btn.classList.add('active', 'bg-blue-100', 'text-blue-700');
+                btn.classList.remove('bg-gray-100', 'text-gray-700');
                 applyFilters();
             });
         });
 
-        // Custom date apply
         document.getElementById('fire-apply-custom').addEventListener('click', function () {
-            // Deactivate preset buttons
             section.querySelectorAll('.fire-time-btn').forEach(function (b) {
                 b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
                 b.classList.add('bg-gray-100', 'text-gray-700');
@@ -1462,7 +1518,6 @@
             applyFilters();
         });
 
-        // Fire type checkboxes
         var typeList = document.getElementById('fire-type-list');
         Object.keys(FIRE_TYPE_CONFIG).forEach(function (type) {
             var conf = FIRE_TYPE_CONFIG[type];
@@ -1478,7 +1533,6 @@
             cb.addEventListener('change', applyFilters);
         });
 
-        // Advanced filter inputs
         document.getElementById('fire-sfide-min-conf').addEventListener('change', applyFilters);
         document.getElementById('fire-sfide-min-frp').addEventListener('change', applyFilters);
         document.getElementById('fire-firms-modis-min-conf').addEventListener('change', applyFilters);
@@ -1494,7 +1548,6 @@
         });
         updateFireControlVisibility();
     }
-
     /* ── "All" time — handle as full archive ───────────────────── */
 
     function getTimeRange() {
@@ -1518,7 +1571,7 @@
             if (start && end) return { start: start, end: end };
         }
         var now = new Date();
-        return { start: new Date(now.getTime() - 24 * 3600000), end: now };
+        return { start: new Date(now.getTime() - 6 * 3600000), end: now };
     }
 
     function pad2(n) {
@@ -1541,7 +1594,7 @@
 
     function setDefaultCustomRange() {
         var end = new Date();
-        var start = new Date(end.getTime() - 24 * 3600000);
+        var start = new Date(end.getTime() - 6 * 3600000);
         var s = document.getElementById('fire-start-time');
         var e = document.getElementById('fire-end-time');
         if (s) s.value = formatEuropeanDateTime(start);
@@ -1614,16 +1667,20 @@
 
     function updateFireControlVisibility() {
         var common = document.getElementById('fire-controls');
-        var sfide = document.getElementById('fire-sfide-controls');
-        var firms = document.getElementById('fire-firms-controls');
-        var s3 = document.getElementById('fire-s3-controls');
-        var mtgFir = document.getElementById('fire-mtg-fir-controls');
+        var panels = {
+            SFIDE: document.getElementById('fire-sfide-controls'),
+            FIRMS: document.getElementById('fire-firms-controls'),
+            S3: document.getElementById('fire-s3-controls'),
+            MTG_FIR: document.getElementById('fire-mtg-fir-controls')
+        };
         var leg  = document.getElementById('fire-legend');
-        if (common) common.classList.toggle('hidden', !anySourceVisible());
-        if (sfide) sfide.classList.toggle('hidden', !sfideVisible);
-        if (firms) firms.classList.toggle('hidden', !firmsVisible);
-        if (s3) s3.classList.toggle('hidden', !s3Visible);
-        if (mtgFir) mtgFir.classList.toggle('hidden', !mtgFirVisible);
+        if (common) common.classList.remove('hidden');
+        Object.keys(panels).forEach(function (source) {
+            if (panels[source]) {
+                panels[source].classList.toggle('hidden', source !== activeFireSourceTab);
+            }
+        });
+        updateSourceTabState();
         if (leg) leg.style.display = anySourceVisible() ? '' : 'none';
         EV.updateProductToolbarVisibility();
     }
@@ -1638,6 +1695,9 @@
         } else {
             sfideVisible = v;
         }
+
+        if (v) activeFireSourceTab = source;
+        syncSidebarLayerToggle(source, v);
 
         var targetMap = map || mapRef;
         if (clusterGroup && targetMap) {
@@ -1841,14 +1901,14 @@
             }).then(function () {
                 return loadMtgFirNrt();
             }).then(function () {
-                // If archive was loaded because 72h was empty, keep the default 24h view.
+                // If archive was loaded because recent data was empty, keep the default 6h view.
                 if (yearLoaded) {
                     var btns = document.querySelectorAll('.fire-time-btn');
                     btns.forEach(function (b) {
                         b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
                         b.classList.add('bg-gray-100', 'text-gray-700');
                     });
-                    var dayBtn = document.querySelector('.fire-time-btn[data-hours="24"]');
+                    var dayBtn = document.querySelector('.fire-time-btn[data-hours="6"]');
                     if (dayBtn) {
                         dayBtn.classList.add('active', 'bg-blue-100', 'text-blue-700');
                         dayBtn.classList.remove('bg-gray-100', 'text-gray-700');

@@ -1,5 +1,5 @@
 /**
- * EOSIAL Viewer — timeseries chart module
+ * EOSIAL Active Fire Viewer — timeseries chart module
  *
  * Draws Chart.js timeseries in the #ts-modal.
  * Supports single-value series and multi-metric series (mean/median/IQR).

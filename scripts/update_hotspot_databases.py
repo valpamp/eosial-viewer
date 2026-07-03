@@ -68,6 +68,7 @@ def run_once(args: argparse.Namespace) -> None:
         incremental_lookahead_hours=args.incremental_lookahead_hours,
         incremental_window_hours=args.incremental_window_hours,
         progress_interval_seconds=args.progress_interval_seconds,
+        archive_period=args.sfide_archive_period,
     )
 
     print("Updating SFIDE hotspots...", flush=True)
@@ -159,6 +160,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--incremental-overlap-hours", type=float, default=6.0)
     parser.add_argument("--incremental-lookahead-hours", type=float, default=3.0)
     parser.add_argument("--incremental-window-hours", type=float, default=96.0)
+    parser.add_argument(
+        "--sfide-archive-period",
+        choices=("day", "week", "month"),
+        default=update_sfide_database.DEFAULT_ARCHIVE_PERIOD,
+        help="Time chunk size for the one-year SFIDE archive.",
+    )
     parser.add_argument("--progress-interval-seconds", type=float, default=5.0)
     parser.add_argument("--watch", action="store_true")
     parser.add_argument("--interval-minutes", type=float, default=30.0)

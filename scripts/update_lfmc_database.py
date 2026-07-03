@@ -150,6 +150,7 @@ def run_once(args: argparse.Namespace) -> None:
 
     state = load_json(state_path, {"version": 1, "products": {}})
     products = state.setdefault("products", {})
+    state_dirty = False
     discovered = discover_sources(source_dir)
     print(f"[LFMC] Source: {source_dir}", flush=True)
     print(f"[LFMC] AOI: {args.aoi_name}", flush=True)
@@ -176,6 +177,7 @@ def run_once(args: argparse.Namespace) -> None:
             if not same_signature(previous, sig):
                 products[key] = sig
                 products[key]["output_path"] = str(out_path)
+                state_dirty = True
             if stats_missing:
                 changed.append((poly_name, date_str, out_path))
             skipped += 1
@@ -188,12 +190,21 @@ def run_once(args: argparse.Namespace) -> None:
         convert_to_cog.convert_one(str(src_path), str(out_path))
         products[key] = sig
         products[key]["output_path"] = str(out_path)
+        state_dirty = True
         changed.append((poly_name, date_str, out_path))
         converted += 1
 
-    state["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    state["source_dir"] = str(source_dir)
-    write_json(state_path, state, indent=2)
+    metadata = state.setdefault("metadata", {})
+    source_dirs = metadata.setdefault("source_dirs", {})
+    if source_dirs.get(args.aoi_name) != str(source_dir):
+        source_dirs[args.aoi_name] = str(source_dir)
+        state_dirty = True
+
+    if state_dirty:
+        state["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        write_json(state_path, state, indent=2)
+    else:
+        print("[LFMC] State unchanged.", flush=True)
 
     if converted or args.refresh_manifest:
         manifest = generate_manifest.scan_cogs(str(cog_root))

@@ -170,6 +170,87 @@ body.dark {
     min-width: 120px;
 }
 .fire-toolbar-window { width: fit-content; }
+.fire-toolbar-unified {
+    width: min(100%, 1120px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+}
+.fire-toolbar-topline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.fire-source-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+.fire-source-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 5px 9px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.fire-source-tab input {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    accent-color: #2563eb;
+}
+.fire-source-tab small {
+    font-size: 9px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+}
+.fire-source-tab.active {
+    background: #ffffff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.12);
+}
+.fire-source-tab.off {
+    opacity: 0.56;
+}
+.fire-source-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(15,23,42,0.2);
+}
+.fire-source-dot.sfide { background: #2563eb; }
+.fire-source-dot.firms { background: #059669; }
+.fire-source-dot.s3 { background: #0891b2; }
+.fire-source-dot.mtg-fir { background: #db2777; }
+.fire-source-panels {
+    min-width: 0;
+}
+.fire-source-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
 .fire-source-toolbar {
     width: min(100%, 1080px);
     align-items: flex-start;
@@ -292,10 +373,6 @@ body.dark {
     font-size: 10px;
     text-align: center;
 }
-.lfmc-status-labels {
-    font-size: 10px;
-}
-
 /* ── Layer toggle switches ────────────────────────────────────── */
 .layer-toggle {
     display: flex; align-items: center; gap: 8px;
@@ -316,10 +393,6 @@ body.dark {
 }
 
 /* ── Date slider ─────────────────────────────────────────────── */
-#lfmc-date-slider {
-    width: 100%;
-    accent-color: #2563eb;
-}
 .date-label {
     font-size: 13px; font-weight: 600; color: #1f2937;
     text-align: center; margin-top: 4px;
@@ -790,6 +863,27 @@ body.dark .toolbar-field select {
     background: #2a2a2e;
     border-color: #4b5563;
     color: #d4d4d8;
+}
+body.dark .fire-source-tabs {
+    background: #18181b;
+    border-color: #374151;
+}
+body.dark .fire-source-tab {
+    color: #d4d4d8;
+}
+body.dark .fire-source-tab small {
+    color: #a1a1aa;
+}
+body.dark .fire-source-tab.active {
+    background: #27272a;
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+body.dark .fire-source-dot {
+    box-shadow: 0 0 0 2px #27272a, 0 0 0 3px rgba(255,255,255,0.28);
+}
+body.dark .fire-source-panel {
+    border-color: #374151;
 }
 body.dark .fire-source-toolbar-firms {
     background: rgba(20,83,45,0.28);

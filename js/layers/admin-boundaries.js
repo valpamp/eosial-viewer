@@ -1,10 +1,9 @@
 /**
- * EOSIAL Viewer — Administrative Boundaries (L0)
+ * EOSIAL Active Fire Viewer — Administrative Boundaries (L0)
  *
  * EV.adminL0 — country outlines (world-atlas 50m TopoJSON via jsDelivr)
  *
- * Renders in a custom 'adminPane' (z-index 450) above the LFMC raster
- * (overlayPane ~400) but below fire hotspot markers (~600).
+ * Renders in a custom 'adminPane' (z-index 450) below fire hotspot markers (~600).
  * Data is lazy-loaded on first toggle.
  *
  * For higher-resolution borders, download ne_10m_admin_0_countries.shp
