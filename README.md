@@ -6,17 +6,17 @@ Interactive web viewer for active fire detections and satellite wildfire managem
 
 ## Features
 
-- **Fire hotspots** — Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), plus external FIRMS, Sentinel-3, and official EUMETSAT MTG-FIR comparison layers
-- **Timeseries queries** � Draw a rectangle to chart active fire FRP over time, with table, CSV, and PNG export
-- **Distance measurement** — Multi-segment ruler tool with metric readout
-- **Location search** — Geocoding via OpenStreetMap Nominatim
-- **Multiple basemaps** — CartoDB Light/Dark, OpenStreetMap, Google Satellite, OpenTopoMap
-- **Dark mode** — Full UI dark theme toggle
-- **Shareable permalinks** — URLs encode map view, AOI, and date
+- **Fire hotspots** - Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), plus external FIRMS, Sentinel-3, and official EUMETSAT MTG-FIR comparison layers
+- **Timeseries queries** - Draw a rectangle to chart active fire FRP over time, with table, CSV, and PNG export
+- **Distance measurement** - Multi-segment ruler tool with metric readout
+- **Location search** - Geocoding via OpenStreetMap Nominatim
+- **Multiple basemaps** - CartoDB Light/Dark, OpenStreetMap, Google Satellite, OpenTopoMap
+- **Dark mode** - Full UI dark theme toggle
+- **Shareable permalinks** - URLs encode map view, AOI, and date
 
 ## Quick start
 
-The viewer is a static site — no build step or server required.
+The viewer is a static site - no build step or server required.
 
 1. **Clone the repository**
    ```bash
@@ -52,23 +52,23 @@ Windows because it installs a consistent GDAL/rasterio/geopandas stack.
 
 ```
 eosial-viewer/
-├── index.html                  # Main page
-├── css/style.css               # All styles (light + dark mode)
-├── js/
-│   ├── config.js               # Optional deployment data URL override
-│   ├── utils.js                # Shared utilities, colormaps, pub/sub
-│   ├── app.js                  # Map init, toolbar, sidebar, query tools
-│   ├── timeseries.js           # Chart.js timeseries modal
-│   └── layers/
-│       └── fire-hotspots.js    # Fire detection markers
-├── data/
-│   └── fire/
-│       ├── sfide_aggregate_72h.fgb       # Recent fire hotspot detections
-│       ├── sfide_archive_manifest.json   # SFIDE archive index
-│       └── archive/sfide_YYYY_Www.fgb    # Rolling one-year weekly chunks
-├── scripts/
-└── images/
-    └── EOSIAL_banner.png
+|-- index.html                  # Main page
+|-- css/style.css               # All styles (light + dark mode)
+|-- js/
+|   |-- config.js               # Optional deployment data URL override
+|   |-- utils.js                # Shared utilities, colormaps, pub/sub
+|   |-- app.js                  # Map init, toolbar, sidebar, query tools
+|   |-- timeseries.js           # Chart.js timeseries modal
+|   `-- layers/
+|       `-- fire-hotspots.js    # Fire detection markers
+|-- data/
+|   `-- fire/
+|       |-- sfide_aggregate_72h.fgb       # Recent fire hotspot detections
+|       |-- sfide_archive_manifest.json   # SFIDE archive index
+|       `-- archive/sfide_YYYY_Www.fgb    # Rolling one-year weekly chunks
+|-- scripts/
+`-- images/
+    `-- EOSIAL_banner.png
 ```
 
 ## Data pipeline
@@ -77,11 +77,11 @@ eosial-viewer/
 
 The website looks for fire files in this order: FlatGeobuf (`.fgb`), zipped Shapefile (`.zip`), GeoPackage (`.gpkg`), GeoJSON (`.geojson`), then JSON (`.json`). The normal layout is:
 
-- `sfide_aggregate_72h.*` — a small rolling subset used for the initial lightweight load.
-- `sfide_archive_manifest.json` — index of SFIDE archive chunks.
-- `archive/sfide_YYYY_Www.*` — rolling one-year SFIDE archive split by ISO week by default, loaded only when a selected time window needs older detections.
-- `firms_manifest.json`, `s3_manifest.json`, `mtg_fir_manifest.json` — external comparison layer indexes.
-- `firms/`, `s3/`, `mtg_fir/` — recent external hotspot files published for the website.
+- `sfide_aggregate_72h.*` - a small rolling subset used for the initial lightweight load.
+- `sfide_archive_manifest.json` - index of SFIDE archive chunks.
+- `archive/sfide_YYYY_Www.*` - rolling one-year SFIDE archive split by ISO week by default, loaded only when a selected time window needs older detections.
+- `firms_manifest.json`, `s3_manifest.json`, `mtg_fir_manifest.json` - external comparison layer indexes.
+- `firms/`, `s3/`, `mtg_fir/` - recent external hotspot files published for the website.
 
 Run the updater once:
 
@@ -110,7 +110,7 @@ The wrapper writes progress and errors to `logs/sfide_update.log`. During long f
 Hotspot features should contain Point geometry and these properties where available:
 
 | Property | Description |
-|----------|-------------|
+|--------|-----------|
 | `DATETIME` | Detection timestamp (UTC) |
 | `SATELLITE` | Source satellite (e.g. MSG, MTG) |
 | `CONFIDENCE` | Detection confidence (%) |
@@ -120,10 +120,10 @@ The layer loads this file on init and renders points as clustered markers. To up
 
 ## Dependencies
 
-All libraries are loaded from CDNs — no `npm install` required:
+All libraries are loaded from CDNs - no `npm install` required:
 
 | Library | Purpose |
-|---------|---------|
+|-------|-------|
 | [Leaflet](https://leafletjs.com/) | Map framework |
 | [Leaflet.draw](https://leaflet.github.io/Leaflet.draw/) | Rectangle drawing for polygon queries |
 | [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) | Fire hotspot clustering |
@@ -134,7 +134,7 @@ The SFIDE updater can read/write GeoJSON with the standard library; FlatGeobuf, 
 
 ## Publishing
 
-Hosted on **GitHub Pages** — every push to `main` triggers an automatic redeploy.
+Hosted on **GitHub Pages** - every push to `main` triggers an automatic redeploy.
 
 GitHub Pages deploys a single artifact and warns/fails when that artifact is
 larger than 1 GB. This limit applies to the total published site, not only to
@@ -166,15 +166,15 @@ caused by heavy raster history.
 
 ## Citation
 
-If you use this software or data in your work, please cite this repository. GitHub shows a "Cite this repository" button on the sidebar — powered by the included [`CITATION.cff`](CITATION.cff) file.
+If you use this software or data in your work, please cite this repository. GitHub shows a "Cite this repository" button on the sidebar - powered by the included [`CITATION.cff`](CITATION.cff) file.
 
 ## License
 
 - **Code** (HTML, CSS, JavaScript, Python scripts): [MIT License](LICENSE)
-- **Data** (GeoTIFFs, COGs, GeoJSON, manifests): [CC BY 4.0](DATA_LICENSE) — you must give appropriate credit when using or redistributing the data.
+- **Data** (GeoTIFFs, COGs, GeoJSON, manifests): [CC BY 4.0](DATA_LICENSE) - you must give appropriate credit when using or redistributing the data.
 
 ## Contact
 
 **Valerio Pampanoni, PhD**
 EOSIAL Laboratory, School of Aerospace Engineering, Sapienza University of Rome
-[valerio.pampanoni@uniroma1.it](mailto:valerio.pampanoni@uniroma1.it) · [LinkedIn](https://it.linkedin.com/in/valerio-pampanoni)
+[valerio.pampanoni@uniroma1.it](mailto:valerio.pampanoni@uniroma1.it) - [LinkedIn](https://it.linkedin.com/in/valerio-pampanoni)
