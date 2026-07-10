@@ -815,6 +815,7 @@
                         animation: fireSeries.animation
                     }
                 );
+                EV.openTimeseriesAnimation();
                 return;
             }
         }

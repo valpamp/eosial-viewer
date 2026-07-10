@@ -1624,3 +1624,47 @@ body.fire-animation-exporting #map .fire-animation-map-stamp,
 body.fire-animation-exporting #map .fire-animation-map-legend {
     visibility: hidden !important;
 }
+/* Polygon result view switch */
+.fire-animation-view-tabs {
+    display: inline-flex;
+    gap: 3px;
+    margin-left: auto;
+    padding: 3px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #f8fafc;
+}
+.fire-animation-view-tabs button {
+    min-height: 29px;
+    padding: 4px 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.fire-animation-view-tabs button:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.fire-animation-view-tabs button.active {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.32);
+}
+@media (max-width: 640px) {
+    .fire-animation-title-row {
+        flex-wrap: wrap;
+    }
+    .fire-animation-view-tabs {
+        order: 3;
+        width: 100%;
+        margin-top: 7px;
+        margin-left: 0;
+    }
+    .fire-animation-view-tabs button {
+        flex: 1;
+    }
+}

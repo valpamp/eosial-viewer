@@ -137,7 +137,11 @@
                 <div class="fire-animation-eyebrow">Selected hotspot animation</div>
                 <div id="fire-animation-time" class="fire-animation-time">--</div>
             </div>
-            <button id="fire-animation-close" class="fire-animation-icon-btn" type="button" title="Close animation" aria-label="Close animation">&times;</button>
+            <div class="fire-animation-view-tabs">
+                <button class="active" type="button">Animation</button>
+                <button id="fire-animation-show-graph" type="button">Graph</button>
+                <button id="fire-animation-show-table" type="button">Table</button>
+            </div>            <button id="fire-animation-close" class="fire-animation-icon-btn" type="button" title="Close animation" aria-label="Close animation">&times;</button>
         </div>
         <div class="fire-animation-playback">
             <button id="fire-animation-play" class="fire-animation-play-btn" type="button" title="Play animation" aria-label="Play animation">&#9654;</button>
@@ -190,9 +194,9 @@
                 <div class="flex items-center gap-4 flex-wrap">
                     <h3 id="ts-modal-title" class="text-lg font-semibold text-gray-800">Timeseries</h3>
                     <div id="ts-view-tabs" class="ts-view-tabs hidden">
-                        <button id="ts-chart-tab" class="ts-view-tab active" type="button">Graph</button>
-                        <button id="ts-table-tab" class="ts-view-tab" type="button">Table View</button>
                         <button id="ts-animation-tab" class="ts-view-tab hidden" type="button">Animation</button>
+                        <button id="ts-chart-tab" class="ts-view-tab active" type="button">Graph</button>
+                        <button id="ts-table-tab" class="ts-view-tab" type="button">Table</button>
                     </div>
                 </div>
                 <button id="ts-modal-close"

@@ -28,6 +28,14 @@
 
         play.addEventListener('click', togglePlayback);
         document.getElementById('fire-animation-close').addEventListener('click', close);
+        document.getElementById('fire-animation-show-graph').addEventListener('click', function () {
+            close();
+            if (EV.reopenTimeseries) EV.reopenTimeseries('chart');
+        });
+        document.getElementById('fire-animation-show-table').addEventListener('click', function () {
+            close();
+            if (EV.reopenTimeseries) EV.reopenTimeseries('table');
+        });
         document.getElementById('fire-animation-slider').addEventListener('input', function () {
             stopPlayback();
             renderFrame(parseInt(this.value, 10) || 0);

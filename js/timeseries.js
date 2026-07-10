@@ -14,6 +14,7 @@
     var tableFilename = 'hotspot_table.csv';
     var activeView = 'chart';
     var animationData = null;
+    var lastTimeseries = null;
 
     /** Show the timeseries modal and render a chart.
      *  @param {string} title     - modal title
@@ -26,6 +27,7 @@
      */
     function showTimeseries(title, series, opts) {
         opts = opts || {};
+        lastTimeseries = { title: title, series: series, opts: opts };
         var modal  = document.getElementById('ts-modal');
         var canvas = document.getElementById('ts-chart');
         var info   = document.getElementById('ts-info');
@@ -533,6 +535,18 @@
         document.getElementById('ts-modal').classList.add('hidden');
         if (chart) { chart.destroy(); chart = null; }
     }
+    function openAnimationView() {
+        if (!animationData || !EV.fireAnimation) return;
+        var data = animationData;
+        closeModal();
+        EV.fireAnimation.open(data);
+    }
+
+    function reopenTimeseries(mode) {
+        if (!lastTimeseries) return;
+        showTimeseries(lastTimeseries.title, lastTimeseries.series, lastTimeseries.opts);
+        setViewMode(mode === 'table' ? 'table' : 'chart');
+    }
 
     function csvEscape(value) {
         value = value == null ? '' : String(value);
@@ -636,12 +650,7 @@
         document.getElementById('ts-table-tab').addEventListener('click', function () {
             setViewMode('table');
         });
-        document.getElementById('ts-animation-tab').addEventListener('click', function () {
-            if (!animationData || !EV.fireAnimation) return;
-            var data = animationData;
-            closeModal();
-            EV.fireAnimation.open(data);
-        });
+        document.getElementById('ts-animation-tab').addEventListener('click', openAnimationView);
         document.getElementById('ts-table-prev').addEventListener('click', function () {
             tablePage -= 1;
             renderTable(true);
@@ -663,4 +672,6 @@
     // Public API
     EV.showTimeseries = showTimeseries;
     EV.closeTimeseries = closeModal;
+    EV.openTimeseriesAnimation = openAnimationView;
+    EV.reopenTimeseries = reopenTimeseries;
 })();
