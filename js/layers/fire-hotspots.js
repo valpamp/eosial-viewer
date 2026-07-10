@@ -47,10 +47,6 @@
         'MTG-FIR': 'Official EUMETSAT MTG-FIR'
     };
 
-    var FRP_SCALE_MIN = 1;
-    var FRP_SCALE_MAX = 1000;
-    var useLogScale = true;
-
     var MTG_COLOR_STOPS = [
         { t: 0.0,  c: [255, 255, 178] },
         { t: 0.25, c: [254, 204,  92] },
@@ -231,50 +227,18 @@
         return sfideVisible || firmsVisible || s3Visible || mtgFirVisible;
     }
 
-    function getFRPColor(frp, satellite) {
-        var val = Math.max(frp, FRP_SCALE_MIN);
-        val = Math.min(val, FRP_SCALE_MAX);
-        var stops = getPalette(satellite);
-        var t;
-        if (useLogScale) {
-            var minLog = Math.log(FRP_SCALE_MIN);
-            var maxLog = Math.log(FRP_SCALE_MAX);
-            t = (Math.log(val) - minLog) / (maxLog - minLog);
-        } else {
-            t = (val - FRP_SCALE_MIN) / (FRP_SCALE_MAX - FRP_SCALE_MIN);
-        }
-        // interpolate
-        var lower = stops[0], upper = stops[stops.length - 1];
-        for (var i = 0; i < stops.length - 1; i++) {
-            if (t >= stops[i].t && t <= stops[i + 1].t) {
-                lower = stops[i];
-                upper = stops[i + 1];
-                break;
-            }
-        }
-        var range = upper.t - lower.t;
-        var lt = (t - lower.t) / range;
-        var r = Math.round(lower.c[0] + (upper.c[0] - lower.c[0]) * lt);
-        var g = Math.round(lower.c[1] + (upper.c[1] - lower.c[1]) * lt);
-        var b = Math.round(lower.c[2] + (upper.c[2] - lower.c[2]) * lt);
-        return 'rgba(' + r + ',' + g + ',' + b + ',0.9)';
-    }
-
-    function frpGradientCSS(stops) {
-        var parts = [];
-        stops = stops || MTG_COLOR_STOPS;
-        for (var i = 0; i < stops.length; i++) {
-            var c = stops[i].c;
-            var pct = (stops[i].t * 100).toFixed(0);
-            parts.push('rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ') ' + pct + '%');
-        }
-        return 'linear-gradient(to right, ' + parts.join(', ') + ')';
-    }
-
     function paletteSample(satellite) {
         var stops = getPalette(satellite);
         var c = stops[Math.min(2, stops.length - 1)].c;
         return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+    }
+    function getFRPMarkerSize(frp) {
+        if (frp == null || !isFinite(Number(frp))) return 12;
+        frp = Number(frp);
+        if (frp < 20) return 12;
+        if (frp < 100) return 16;
+        if (frp < 500) return 21;
+        return 28;
     }
 
     function clusterShapeCSS(fireType) {
@@ -1183,18 +1147,18 @@
             var latlng = [p.LATITUDE, p.LONGITUDE];
 
             var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
-            var frp = p.FRP_WOOSTER || 0;
-            var color = getFRPColor(frp, p.SATELLITE);
+            var color = paletteSample(p.SATELLITE);
+            var markerSize = getFRPMarkerSize(p.FRP_WOOSTER);
 
             var iconHtml =
-                '<svg width="12" height="12" viewBox="0 0 24 24" style="opacity:0.85;stroke:#000;stroke-width:1.5;fill:' + color + ';">' +
+                '<svg width="' + markerSize + '" height="' + markerSize + '" viewBox="0 0 24 24" style="opacity:0.92;stroke:#fff;stroke-width:1.7;fill:' + color + ';filter:drop-shadow(0 0 2px rgba(255,255,255,0.95)) drop-shadow(0 2px 2px rgba(15,23,42,0.8));">' +
                 '<path d="' + typeConf.path + '"/></svg>';
 
             var icon = L.divIcon({
                 html: iconHtml,
                 className: 'fire-marker-icon',
-                iconSize: [12, 12],
-                iconAnchor: [6, 6]
+                iconSize: [markerSize, markerSize],
+                iconAnchor: [markerSize / 2, markerSize / 2]
             });
 
             var marker = L.marker(latlng, { icon: icon, satellite: p.SATELLITE, fireType: p.TYPE });
@@ -1630,39 +1594,31 @@
                 var p = f.properties || {};
                 if (isSourceVisible(p) && p.SATELLITE) visibleSats[p.SATELLITE] = true;
             });
-            activeSats = Object.keys(visibleSats).sort().slice(0, 1);
+            activeSats = Object.keys(visibleSats).sort();
         }
 
-        var paletteRows = activeSats.map(function (sat) {
-            return '<div class="mt-1">' +
-                   '  <div class="flex justify-between gap-2 leading-tight" style="font-size:10px;">' +
-                   '    <span>' + getSatelliteLabel(sat) + '</span>' +
-                   '    <span>' + FRP_SCALE_MIN + '-' + FRP_SCALE_MAX + '</span>' +
-                   '  </div>' +
-                   '  <div class="legend-gradient" style="height:6px;background:' + frpGradientCSS(getPalette(sat)) + ';"></div>' +
-                   '</div>';
+        var satelliteRows = activeSats.map(function (sat) {
+            return '<span class="fire-legend-item"><i class="fire-legend-satellite" style="background:' +
+                   paletteSample(sat) + '"></i>' + sat + '</span>';
         }).join('');
+        var fireTypeSection = sfideVisible ?
+            '<div class="fire-legend-section"><h4>Fire type</h4>' +
+            '<span class="fire-legend-shape fire-legend-circle">Vegetation</span>' +
+            '<span class="fire-legend-shape fire-legend-triangle">Volcano</span>' +
+            '<span class="fire-legend-shape fire-legend-square">Static source</span>' +
+            '<span class="fire-legend-shape fire-legend-diamond">Offshore</span></div>' : '';
 
         div.innerHTML =
-            '<h4>FRP (MW)</h4>' +
-            '<div class="legend-labels">' +
-            '  <span>' + FRP_SCALE_MIN + '</span>' +
-            '  <span>' + (useLogScale ? 'log' : 'lin') + '</span>' +
-            '  <span>' + FRP_SCALE_MAX + '</span>' +
-            '</div>' +
-            paletteRows +
-            '<button id="fire-frp-scale-toggle" class="text-xs text-blue-600 mt-1 hover:underline" style="cursor:pointer;background:none;border:none;padding:0;">Toggle log/linear</button>';
-
-        var toggleBtn = div.querySelector('#fire-frp-scale-toggle');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', function () {
-                useLogScale = !useLogScale;
-                updateLegendContent(div);
-                applyFilters(); // re-render with new colors
-            });
-        }
+            '<div class="fire-legend-section"><h4>Satellite</h4>' + satelliteRows + '</div>' +
+            fireTypeSection +
+            '<div class="fire-legend-section"><h4>FRP [MW]</h4>' +
+            '<div class="fire-legend-sizes">' +
+            '<span><i style="width:12px;height:12px"></i>&lt;20</span>' +
+            '<span><i style="width:16px;height:16px"></i>20-100</span>' +
+            '<span><i style="width:21px;height:21px"></i>100-500</span>' +
+            '<span><i style="width:28px;height:28px"></i>&ge;500</span>' +
+            '</div></div>';
     }
-
     /* ── Visibility ────────────────────────────────────────────── */
 
     function updateFireControlVisibility() {
@@ -1734,6 +1690,27 @@
         if (!anySourceVisible()) return [];
 
         var filtered = inside.filter(function (f) { return featurePassesFireFilters(f, state); });
+
+        var animationPoints = filtered.map(function (f) {
+            var p = f.properties || {};
+            var date = parseFeatureDate(p);
+            if (!date) return null;
+            var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
+            return {
+                time: date.getTime(),
+                latitude: p.LATITUDE,
+                longitude: p.LONGITUDE,
+                satellite: p.SATELLITE || 'Unknown',
+                satelliteLabel: getSatelliteLabel(p.SATELLITE || 'Unknown'),
+                color: paletteSample(p.SATELLITE || 'Unknown'),
+                typePath: typeConf.path,
+                fireType: Number(p.TYPE) || 0,
+                fireTypeLabel: typeConf.label,
+                hasFireClass: !isFirmsFeature(p) && !isS3Feature(p) && !isMtgFirFeature(p),
+                frp: p.FRP_WOOSTER != null ? p.FRP_WOOSTER : null
+            };
+        }).filter(function (point) { return point !== null; })
+          .sort(function (a, b) { return a.time - b.time; });
 
         var byTime = {};
         var bySatellite = {};
@@ -1858,7 +1835,17 @@
             { key: 'longitude', label: 'Longitude', defaultVisible: false },
             { key: 'sourceFile', label: 'Source File', defaultVisible: false }
         ];
-
+        series.animation = {
+            points: animationPoints,
+            start: range.start.getTime(),
+            end: range.end.getTime(),
+            bounds: {
+                south: sw.lat,
+                west: sw.lng,
+                north: ne.lat,
+                east: ne.lng
+            }
+        };
         return series;
     }
 
@@ -1926,6 +1913,15 @@
 
         setVisible: setVisible,
         queryPolygon: queryPolygon,
+        setAnimationMode: function (active) {
+            if (!clusterGroup || !mapRef) return;
+            if (active) {
+                if (mapRef.hasLayer(clusterGroup)) mapRef.removeLayer(clusterGroup);
+            } else {
+                if (anySourceVisible() && !mapRef.hasLayer(clusterGroup)) clusterGroup.addTo(mapRef);
+                applyFilters();
+            }
+        },
     };
 
     EV.sfideHotspots = {

@@ -1091,3 +1091,536 @@ body.dark .ss-scale-btn.active {
 }
 body.dark .ss-divider { border-color: #374151; }
 body.dark .ss-field-label { color: #9ca3af; }
+
+/* Polygon hotspot animation */
+body.fire-animation-active #product-toolbar {
+    display: none !important;
+}
+.fire-animation-controls {
+    position: fixed;
+    left: calc(50% + 10rem);
+    bottom: 20px;
+    z-index: 45;
+    width: min(760px, calc(100vw - 360px));
+    transform: translateX(-50%);
+    padding: 12px 14px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.55);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.22);
+    backdrop-filter: blur(8px);
+    color: #1f2937;
+}
+.fire-animation-title-row,
+.fire-animation-playback,
+.fire-animation-options {
+    display: flex;
+    align-items: center;
+}
+.fire-animation-title-row {
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.fire-animation-eyebrow {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+.fire-animation-time {
+    margin-top: 2px;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+.fire-animation-icon-btn,
+.fire-animation-play-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    cursor: pointer;
+}
+.fire-animation-icon-btn {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    color: #64748b;
+    font-size: 25px;
+}
+.fire-animation-icon-btn:hover {
+    color: #0f172a;
+}
+.fire-animation-playback {
+    gap: 10px;
+}
+.fire-animation-play-btn {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 2px 7px rgba(37, 99, 235, 0.32);
+}
+.fire-animation-play-btn:hover {
+    background: #1d4ed8;
+}
+#fire-animation-slider {
+    flex: 1;
+    min-width: 80px;
+    accent-color: #2563eb;
+}
+.fire-animation-frame-count {
+    min-width: 58px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.fire-animation-options {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid #e2e8f0;
+}
+.fire-animation-options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.fire-animation-options select,
+.fire-animation-options input[type="number"] {
+    min-height: 30px;
+    padding: 3px 24px 3px 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: none;
+}
+.fire-animation-export-btn {
+    min-height: 32px;
+    margin-left: auto;
+    padding: 5px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: #059669;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.fire-animation-export-btn:hover {
+    background: #047857;
+}
+.fire-animation-export-btn:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+.fire-animation-status {
+    min-height: 15px;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 10px;
+}
+.fire-animation-marker {
+    background: transparent !important;
+    border: 0 !important;
+    filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.55));
+}
+.fire-animation-marker svg {
+    display: block;
+    stroke: #fff;
+    stroke-width: 1.5;
+}
+.fire-animation-map-stamp,
+.fire-animation-map-legend {
+    position: absolute;
+    z-index: 650;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 2px 9px rgba(15, 23, 42, 0.18);
+    color: #0f172a;
+    pointer-events: none;
+}
+.fire-animation-map-stamp {
+    top: 14px;
+    left: 50%;
+    min-width: 280px;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    text-align: center;
+}
+.fire-animation-map-stamp strong,
+.fire-animation-map-stamp span,
+.fire-animation-map-stamp small {
+    display: block;
+}
+.fire-animation-map-stamp strong {
+    color: #475569;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+.fire-animation-map-stamp span {
+    margin-top: 2px;
+    font-size: 15px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.fire-animation-map-stamp small {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 9px;
+}
+.fire-animation-map-legend {
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    max-width: 310px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+}
+.fire-animation-map-legend strong {
+    margin-bottom: 2px;
+    color: #475569;
+    font-size: 9px;
+    text-transform: uppercase;
+}
+.fire-animation-map-legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    color: #334155;
+    font-size: 9px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fire-animation-map-legend i {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border: 1px solid rgba(15, 23, 42, 0.25);
+    border-radius: 50%;
+}
+@media (max-width: 640px) {
+    .fire-animation-controls {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        width: auto;
+        transform: none;
+    }
+    .fire-animation-time {
+        font-size: 14px;
+    }
+    .fire-animation-options {
+        gap: 7px;
+    }
+    .fire-animation-export-btn {
+        margin-left: 0;
+    }
+    .fire-animation-map-stamp {
+        top: 8px;
+        min-width: 220px;
+        max-width: calc(100% - 90px);
+    }
+    .fire-animation-map-legend {
+        right: 8px;
+        bottom: 8px;
+        max-width: 230px;
+    }
+}
+/* Active-fire visual encoding: hue = satellite, shape = fire type, size = FRP */
+.fire-legend {
+    width: 252px;
+    min-width: 0;
+    max-height: min(52vh, 480px);
+    overflow-y: auto;
+    padding: 9px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.55);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.18);
+}
+.fire-legend-section + .fire-legend-section {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid #e2e8f0;
+}
+.fire-legend-section h4 {
+    margin: 0 0 5px;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-align: left;
+    text-transform: uppercase;
+}
+.fire-legend-item,
+.fire-legend-shape {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 19px;
+    overflow: hidden;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fire-legend-satellite {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+    border: 1px solid rgba(15, 23, 42, 0.25);
+    border-radius: 50%;
+}
+.fire-legend-shape::before {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+    background: #64748b;
+    content: '';
+}
+.fire-legend-circle::before {
+    border-radius: 50%;
+}
+.fire-legend-triangle::before {
+    clip-path: polygon(50% 2%, 98% 98%, 2% 98%);
+}
+.fire-legend-square::before {
+    border-radius: 1px;
+}
+.fire-legend-diamond::before {
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.fire-legend-sizes,
+.fire-animation-legend-sizes {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: end;
+    gap: 5px;
+}
+.fire-legend-sizes span,
+.fire-animation-legend-sizes span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: end;
+    gap: 3px;
+    color: #475569;
+    font-size: 8px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+}
+.fire-legend-sizes i,
+.fire-animation-legend-sizes i {
+    display: block;
+    flex: 0 0 auto;
+    border: 1.5px solid #fff;
+    border-radius: 50%;
+    background: #475569;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+}
+
+.fire-animation-map-legend {
+    width: 238px;
+    max-width: min(238px, calc(100% - 28px));
+    gap: 0;
+    padding: 8px 9px;
+}
+.fire-animation-map-legend section + section {
+    margin-top: 7px;
+    padding-top: 6px;
+    border-top: 1px solid #e2e8f0;
+}
+.fire-animation-map-legend section > strong {
+    display: block;
+    margin: 0 0 4px;
+}
+.fire-animation-map-legend .fire-animation-legend-item {
+    display: flex;
+    min-height: 18px;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fire-animation-legend-satellite {
+    width: 9px !important;
+    height: 9px !important;
+    flex: 0 0 9px !important;
+}
+.fire-animation-legend-shape {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+    fill: #64748b;
+    stroke: #fff;
+    stroke-width: 1.5;
+}
+.fire-animation-map-legend .fire-animation-legend-sizes {
+    margin-top: 2px;
+}
+.fire-animation-map-legend .fire-animation-legend-sizes span {
+    display: flex;
+    min-height: 32px;
+    overflow: visible;
+}
+.fire-animation-map-legend .fire-animation-legend-sizes i {
+    width: auto;
+    height: auto;
+    border-radius: 50%;
+}
+
+@media (max-width: 640px) {
+    .fire-legend {
+        width: 220px;
+        max-height: 42vh;
+    }
+    .fire-animation-map-legend {
+        width: 210px;
+    }
+}
+/* Animation focus and hotspot readability */
+body.fire-animation-active .fire-legend {
+    display: none !important;
+}
+.fire-marker-icon,
+.fire-animation-marker,
+.fire-animation-symbol {
+    overflow: visible !important;
+}
+.fire-animation-marker {
+    filter:
+        drop-shadow(0 0 2px rgba(255, 255, 255, 0.98))
+        drop-shadow(0 2px 2px rgba(15, 23, 42, 0.85));
+}
+.fire-animation-symbol {
+    position: relative;
+    width: max-content;
+    height: max-content;
+}
+.fire-animation-frp-label {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 3px);
+    transform: translateX(-50%);
+    padding: 2px 4px;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+    color: #0f172a;
+    font: 800 9px/1.15 'Inter', sans-serif;
+    white-space: nowrap;
+}
+.fire-legend-sizes,
+.fire-animation-legend-sizes {
+    min-height: 42px;
+}
+.fire-animation-map-legend .fire-animation-legend-sizes span {
+    min-height: 42px;
+}
+/* Animation-only UTC range */
+.fire-animation-range {
+    display: flex;
+    align-items: end;
+    gap: 8px;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid #e2e8f0;
+}
+.fire-animation-range label {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.fire-animation-range input {
+    width: 100%;
+    min-height: 32px;
+    box-sizing: border-box;
+    padding: 4px 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #1f2937;
+    font: 700 11px/1.2 'Inter', sans-serif;
+}
+#fire-animation-apply-range {
+    min-height: 32px;
+    padding: 5px 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+#fire-animation-apply-range:hover {
+    border-color: #64748b;
+    background: #f1f5f9;
+}
+#fire-animation-step:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+@media (max-width: 640px) {
+    .fire-animation-range {
+        flex-wrap: wrap;
+    }
+    .fire-animation-range label {
+        flex-basis: calc(50% - 4px);
+    }
+}
+/* Binary FRP labels and clean video-template capture */
+.fire-animation-options .fire-animation-check {
+    flex-direction: row;
+    gap: 6px;
+    min-height: 30px;
+    padding: 3px 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    text-transform: none;
+    cursor: pointer;
+}
+.fire-animation-check input {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: #2563eb;
+}
+body.fire-animation-exporting #map .leaflet-control-container,
+body.fire-animation-exporting #map .fire-animation-map-stamp,
+body.fire-animation-exporting #map .fire-animation-map-legend {
+    visibility: hidden !important;
+}

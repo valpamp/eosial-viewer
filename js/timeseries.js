@@ -13,6 +13,7 @@
     var tablePageSize = 50;
     var tableFilename = 'hotspot_table.csv';
     var activeView = 'chart';
+    var animationData = null;
 
     /** Show the timeseries modal and render a chart.
      *  @param {string} title     - modal title
@@ -32,6 +33,7 @@
         document.getElementById('ts-modal-title').textContent = title;
         info.innerHTML = opts.info || '';
         modal.classList.remove('hidden');
+        animationData = opts.animation || null;
         setupTable(opts);
         setViewMode('chart');
 
@@ -390,7 +392,9 @@
         tablePage = 0;
 
         var tabs = document.getElementById('ts-view-tabs');
-        if (tabs) tabs.classList.toggle('hidden', !tableRows.length);
+        if (tabs) tabs.classList.toggle('hidden', !tableRows.length && !animationData);
+        var animationTab = document.getElementById('ts-animation-tab');
+        if (animationTab) animationTab.classList.toggle('hidden', !animationData);
         renderFieldControls();
         renderTable(true);
     }
@@ -631,6 +635,12 @@
         });
         document.getElementById('ts-table-tab').addEventListener('click', function () {
             setViewMode('table');
+        });
+        document.getElementById('ts-animation-tab').addEventListener('click', function () {
+            if (!animationData || !EV.fireAnimation) return;
+            var data = animationData;
+            closeModal();
+            EV.fireAnimation.open(data);
         });
         document.getElementById('ts-table-prev').addEventListener('click', function () {
             tablePage -= 1;

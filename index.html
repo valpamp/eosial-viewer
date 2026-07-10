@@ -130,6 +130,58 @@
         <div id="product-toolbar-content" class="product-toolbar-content"></div>
     </div>
 
+    <!-- Polygon hotspot animation controls -->
+    <div id="fire-animation-controls" class="fire-animation-controls hidden" data-html2canvas-ignore="true">
+        <div class="fire-animation-title-row">
+            <div>
+                <div class="fire-animation-eyebrow">Selected hotspot animation</div>
+                <div id="fire-animation-time" class="fire-animation-time">--</div>
+            </div>
+            <button id="fire-animation-close" class="fire-animation-icon-btn" type="button" title="Close animation" aria-label="Close animation">&times;</button>
+        </div>
+        <div class="fire-animation-playback">
+            <button id="fire-animation-play" class="fire-animation-play-btn" type="button" title="Play animation" aria-label="Play animation">&#9654;</button>
+            <input id="fire-animation-slider" type="range" min="0" max="0" value="0" aria-label="Animation time">
+            <span id="fire-animation-frame-count" class="fire-animation-frame-count">1 / 1</span>
+        </div>
+        <div class="fire-animation-range">
+            <label>Start [UTC]
+                <input id="fire-animation-start" type="text" inputmode="numeric" placeholder="DD/MM/YYYY HH:mm">
+            </label>
+            <label>End [UTC]
+                <input id="fire-animation-end" type="text" inputmode="numeric" placeholder="DD/MM/YYYY HH:mm">
+            </label>
+            <button id="fire-animation-apply-range" type="button">Apply range</button>
+        </div>        <div class="fire-animation-options">
+            <label>Step
+                <select id="fire-animation-step">
+                    <option value="5" selected>5 min</option>
+                    <option value="10">10 min</option>
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="60">60 min</option>
+                </select>
+            </label>
+            <label>Persistence
+                <select id="fire-animation-persistence">
+                    <option value="0" selected>Exact timestamps</option>
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="60">60 min</option>
+                    <option value="120">2 h</option>
+                </select>
+            </label>
+            <label>Frame delay [ms]
+                <input id="fire-animation-frame-delay" type="number" min="100" max="5000" step="50" value="1000">
+            </label>
+            <label class="fire-animation-check">
+                <input id="fire-animation-labels" type="checkbox" checked>
+                <span>Show FRP values</span>
+            </label>
+            <button id="fire-animation-export" class="fire-animation-export-btn" type="button">Save WebM</button>
+        </div>
+        <div id="fire-animation-status" class="fire-animation-status" aria-live="polite"></div>
+    </div>
     <!-- Timeseries Modal -->
     <div id="ts-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50
                               flex items-center justify-center z-50 p-4">
@@ -140,6 +192,7 @@
                     <div id="ts-view-tabs" class="ts-view-tabs hidden">
                         <button id="ts-chart-tab" class="ts-view-tab active" type="button">Graph</button>
                         <button id="ts-table-tab" class="ts-view-tab" type="button">Table View</button>
+                        <button id="ts-animation-tab" class="ts-view-tab hidden" type="button">Animation</button>
                     </div>
                 </div>
                 <button id="ts-modal-close"
@@ -236,6 +289,7 @@
     <!-- App scripts (standard scripts, not ES modules, for compatibility with UMD libs) -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/fire-animation.js"></script>
     <script src="js/timeseries.js"></script>
     <script src="js/layers/admin-boundaries.js"></script>
     <script src="js/layers/fire-hotspots.js"></script>

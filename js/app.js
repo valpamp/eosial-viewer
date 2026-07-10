@@ -21,6 +21,7 @@
         zoom: 6,
         zoomControl: false,
     });
+    if (EV.fireAnimation) EV.fireAnimation.init(map);
 
     // Basemaps
     var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -346,6 +347,10 @@
             document.getElementById('btn-draw-point').classList.remove('active');
             // Cancel polygon mode if active
             if (drawControl) {
+                if (rectangleDrawer) {
+                    rectangleDrawer.disable();
+                    rectangleDrawer = null;
+                }
                 map.removeControl(drawControl);
                 drawControl = null;
                 document.getElementById('btn-draw-polygon').classList.remove('active');
@@ -671,6 +676,7 @@
     /* ── Query tools (point + polygon) ─────────────────────────── */
 
     var drawControl = null;
+    var rectangleDrawer = null;
     var drawnItems  = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
@@ -683,6 +689,10 @@
         document.body.classList.toggle('querying', pointQueryActive);
         // Cancel polygon mode
         if (pointQueryActive && drawControl) {
+            if (rectangleDrawer) {
+                rectangleDrawer.disable();
+                rectangleDrawer = null;
+            }
             map.removeControl(drawControl);
             drawControl = null;
             document.getElementById('btn-draw-polygon').classList.remove('active');
@@ -721,6 +731,10 @@
         }
 
         if (drawControl) {
+            if (rectangleDrawer) {
+                rectangleDrawer.disable();
+                rectangleDrawer = null;
+            }
             map.removeControl(drawControl);
             drawControl = null;
             this.classList.remove('active');
@@ -741,10 +755,15 @@
         });
         map.addControl(drawControl);
         // Programmatically activate the rectangle tool
-        new L.Draw.Rectangle(map, drawControl.options.draw.rectangle).enable();
+        rectangleDrawer = new L.Draw.Rectangle(map, drawControl.options.draw.rectangle);
+        rectangleDrawer.enable();
     });
 
     map.on(L.Draw.Event.CREATED, function (e) {
+        if (rectangleDrawer) {
+            rectangleDrawer.disable();
+            rectangleDrawer = null;
+        }
         if (drawControl) {
             map.removeControl(drawControl);
             drawControl = null;
@@ -792,7 +811,8 @@
                         datasets: fireSeries.datasets,
                         tableRows: fireSeries.tableRows,
                         tableColumns: fireSeries.tableColumns,
-                        tableFilename: 'polygon_hotspot_detections.csv'
+                        tableFilename: 'polygon_hotspot_detections.csv',
+                        animation: fireSeries.animation
                     }
                 );
                 return;
