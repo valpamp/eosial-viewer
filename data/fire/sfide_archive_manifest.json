@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-13T00:30:25.330043+00:00",
+  "generated": "2026-07-13T01:00:27.706663+00:00",
   "format": "fgb",
   "archive_period": "week",
   "months": [
@@ -531,6 +531,16 @@
       "count": 41527,
       "files": {
         "fgb": "archive/sfide_2026_W28.fgb"
+      }
+    },
+    {
+      "key": "2026_W29",
+      "label": "2026 week 29",
+      "start": "2026-07-13T00:28:00+00:00",
+      "end": "2026-07-13T00:49:00+00:00",
+      "count": 7,
+      "files": {
+        "fgb": "archive/sfide_2026_W29.fgb"
       }
     }
   ]
