@@ -1,0 +1,365 @@
+{
+  "version": 1,
+  "products": {
+    "Europe/single/2025-02-26": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250226_LFMC.tif",
+      "source_mtime": 1780607431.4273882,
+      "source_size": 20050784,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-02-26.tif"
+    },
+    "Europe/single/2025-03-06": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250306_LFMC.tif",
+      "source_mtime": 1780607546.8085186,
+      "source_size": 21601030,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-03-06.tif"
+    },
+    "Europe/single/2025-03-14": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250314_LFMC.tif",
+      "source_mtime": 1780607666.627036,
+      "source_size": 22800302,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-03-14.tif"
+    },
+    "Europe/single/2025-03-22": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250322_LFMC.tif",
+      "source_mtime": 1780607780.2798924,
+      "source_size": 21299723,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-03-22.tif"
+    },
+    "Europe/single/2025-03-30": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250330_LFMC.tif",
+      "source_mtime": 1780607897.8755727,
+      "source_size": 24473607,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-03-30.tif"
+    },
+    "Europe/single/2025-04-07": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250407_LFMC.tif",
+      "source_mtime": 1780608014.1073837,
+      "source_size": 25095648,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-04-07.tif"
+    },
+    "Europe/single/2025-04-15": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250415_LFMC.tif",
+      "source_mtime": 1780608134.2952535,
+      "source_size": 24206506,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-04-15.tif"
+    },
+    "Europe/single/2025-04-23": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250423_LFMC.tif",
+      "source_mtime": 1780608255.1917021,
+      "source_size": 24981474,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-04-23.tif"
+    },
+    "Europe/single/2025-05-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250501_LFMC.tif",
+      "source_mtime": 1780608372.9666934,
+      "source_size": 23399613,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-05-01.tif"
+    },
+    "Europe/single/2025-05-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250509_LFMC.tif",
+      "source_mtime": 1780608486.457074,
+      "source_size": 21586635,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-05-09.tif"
+    },
+    "Europe/single/2025-05-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250517_LFMC.tif",
+      "source_mtime": 1780608601.8480136,
+      "source_size": 22902599,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-05-17.tif"
+    },
+    "Europe/single/2025-05-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250525_LFMC.tif",
+      "source_mtime": 1780608719.95594,
+      "source_size": 22765741,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-05-25.tif"
+    },
+    "Europe/single/2025-06-02": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250602_LFMC.tif",
+      "source_mtime": 1780608842.9225826,
+      "source_size": 23279606,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-06-02.tif"
+    },
+    "Europe/single/2025-06-10": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250610_LFMC.tif",
+      "source_mtime": 1780608963.4277883,
+      "source_size": 25374738,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-06-10.tif"
+    },
+    "Europe/single/2025-06-18": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250618_LFMC.tif",
+      "source_mtime": 1780609079.9936662,
+      "source_size": 24888526,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-06-18.tif"
+    },
+    "Europe/single/2025-06-26": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250626_LFMC.tif",
+      "source_mtime": 1784200242.7378793,
+      "source_size": 24198902,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-06-26.tif"
+    },
+    "Europe/single/2025-07-04": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250704_LFMC.tif",
+      "source_mtime": 1784200366.742002,
+      "source_size": 21526608,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-07-04.tif"
+    },
+    "Europe/single/2025-07-12": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250712_LFMC.tif",
+      "source_mtime": 1784200497.560356,
+      "source_size": 24008302,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-07-12.tif"
+    },
+    "Europe/single/2025-07-20": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250720_LFMC.tif",
+      "source_mtime": 1784200623.4113245,
+      "source_size": 21661504,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-07-20.tif"
+    },
+    "Europe/single/2025-07-28": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250728_LFMC.tif",
+      "source_mtime": 1784200747.1155999,
+      "source_size": 20966192,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-07-28.tif"
+    },
+    "Europe/single/2025-08-05": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250805_LFMC.tif",
+      "source_mtime": 1784200873.7780993,
+      "source_size": 24626486,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-08-05.tif"
+    },
+    "Europe/single/2025-08-13": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250813_LFMC.tif",
+      "source_mtime": 1784201003.501144,
+      "source_size": 25154210,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-08-13.tif"
+    },
+    "Europe/single/2025-08-21": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250821_LFMC.tif",
+      "source_mtime": 1784201131.5582328,
+      "source_size": 24009498,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-08-21.tif"
+    },
+    "Europe/single/2025-08-29": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250829_LFMC.tif",
+      "source_mtime": 1784201256.621008,
+      "source_size": 23327662,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-08-29.tif"
+    },
+    "Europe/single/2025-09-06": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250906_LFMC.tif",
+      "source_mtime": 1784201381.9940484,
+      "source_size": 24407610,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-09-06.tif"
+    },
+    "Europe/single/2025-09-14": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250914_LFMC.tif",
+      "source_mtime": 1784201509.9520755,
+      "source_size": 23428388,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-09-14.tif"
+    },
+    "Europe/single/2025-09-22": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250922_LFMC.tif",
+      "source_mtime": 1784201637.9195583,
+      "source_size": 24105472,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-09-22.tif"
+    },
+    "Europe/single/2025-09-30": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20250930_LFMC.tif",
+      "source_mtime": 1784201763.1774173,
+      "source_size": 20764456,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-09-30.tif"
+    },
+    "Europe/single/2025-10-08": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251008_LFMC.tif",
+      "source_mtime": 1784201883.6194043,
+      "source_size": 19320010,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-10-08.tif"
+    },
+    "Europe/single/2025-10-16": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251016_LFMC.tif",
+      "source_mtime": 1784202006.0836494,
+      "source_size": 21188174,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-10-16.tif"
+    },
+    "Europe/single/2025-10-24": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251024_LFMC.tif",
+      "source_mtime": 1784202126.4508576,
+      "source_size": 18471952,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-10-24.tif"
+    },
+    "Europe/single/2025-11-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251101_LFMC.tif",
+      "source_mtime": 1784202251.3081107,
+      "source_size": 21136198,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-11-01.tif"
+    },
+    "Europe/single/2025-11-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251109_LFMC.tif",
+      "source_mtime": 1784202372.0724993,
+      "source_size": 16591362,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-11-09.tif"
+    },
+    "Europe/single/2025-11-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251117_LFMC.tif",
+      "source_mtime": 1784202493.2980006,
+      "source_size": 18834338,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-11-17.tif"
+    },
+    "Europe/single/2025-11-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251125_LFMC.tif",
+      "source_mtime": 1784202609.7526977,
+      "source_size": 14543682,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-11-25.tif"
+    },
+    "Europe/single/2025-12-03": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251203_LFMC.tif",
+      "source_mtime": 1784202724.5331979,
+      "source_size": 13131928,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-12-03.tif"
+    },
+    "Europe/single/2025-12-11": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251211_LFMC.tif",
+      "source_mtime": 1784202845.5989482,
+      "source_size": 18375592,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-12-11.tif"
+    },
+    "Europe/single/2025-12-19": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251219_LFMC.tif",
+      "source_mtime": 1784202970.146374,
+      "source_size": 19147210,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-12-19.tif"
+    },
+    "Europe/single/2025-12-27": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20251227_LFMC.tif",
+      "source_mtime": 1784203094.2442918,
+      "source_size": 18223084,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2025-12-27.tif"
+    },
+    "Europe/single/2026-01-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260101_LFMC.tif",
+      "source_mtime": 1784203215.1976554,
+      "source_size": 11866342,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-01-01.tif"
+    },
+    "Europe/single/2026-01-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260109_LFMC.tif",
+      "source_mtime": 1784203328.5279655,
+      "source_size": 9703514,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-01-09.tif"
+    },
+    "Europe/single/2026-01-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260117_LFMC.tif",
+      "source_mtime": 1784203446.9178388,
+      "source_size": 12044512,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-01-17.tif"
+    },
+    "Europe/single/2026-01-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260125_LFMC.tif",
+      "source_mtime": 1784203567.4945536,
+      "source_size": 8693556,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-01-25.tif"
+    },
+    "Europe/single/2026-02-02": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260202_LFMC.tif",
+      "source_mtime": 1784203679.0238817,
+      "source_size": 8867906,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-02-02.tif"
+    },
+    "Europe/single/2026-02-10": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260210_LFMC.tif",
+      "source_mtime": 1784203792.2758603,
+      "source_size": 10267912,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-02-10.tif"
+    },
+    "Europe/single/2026-02-18": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260218_LFMC.tif",
+      "source_mtime": 1784203908.4239867,
+      "source_size": 13306534,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-02-18.tif"
+    },
+    "Europe/single/2026-02-26": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260226_LFMC.tif",
+      "source_mtime": 1784204033.3150017,
+      "source_size": 21323460,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-02-26.tif"
+    },
+    "Europe/single/2026-03-06": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260306_LFMC.tif",
+      "source_mtime": 1784204159.374781,
+      "source_size": 19811110,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-03-06.tif"
+    },
+    "Europe/single/2026-03-14": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260314_LFMC.tif",
+      "source_mtime": 1784204285.28888,
+      "source_size": 24300036,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-03-14.tif"
+    },
+    "Europe/single/2026-03-22": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260322_LFMC.tif",
+      "source_mtime": 1784204407.7373922,
+      "source_size": 21790854,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-03-22.tif"
+    },
+    "Europe/single/2026-03-30": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260330_LFMC.tif",
+      "source_mtime": 1784204533.905371,
+      "source_size": 23886488,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-03-30.tif"
+    },
+    "Europe/single/2026-04-07": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260407_LFMC.tif",
+      "source_mtime": 1784204660.7139888,
+      "source_size": 22745256,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-04-07.tif"
+    },
+    "Europe/single/2026-04-15": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260415_LFMC.tif",
+      "source_mtime": 1784204789.7083735,
+      "source_size": 24386402,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-04-15.tif"
+    },
+    "Europe/single/2026-04-23": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260423_LFMC.tif",
+      "source_mtime": 1784204914.056113,
+      "source_size": 23151404,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-04-23.tif"
+    },
+    "Europe/single/2026-05-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260501_LFMC.tif",
+      "source_mtime": 1784205038.6075077,
+      "source_size": 23575670,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-05-01.tif"
+    },
+    "Europe/single/2026-05-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260509_LFMC.tif",
+      "source_mtime": 1784205163.778939,
+      "source_size": 20834202,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-05-09.tif"
+    },
+    "Europe/single/2026-05-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260517_LFMC.tif",
+      "source_mtime": 1784205294.5369282,
+      "source_size": 24176890,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-05-17.tif"
+    },
+    "Europe/single/2026-05-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260525_LFMC.tif",
+      "source_mtime": 1784205421.9696999,
+      "source_size": 23569114,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-05-25.tif"
+    },
+    "Europe/single/2026-06-02": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe\\VNP09H1_20260602_LFMC.tif",
+      "source_mtime": 1784205544.3892248,
+      "source_size": 20359026,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-06-02.tif"
+    }
+  },
+  "metadata": {
+    "source_dirs": {
+      "Europe": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe"
+    }
+  },
+  "updated_at": "2026-07-16T12:42:08+00:00"
+}
