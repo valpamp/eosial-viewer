@@ -2,7 +2,7 @@
 Update the web-facing SFIDE hotspot databases.
 
 The script scans a SFIDE output directory, reads supported vector files, keeps a
-rolling one-year archive plus a 72-hour subset, and writes both aggregates into
+archive beginning at a configurable UTC date plus a 72-hour subset, and writes both aggregates into
 the website's data/fire directory. Run it every 30 minutes with --watch, or via
 Windows Task Scheduler / cron.
 
@@ -38,6 +38,7 @@ PROGRESS_BAR_WIDTH = 28
 ARCHIVE_MANIFEST = "sfide_archive_manifest.json"
 UPDATE_STATE = "sfide_update_state.json"
 DEFAULT_ARCHIVE_PERIOD = "week"
+DEFAULT_ARCHIVE_START_DATE = "2025-06-01"
 
 
 def try_import_geopandas():
@@ -765,12 +766,12 @@ def write_outputs(
     output_format: str,
     also_geojson: bool,
     archive_period: str,
+    archive_start: datetime,
 ) -> None:
     now = datetime.now(timezone.utc)
-    one_year_ago = now - timedelta(days=365)
     seventy_two_hours_ago = now - timedelta(hours=72)
 
-    one_year = [f for f in features if (parse_feature_date(f["properties"]) or now) >= one_year_ago]
+    one_year = [f for f in features if (parse_feature_date(f["properties"]) or now) >= archive_start]
     last_72h = [f for f in one_year if (parse_feature_date(f["properties"]) or now) >= seventy_two_hours_ago]
 
     writers = get_writers(output_format, also_geojson)
@@ -812,9 +813,9 @@ def write_incremental_outputs(
     also_geojson: bool,
     latest_by_satellite: dict[str, datetime],
     archive_period: str,
+    archive_start: datetime,
 ) -> None:
     now = datetime.now(timezone.utc)
-    one_year_ago = now - timedelta(days=365)
     seventy_two_hours_ago = now - timedelta(hours=72)
     writers = get_writers(output_format, also_geojson)
 
@@ -833,6 +834,7 @@ def write_incremental_outputs(
             output_format,
             also_geojson,
             archive_period,
+            archive_start,
         )
         return
 
@@ -844,7 +846,7 @@ def write_incremental_outputs(
 
     new_one_year = [
         f for f in new_features
-        if (parse_feature_date(f["properties"]) or now) >= one_year_ago
+        if (parse_feature_date(f["properties"]) or now) >= archive_start
     ]
     new_last_72h = [
         f for f in new_one_year
@@ -868,7 +870,7 @@ def write_incremental_outputs(
         existing_month = read_existing_features_from_path(existing_path)
         month_features = [
             f for f in merge_feature_lists(existing_month, incoming)
-            if (parse_feature_date(f["properties"]) or now) >= one_year_ago
+            if (parse_feature_date(f["properties"]) or now) >= archive_start
         ]
         files: dict[str, str] = {}
         for suffix, writer in writers:
@@ -882,7 +884,7 @@ def write_incremental_outputs(
     stale_paths: set[Path] = set()
     for key, entry in sorted(month_entries.items()):
         end = parse_state_datetime(entry.get("end"))
-        if end and end < one_year_ago:
+        if end and end < archive_start:
             for rel in (entry.get("files") or {}).values():
                 stale_paths.add((output_dir / rel).resolve())
             continue
@@ -921,13 +923,15 @@ def write_incremental_outputs(
 def run_once(args: argparse.Namespace) -> None:
     source_dir = args.source_dir.resolve()
     output_dir = args.output_dir.resolve()
+    archive_start = datetime.strptime(args.archive_start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    archive_end = datetime.now(timezone.utc) + timedelta(hours=args.incremental_lookahead_hours)
     if not source_dir.exists():
         raise FileNotFoundError(f"Source directory does not exist: {source_dir}")
 
     if args.full_rebuild:
-        print("Full rebuild requested; scanning the full source tree.", flush=True)
-        features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
-        write_outputs(features, output_dir, args.output_format, args.also_geojson, args.archive_period)
+        print(f"Full rebuild requested; scanning source data from {archive_start:%Y-%m-%d} to {archive_end:%Y-%m-%d}.", flush=True)
+        features = collect_features(source_dir, output_dir, args.progress_interval_seconds, archive_start, archive_end)
+        write_outputs(features, output_dir, args.output_format, args.also_geojson, args.archive_period, archive_start)
     else:
         state = read_update_state(output_dir)
         latest_existing = parse_state_datetime(state.get("latest_hotspot"))
@@ -954,9 +958,9 @@ def run_once(args: argparse.Namespace) -> None:
                 write_update_state(output_dir, existing_features, args.output_format, args.archive_period)
 
         if latest_existing is None:
-            print("No existing hotspot timestamp found; falling back to a full rebuild.", flush=True)
-            features = collect_features(source_dir, output_dir, args.progress_interval_seconds)
-            write_outputs(features, output_dir, args.output_format, args.also_geojson, args.archive_period)
+            print("No existing hotspot timestamp found; rebuilding from the configured archive start date.", flush=True)
+            features = collect_features(source_dir, output_dir, args.progress_interval_seconds, archive_start, archive_end)
+            write_outputs(features, output_dir, args.output_format, args.also_geojson, args.archive_period, archive_start)
         else:
             recent_floor = datetime.now(timezone.utc) - timedelta(hours=args.incremental_window_hours)
             satellite_start_dates = {
@@ -989,6 +993,7 @@ def run_once(args: argparse.Namespace) -> None:
                 args.also_geojson,
                 latest_by_satellite,
                 args.archive_period,
+                archive_start,
             )
 
     if args.copy_to:
@@ -1048,7 +1053,12 @@ def parse_args() -> argparse.Namespace:
         "--archive-period",
         choices=("day", "week", "month"),
         default=DEFAULT_ARCHIVE_PERIOD,
-        help="Time chunk size for the one-year SFIDE archive. Weekly is the default to keep GitHub Pages files small.",
+        help="Time chunk size for the SFIDE archive. Weekly is the default to keep GitHub Pages files small.",
+    )
+    parser.add_argument(
+        "--archive-start-date",
+        default=DEFAULT_ARCHIVE_START_DATE,
+        help="Keep archive hotspots from this UTC date onward (YYYY-MM-DD).",
     )
     parser.add_argument("--copy-to", type=Path, help="Optional extra directory to receive the aggregate files.")
     parser.add_argument("--git", action="store_true", help="Commit and push changed aggregate files after each update.")
