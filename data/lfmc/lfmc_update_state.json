@@ -354,12 +354,367 @@
       "source_mtime": 1784205544.3892248,
       "source_size": 20359026,
       "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Europe\\single\\2026-06-02.tif"
+    },
+    "Western USA/single/2025-02-26": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250226_LFMC.tif",
+      "source_mtime": 1780609113.3521314,
+      "source_size": 10716949,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-02-26.tif"
+    },
+    "Western USA/single/2025-03-06": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250306_LFMC.tif",
+      "source_mtime": 1780609142.7467477,
+      "source_size": 10514714,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-03-06.tif"
+    },
+    "Western USA/single/2025-03-14": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250314_LFMC.tif",
+      "source_mtime": 1780609171.0982938,
+      "source_size": 8948309,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-03-14.tif"
+    },
+    "Western USA/single/2025-03-22": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250322_LFMC.tif",
+      "source_mtime": 1780609201.1103983,
+      "source_size": 11176026,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-03-22.tif"
+    },
+    "Western USA/single/2025-03-30": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250330_LFMC.tif",
+      "source_mtime": 1780609230.8372104,
+      "source_size": 11714335,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-03-30.tif"
+    },
+    "Western USA/single/2025-04-07": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250407_LFMC.tif",
+      "source_mtime": 1780609261.669656,
+      "source_size": 12526000,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-04-07.tif"
+    },
+    "Western USA/single/2025-04-15": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250415_LFMC.tif",
+      "source_mtime": 1780609292.982297,
+      "source_size": 12599733,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-04-15.tif"
+    },
+    "Western USA/single/2025-04-23": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250423_LFMC.tif",
+      "source_mtime": 1780609323.4721842,
+      "source_size": 11986087,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-04-23.tif"
+    },
+    "Western USA/single/2025-05-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250501_LFMC.tif",
+      "source_mtime": 1780609353.9700668,
+      "source_size": 12401365,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-05-01.tif"
+    },
+    "Western USA/single/2025-05-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250509_LFMC.tif",
+      "source_mtime": 1780609386.3581483,
+      "source_size": 11963046,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-05-09.tif"
+    },
+    "Western USA/single/2025-05-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250517_LFMC.tif",
+      "source_mtime": 1780609419.1565957,
+      "source_size": 12574619,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-05-17.tif"
+    },
+    "Western USA/single/2025-05-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250525_LFMC.tif",
+      "source_mtime": 1780609453.6126866,
+      "source_size": 12976937,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-05-25.tif"
+    },
+    "Western USA/single/2025-06-02": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250602_LFMC.tif",
+      "source_mtime": 1780609484.5622234,
+      "source_size": 13015296,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-06-02.tif"
+    },
+    "Western USA/single/2025-06-10": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250610_LFMC.tif",
+      "source_mtime": 1780609516.6249683,
+      "source_size": 12763222,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-06-10.tif"
+    },
+    "Western USA/single/2025-06-18": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250618_LFMC.tif",
+      "source_mtime": 1780609547.8672934,
+      "source_size": 12770562,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-06-18.tif"
+    },
+    "Western USA/single/2025-06-26": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250626_LFMC.tif",
+      "source_mtime": 1780591688.835029,
+      "source_size": 12679530,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-06-26.tif"
+    },
+    "Western USA/single/2025-07-04": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250704_LFMC.tif",
+      "source_mtime": 1780591721.3920662,
+      "source_size": 12562547,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-07-04.tif"
+    },
+    "Western USA/single/2025-07-12": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250712_LFMC.tif",
+      "source_mtime": 1780591759.3432612,
+      "source_size": 12520130,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-07-12.tif"
+    },
+    "Western USA/single/2025-07-20": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250720_LFMC.tif",
+      "source_mtime": 1780591793.4363892,
+      "source_size": 12573579,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-07-20.tif"
+    },
+    "Western USA/single/2025-07-28": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250728_LFMC.tif",
+      "source_mtime": 1780591826.3362906,
+      "source_size": 12508755,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-07-28.tif"
+    },
+    "Western USA/single/2025-08-05": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250805_LFMC.tif",
+      "source_mtime": 1780591862.5229998,
+      "source_size": 12433535,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-08-05.tif"
+    },
+    "Western USA/single/2025-08-13": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250813_LFMC.tif",
+      "source_mtime": 1780591895.6089506,
+      "source_size": 12344910,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-08-13.tif"
+    },
+    "Western USA/single/2025-08-21": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250821_LFMC.tif",
+      "source_mtime": 1780591926.856452,
+      "source_size": 11882003,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-08-21.tif"
+    },
+    "Western USA/single/2025-08-29": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250829_LFMC.tif",
+      "source_mtime": 1780591958.3118281,
+      "source_size": 12240512,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-08-29.tif"
+    },
+    "Western USA/single/2025-09-06": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250906_LFMC.tif",
+      "source_mtime": 1780591991.0847378,
+      "source_size": 12220703,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-09-06.tif"
+    },
+    "Western USA/single/2025-09-14": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250914_LFMC.tif",
+      "source_mtime": 1780592026.0902667,
+      "source_size": 12263833,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-09-14.tif"
+    },
+    "Western USA/single/2025-09-22": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250922_LFMC.tif",
+      "source_mtime": 1780592063.0176911,
+      "source_size": 12545653,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-09-22.tif"
+    },
+    "Western USA/single/2025-09-30": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20250930_LFMC.tif",
+      "source_mtime": 1780592096.4443622,
+      "source_size": 12478510,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-09-30.tif"
+    },
+    "Western USA/single/2025-10-08": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251008_LFMC.tif",
+      "source_mtime": 1780592128.540074,
+      "source_size": 12244109,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-10-08.tif"
+    },
+    "Western USA/single/2025-10-16": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251016_LFMC.tif",
+      "source_mtime": 1780592160.5096893,
+      "source_size": 12358693,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-10-16.tif"
+    },
+    "Western USA/single/2025-10-24": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251024_LFMC.tif",
+      "source_mtime": 1780592191.5087075,
+      "source_size": 11902175,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-10-24.tif"
+    },
+    "Western USA/single/2025-11-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251101_LFMC.tif",
+      "source_mtime": 1780592222.7222989,
+      "source_size": 11441443,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-11-01.tif"
+    },
+    "Western USA/single/2025-11-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251109_LFMC.tif",
+      "source_mtime": 1780592253.6139288,
+      "source_size": 10383903,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-11-09.tif"
+    },
+    "Western USA/single/2025-11-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251117_LFMC.tif",
+      "source_mtime": 1780592284.3024569,
+      "source_size": 11604283,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-11-17.tif"
+    },
+    "Western USA/single/2025-11-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251125_LFMC.tif",
+      "source_mtime": 1780592313.7721944,
+      "source_size": 9943879,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-11-25.tif"
+    },
+    "Western USA/single/2025-12-03": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251203_LFMC.tif",
+      "source_mtime": 1780592341.9462633,
+      "source_size": 8033610,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-12-03.tif"
+    },
+    "Western USA/single/2025-12-11": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251211_LFMC.tif",
+      "source_mtime": 1780592372.5771909,
+      "source_size": 10791088,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-12-11.tif"
+    },
+    "Western USA/single/2025-12-19": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251219_LFMC.tif",
+      "source_mtime": 1780592400.4815302,
+      "source_size": 8522668,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-12-19.tif"
+    },
+    "Western USA/single/2025-12-27": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20251227_LFMC.tif",
+      "source_mtime": 1780592430.4445517,
+      "source_size": 10791216,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2025-12-27.tif"
+    },
+    "Western USA/single/2026-01-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260101_LFMC.tif",
+      "source_mtime": 1780592459.5453,
+      "source_size": 8519376,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-01-01.tif"
+    },
+    "Western USA/single/2026-01-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260109_LFMC.tif",
+      "source_mtime": 1780592491.4256706,
+      "source_size": 11304950,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-01-09.tif"
+    },
+    "Western USA/single/2026-01-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260117_LFMC.tif",
+      "source_mtime": 1780592523.4935086,
+      "source_size": 10983837,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-01-17.tif"
+    },
+    "Western USA/single/2026-01-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260125_LFMC.tif",
+      "source_mtime": 1780592554.8392992,
+      "source_size": 10280602,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-01-25.tif"
+    },
+    "Western USA/single/2026-02-02": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260202_LFMC.tif",
+      "source_mtime": 1780592586.8652408,
+      "source_size": 11046931,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-02-02.tif"
+    },
+    "Western USA/single/2026-02-10": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260210_LFMC.tif",
+      "source_mtime": 1780592619.197367,
+      "source_size": 10789451,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-02-10.tif"
+    },
+    "Western USA/single/2026-02-18": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260218_LFMC.tif",
+      "source_mtime": 1780592650.1203916,
+      "source_size": 8930822,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-02-18.tif"
+    },
+    "Western USA/single/2026-02-26": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260226_LFMC.tif",
+      "source_mtime": 1780592683.4417093,
+      "source_size": 11689143,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-02-26.tif"
+    },
+    "Western USA/single/2026-03-06": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260306_LFMC.tif",
+      "source_mtime": 1780592716.9734955,
+      "source_size": 10189061,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-03-06.tif"
+    },
+    "Western USA/single/2026-03-14": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260314_LFMC.tif",
+      "source_mtime": 1780592747.1655586,
+      "source_size": 11365766,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-03-14.tif"
+    },
+    "Western USA/single/2026-03-22": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260322_LFMC.tif",
+      "source_mtime": 1780592777.9404783,
+      "source_size": 12445755,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-03-22.tif"
+    },
+    "Western USA/single/2026-03-30": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260330_LFMC.tif",
+      "source_mtime": 1780592809.9272034,
+      "source_size": 12582851,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-03-30.tif"
+    },
+    "Western USA/single/2026-04-07": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260407_LFMC.tif",
+      "source_mtime": 1780592844.5296564,
+      "source_size": 12216630,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-04-07.tif"
+    },
+    "Western USA/single/2026-04-15": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260415_LFMC.tif",
+      "source_mtime": 1780592878.0449662,
+      "source_size": 12803729,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-04-15.tif"
+    },
+    "Western USA/single/2026-04-23": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260423_LFMC.tif",
+      "source_mtime": 1780592906.844243,
+      "source_size": 10312387,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-04-23.tif"
+    },
+    "Western USA/single/2026-05-01": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260501_LFMC.tif",
+      "source_mtime": 1780592938.4201303,
+      "source_size": 12688928,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-05-01.tif"
+    },
+    "Western USA/single/2026-05-09": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260509_LFMC.tif",
+      "source_mtime": 1780592970.3468559,
+      "source_size": 12863640,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-05-09.tif"
+    },
+    "Western USA/single/2026-05-17": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260517_LFMC.tif",
+      "source_mtime": 1780593000.5522547,
+      "source_size": 12102776,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-05-17.tif"
+    },
+    "Western USA/single/2026-05-25": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260525_LFMC.tif",
+      "source_mtime": 1781704660.2914107,
+      "source_size": 12284995,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-05-25.tif"
+    },
+    "Western USA/single/2026-06-02": {
+      "source_path": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa\\VNP09H1_20260602_LFMC.tif",
+      "source_mtime": 1781704689.9824834,
+      "source_size": 12533563,
+      "output_path": "F:\\Valerio\\eosial-viewer\\data\\lfmc\\cogs\\Western USA\\single\\2026-06-02.tif"
     }
   },
   "metadata": {
     "source_dirs": {
-      "Europe": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe"
+      "Europe": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\europe",
+      "Western USA": "\\\\151.100.1.26\\data1\\ftp\\fireurisk\\lfmc\\products\\viirs_vnp09h1\\western_usa"
     }
   },
-  "updated_at": "2026-07-16T12:42:08+00:00"
+  "updated_at": "2026-07-16T12:48:17+00:00"
 }
