@@ -359,28 +359,28 @@
 
     function normalizeFirmsFeature(feature) {
         var p = feature.properties;
-        var date = String(p.acq_date || '').trim();
-        var time = String(p.acq_time || '').trim();
+        var date = String(firstProp(p, ['acq_date', 'ACQ_DATE']) || '').trim();
+        var time = String(firstProp(p, ['acq_time', 'ACQ_TIME']) || '').trim();
         if (/^\d{4}$/.test(time)) time = time.substring(0, 2) + ':' + time.substring(2, 4);
         if (/^\d{1,2}:\d{2}$/.test(time)) time = time.padStart(5, '0');
 
         p.DATASET = 'FIRMS';
         p.DATASET_LABEL = getDatasetLabel('FIRMS');
-        p.PRODUCT = p.product || '';
+        p.PRODUCT = firstProp(p, ['product', 'PRODUCT', 'version', 'VERSION']) || '';
         p.SOURCE_FILE = p.source_file || '';
-        p.SATELLITE = normalizeFirmsSatellite(p.satellite, p.product);
-        p.LATITUDE = Number(p.latitude);
-        p.LONGITUDE = Number(p.longitude);
+        p.SATELLITE = normalizeFirmsSatellite(firstProp(p, ['satellite', 'SATELLITE']), p.PRODUCT);
+        p.LATITUDE = Number(firstProp(p, ['latitude', 'LATITUDE']));
+        p.LONGITUDE = Number(firstProp(p, ['longitude', 'LONGITUDE']));
         p.DATETIME = date && time ? date.replace(/-/g, '/') + ' ' + time : '';
         p.TYPE = 0;
-        p.FRP_WOOSTER = Number(p.frp || 0);
-        p.CONFIDENCE_RAW = p.confidence;
-        p.CONFIDENCE = /^\d+(\.\d+)?$/.test(String(p.confidence || '')) ? Number(p.confidence) : null;
-        p.VIIRS_CONFIDENCE = p.CONFIDENCE === null ? String(p.confidence || '').toLowerCase() : '';
-        p.INSTRUMENT = String(p.product || '').indexOf('modis') !== -1 ? 'MODIS' : 'VIIRS';
-        p.DAYNIGHT = p.daynight || '';
-        p.BRIGHT_MIR = Number(p.brightness != null ? p.brightness : p.bright_ti4);
-        p.BRIGHT_TIR = Number(p.bright_t31 != null ? p.bright_t31 : p.bright_ti5);
+        p.FRP_WOOSTER = Number(firstProp(p, ['frp', 'FRP']) || 0);
+        p.CONFIDENCE_RAW = firstProp(p, ['confidence', 'CONFIDENCE']);
+        p.CONFIDENCE = /^\d+(\.\d+)?$/.test(String(p.CONFIDENCE_RAW || '')) ? Number(p.CONFIDENCE_RAW) : null;
+        p.VIIRS_CONFIDENCE = p.CONFIDENCE === null ? String(p.CONFIDENCE_RAW || '').toLowerCase() : '';
+        p.INSTRUMENT = String(p.PRODUCT || '').toLowerCase().indexOf('modis') !== -1 ? 'MODIS' : 'VIIRS';
+        p.DAYNIGHT = firstProp(p, ['daynight', 'DAYNIGHT']) || '';
+        p.BRIGHT_MIR = Number(firstProp(p, ['brightness', 'BRIGHTNESS', 'bright_ti4', 'BRIGHT_TI4']));
+        p.BRIGHT_TIR = Number(firstProp(p, ['bright_t31', 'BRIGHT_T31', 'bright_ti5', 'BRIGHT_TI5']));
         if (!isFinite(p.BRIGHT_MIR)) p.BRIGHT_MIR = null;
         if (!isFinite(p.BRIGHT_TIR)) p.BRIGHT_TIR = null;
         return feature;
