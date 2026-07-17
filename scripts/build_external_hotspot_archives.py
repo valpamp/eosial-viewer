@@ -36,6 +36,9 @@ def normalize_firms(gdf):
     out['product'] = col('version', '')
     out['satellite'] = col('satellite', '')
     out['frp'] = col('frp', 0)
+    out['latitude'] = col('latitude', '')
+    out['longitude'] = col('longitude', '')
+    out['confidence'] = col('confidence', '')
     return out
 
 def normalize_s3(gdf, source):
@@ -53,6 +56,9 @@ def write_archive(name, groups, output, incremental=False):
     keep = set(existing[item]['path'].split('/')[-1] for item in existing)
     for day, frames in sorted(groups.items()):
         frame = pd.concat(frames, ignore_index=True)
+        firms_key = ['acq_date', 'acq_time', 'satellite', 'latitude', 'longitude', 'frp']
+        if name == 'firms' and all(column in frame.columns for column in firms_key):
+            frame = frame.drop_duplicates(subset=firms_key, keep='last')
         gdf = gpd.GeoDataFrame(frame, geometry='geometry', crs=frames[0].crs or 'EPSG:4326')
         path = directory / f'{name}_{day:%Y%m%d}.fgb'
         gdf.to_file(path, driver='FlatGeobuf')
@@ -69,7 +75,12 @@ def write_archive(name, groups, output, incremental=False):
 
 def build_firms(archive_source, nrt_source, output, incremental=False):
     groups = {}
-    for path in ([] if incremental else archive_source.glob('fire_archive_*.shp')):
+    historical_files = []
+    if not incremental:
+        historical_files.extend(archive_source.glob('fire_archive_*.shp'))
+        # NASA packages NOAA-21/J2V's full history under an NRT filename.
+        historical_files.extend(archive_source.glob('fire_nrt_J2V-*.shp'))
+    for path in sorted(set(historical_files)):
         gdf = normalize_firms(gpd.read_file(path))
         dates = day_column(gdf, ('acq_date',))
         for day, frame in gdf.groupby(dates):
