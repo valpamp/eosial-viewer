@@ -169,6 +169,7 @@
     var externalArchiveManifests = {};
     var loadedExternalArchiveChunks = {};
     var externalArchiveLoads = {};
+    var externalArchiveReady = {};
     var mapRef        = null;
     var dataBaseUrl   = '';
     var legendControl = null;
@@ -922,13 +923,26 @@
         return externalArchiveLoads[key];
     }
 
+    function externalArchiveRangeKey(dataset, range) {
+        return dataset + ':' + range.start.toISOString() + '|' + range.end.toISOString();
+    }
+
     function loadNeededExternalArchives(range) {
         var loads = [];
-        if (firmsVisible) loads.push(loadExternalArchive('FIRMS', range));
-        if (s3Visible) loads.push(loadExternalArchive('S3', range));
-        return Promise.all(loads.map(function (load) {
-            return load.catch(function (err) { console.warn('[FIRE] External archive source failed:', err); return []; });
-        }));
+        ['FIRMS', 'S3'].forEach(function (dataset) {
+            var visible = dataset === 'FIRMS' ? firmsVisible : s3Visible;
+            var readyKey = externalArchiveRangeKey(dataset, range);
+            if (!visible || externalArchiveReady[readyKey]) return;
+            loads.push(loadExternalArchive(dataset, range).then(function (features) {
+                externalArchiveReady[readyKey] = true;
+                return features;
+            }).catch(function (err) {
+                console.warn('[FIRE] ' + dataset + ' archive load failed:', err);
+                externalArchiveReady[readyKey] = true;
+                return [];
+            }));
+        });
+        return Promise.all(loads);
     }
     function loadArchiveManifest() {
         if (archiveManifest) return Promise.resolve(archiveManifest);
@@ -1120,9 +1134,10 @@
         var range = getTimeRange();
 
         // External polar-orbiting archives are fetched only for the requested interval.
-        var externalReadyKey = 'ready:' + range.start.toISOString() + '|' + range.end.toISOString();
-        if ((firmsVisible || s3Visible) && !externalArchiveLoads[externalReadyKey]) {
-            externalArchiveLoads[externalReadyKey] = loadNeededExternalArchives(range).then(function () { externalArchiveLoads[externalReadyKey] = true; applyFilters(); }).catch(function (err) { console.warn('[FIRE] External archive load failed:', err); externalArchiveLoads[externalReadyKey] = true; applyFilters(); });
+        var firmsArchivePending = firmsVisible && !externalArchiveReady[externalArchiveRangeKey('FIRMS', range)];
+        var s3ArchivePending = s3Visible && !externalArchiveReady[externalArchiveRangeKey('S3', range)];
+        if (firmsArchivePending || s3ArchivePending) {
+            loadNeededExternalArchives(range).then(function () { applyFilters(); });
             return;
         }
         // SFIDE archive data is separate from the recent FIRMS/S3 files.
