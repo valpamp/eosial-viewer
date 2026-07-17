@@ -380,7 +380,8 @@
         p.FRP_WOOSTER = Number(firstProp(p, ['frp', 'FRP']) || 0);
         p.CONFIDENCE_RAW = firstProp(p, ['confidence', 'CONFIDENCE']);
         p.CONFIDENCE = /^\d+(\.\d+)?$/.test(String(p.CONFIDENCE_RAW || '')) ? Number(p.CONFIDENCE_RAW) : null;
-        p.VIIRS_CONFIDENCE = p.CONFIDENCE === null ? String(p.CONFIDENCE_RAW || '').toLowerCase() : '';
+        var viirsConfidence = String(p.CONFIDENCE_RAW || '').toLowerCase();
+        p.VIIRS_CONFIDENCE = p.CONFIDENCE === null ? ({ l: 'low', n: 'nominal', h: 'high' }[viirsConfidence] || viirsConfidence) : '';
         p.INSTRUMENT = firstProp(p, ['instrument', 'INSTRUMENT']) ||
             (String(p.PRODUCT || '').toLowerCase().indexOf('modis') !== -1 ? 'MODIS' : 'VIIRS');
         p.DAYNIGHT = firstProp(p, ['daynight', 'DAYNIGHT']) || '';

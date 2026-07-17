@@ -54,7 +54,13 @@
             }
         });
         document.getElementById('fire-animation-apply-range').addEventListener('click', applyAnimationRange);
-        document.getElementById('fire-animation-export').addEventListener('click', exportWebM);
+        document.getElementById('fire-animation-export').addEventListener('click', function () { exportVideo('webm'); });
+        var mp4Button = document.getElementById('fire-animation-export-mp4');
+        mp4Button.addEventListener('click', function () { exportVideo('mp4'); });
+        if (!supportedMp4Mime()) {
+            mp4Button.disabled = true;
+            mp4Button.title = 'MP4/H.264 export is not supported by this browser. Use Microsoft Edge or Google Chrome.';
+        }
         document.addEventListener('keydown', function (event) {
             if (active && event.key === 'Escape') close();
         });
@@ -324,12 +330,18 @@
         button.setAttribute('aria-label', button.title);
     }
 
-    async function exportWebM() {
+    async function exportVideo(format) {
         if (!active || exporting) return;
         if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-            setStatus('WebM export is not supported by this browser.');
+            setStatus('Video export is not supported by this browser.');
             return;
         }
+        var mimeType = format === 'mp4' ? supportedMp4Mime() : supportedWebMMime();
+        if (format === 'mp4' && !mimeType) {
+            setStatus('MP4/H.264 export is not supported by this browser. Open the viewer in Microsoft Edge or Google Chrome.');
+            return;
+        }
+
         if (frameTimes.length > 600) {
             setStatus('This export has more than 600 frames. Increase the animation step first.');
             return;
@@ -343,7 +355,7 @@
 
         stopPlayback();
         exporting = true;
-        var button = document.getElementById('fire-animation-export');
+        var button = document.getElementById(format === 'mp4' ? 'fire-animation-export-mp4' : 'fire-animation-export');
         var originalText = button.textContent;
         var restoreFrame = currentFrame;
         var mapElement = map.getContainer();
@@ -377,7 +389,6 @@
             output.height = layout.height;
             var context = output.getContext('2d');
             var stream = output.captureStream(10);
-            var mimeType = supportedWebMMime();
             var recorderOptions = { videoBitsPerSecond: 14000000 };
             if (mimeType) recorderOptions.mimeType = mimeType;
             var recorder = new MediaRecorder(stream, recorderOptions);
@@ -393,7 +404,7 @@
             for (var i = 0; i < frameTimes.length; i++) {
                 renderFrame(i);
                 drawExportFrame(context, snapshot, crop, sourceScale, layout, attribution);
-                setStatus('Rendering WebM frame ' + (i + 1) + ' of ' + frameTimes.length + '...');
+                setStatus('Rendering ' + format.toUpperCase() + ' frame ' + (i + 1) + ' of ' + frameTimes.length + '...');
                 await delay(getFrameDelay());
             }
             await delay(220);
@@ -405,12 +416,12 @@
             var anchor = document.createElement('a');
             anchor.href = url;
             anchor.download = 'hotspot_animation_' + filenameTime(frameTimes[0]) + '_' +
-                filenameTime(frameTimes[frameTimes.length - 1]) + '.webm';
+                filenameTime(frameTimes[frameTimes.length - 1]) + '.' + format;
             anchor.click();
             setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-            setStatus('Cropped WebM animation saved.');
+            setStatus('Cropped ' + format.toUpperCase() + ' animation saved.');
         } catch (error) {
-            console.error('[ANIMATION] WebM export failed:', error);
+            console.error('[ANIMATION] ' + format.toUpperCase() + ' export failed:', error);
             setStatus('Export failed. The selected basemap may block browser capture; try the OpenStreetMap or Light basemap.');
         } finally {
             document.body.classList.remove('fire-animation-exporting');
@@ -745,6 +756,19 @@
     function evenNumber(value) {
         value = Math.max(2, Math.round(value));
         return value % 2 === 0 ? value : value + 1;
+    }
+    function supportedMp4Mime() {
+        if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
+        var candidates = [
+            'video/mp4;codecs=avc1.42E01E',
+            'video/mp4;codecs=avc1.4D401E',
+            'video/mp4;codecs=h264',
+            'video/mp4'
+        ];
+        for (var i = 0; i < candidates.length; i++) {
+            if (MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+        }
+        return '';
     }
     function supportedWebMMime() {
         var candidates = [
