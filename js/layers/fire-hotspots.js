@@ -352,8 +352,8 @@
         if (product.indexOf('noaa-21') !== -1 || raw === 'N21') return 'FIRMS-NOAA21';
         if (product.indexOf('noaa-20') !== -1 || raw === 'N20') return 'FIRMS-NOAA20';
         if (product.indexOf('suomi') !== -1 || raw === 'N') return 'FIRMS-NPP';
-        if (raw === 'A') return 'FIRMS-MODIS-AQUA';
-        if (raw === 'T') return 'FIRMS-MODIS-TERRA';
+        if (raw === 'A' || raw === 'AQUA') return 'FIRMS-MODIS-AQUA';
+        if (raw === 'T' || raw === 'TERRA') return 'FIRMS-MODIS-TERRA';
         if (product.indexOf('modis') !== -1) return 'FIRMS-MODIS';
         return 'FIRMS-' + (raw || 'UNKNOWN');
     }
@@ -362,6 +362,8 @@
         var p = feature.properties;
         var rawDate = firstProp(p, ['acq_date', 'ACQ_DATE']);
         var date = rawDate instanceof Date ? rawDate.toISOString().substring(0, 10) : String(rawDate || '').trim();
+        var dateMatch = date.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) date = dateMatch[1];
         var time = String(firstProp(p, ['acq_time', 'ACQ_TIME']) || '').trim();
         if (/^\d{4}$/.test(time)) time = time.substring(0, 2) + ':' + time.substring(2, 4);
         if (/^\d{1,2}:\d{2}$/.test(time)) time = time.padStart(5, '0');
@@ -379,7 +381,8 @@
         p.CONFIDENCE_RAW = firstProp(p, ['confidence', 'CONFIDENCE']);
         p.CONFIDENCE = /^\d+(\.\d+)?$/.test(String(p.CONFIDENCE_RAW || '')) ? Number(p.CONFIDENCE_RAW) : null;
         p.VIIRS_CONFIDENCE = p.CONFIDENCE === null ? String(p.CONFIDENCE_RAW || '').toLowerCase() : '';
-        p.INSTRUMENT = String(p.PRODUCT || '').toLowerCase().indexOf('modis') !== -1 ? 'MODIS' : 'VIIRS';
+        p.INSTRUMENT = firstProp(p, ['instrument', 'INSTRUMENT']) ||
+            (String(p.PRODUCT || '').toLowerCase().indexOf('modis') !== -1 ? 'MODIS' : 'VIIRS');
         p.DAYNIGHT = firstProp(p, ['daynight', 'DAYNIGHT']) || '';
         p.BRIGHT_MIR = Number(firstProp(p, ['brightness', 'BRIGHTNESS', 'bright_ti4', 'BRIGHT_TI4']));
         p.BRIGHT_TIR = Number(firstProp(p, ['bright_t31', 'BRIGHT_T31', 'bright_ti5', 'BRIGHT_TI5']));
