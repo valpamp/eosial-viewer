@@ -359,7 +359,8 @@
 
     function normalizeFirmsFeature(feature) {
         var p = feature.properties;
-        var date = String(firstProp(p, ['acq_date', 'ACQ_DATE']) || '').trim();
+        var rawDate = firstProp(p, ['acq_date', 'ACQ_DATE']);
+        var date = rawDate instanceof Date ? rawDate.toISOString().substring(0, 10) : String(rawDate || '').trim();
         var time = String(firstProp(p, ['acq_time', 'ACQ_TIME']) || '').trim();
         if (/^\d{4}$/.test(time)) time = time.substring(0, 2) + ':' + time.substring(2, 4);
         if (/^\d{1,2}:\d{2}$/.test(time)) time = time.padStart(5, '0');
@@ -925,7 +926,9 @@
         var loads = [];
         if (firmsVisible) loads.push(loadExternalArchive('FIRMS', range));
         if (s3Visible) loads.push(loadExternalArchive('S3', range));
-        return Promise.all(loads);
+        return Promise.all(loads.map(function (load) {
+            return load.catch(function (err) { console.warn('[FIRE] External archive source failed:', err); return []; });
+        }));
     }
     function loadArchiveManifest() {
         if (archiveManifest) return Promise.resolve(archiveManifest);
