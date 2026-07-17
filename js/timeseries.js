@@ -45,7 +45,10 @@
         var datasets;
         var showLegend = false;
         var isHourly = opts.timeUnit === 'hour' || opts.timeUnit === 'minute';
-        var xTickLimit = opts.maxXTicks || (isHourly ? 5 : 6);
+        var chartWidth = canvas.clientWidth || 900;
+        var xTickLimit = opts.maxXTicks || Math.max(4, Math.min(12, Math.floor(chartWidth / 105)));
+        var timeExtent = getSeriesTimeExtent(series, opts.datasets);
+        var timeAxis = getTimeAxisConfig(timeExtent.spanMs, isHourly);
 
         if (opts.datasets) {
             // Custom datasets passed directly
@@ -139,13 +142,13 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 220 },
+                animation: { duration: 280, easing: 'easeOutQuart' },
                 interaction: { mode: 'index', intersect: false },
                 layout: {
-                    padding: { top: 18, right: 28, bottom: 24, left: 14 }
+                    padding: { top: 16, right: 24, bottom: 18, left: 10 }
                 },
                 elements: {
-                    line: { tension: 0.22 },
+                    line: { tension: 0.2, borderWidth: 2.4 },
                     point: { hoverBorderWidth: 2.5 }
                 },
                 plugins: {
@@ -210,8 +213,8 @@
                             scale.height = Math.max(scale.height, isHourly ? 82 : 66);
                         },
                         time: {
-                            tooltipFormat: opts.timeUnit === 'hour' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy',
-                            unit: opts.timeUnit || 'day',
+                            tooltipFormat: isHourly ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy',
+                            unit: timeAxis.unit,
                             displayFormats: {
                                 minute: 'HH:mm',
                                 hour: 'HH:mm',
@@ -225,8 +228,9 @@
                             minRotation: 0,
                             autoSkip: true,
                             maxTicksLimit: xTickLimit,
-                            color: '#334155',
-                            font: { size: 13, weight: '700' },
+                            stepSize: timeAxis.stepSize,
+                            color: '#344256',
+                            font: { size: 13, weight: '600' },
                             padding: 10,
                             callback: function (value) {
                                 var d = new Date(value);
@@ -243,11 +247,11 @@
                             }
                         },
                         grid: {
-                            color: 'rgba(100,116,139,0.38)',
-                            lineWidth: 1.05,
+                            color: 'rgba(148,163,184,0.28)',
+                            lineWidth: 1,
                             drawTicks: true,
                             tickLength: 5,
-                            tickColor: 'rgba(100,116,139,0.55)'
+                            tickColor: 'rgba(100,116,139,0.42)'
                         },
                         border: { color: '#cbd5e1', width: 1 },
                         title: {
@@ -269,25 +273,56 @@
                         beginAtZero: opts.beginAtZero === undefined ? false : opts.beginAtZero,
                         grace: opts.yGrace || '8%',
                         ticks: {
-                            color: '#334155',
-                            font: { size: 13, weight: '700' },
+                            color: '#344256',
+                            font: { size: 13, weight: '600' },
                             padding: 12,
                             callback: function (value) {
                                 return formatNumber(value);
                             }
                         },
                         grid: {
-                            color: 'rgba(100,116,139,0.44)',
-                            lineWidth: 1.2,
+                            color: 'rgba(148,163,184,0.42)',
+                            lineWidth: 1,
                             drawTicks: true,
                             tickLength: 5,
-                            tickColor: 'rgba(100,116,139,0.6)'
+                            tickColor: 'rgba(100,116,139,0.48)'
                         },
                         border: { color: '#cbd5e1', width: 1 },
                     }
                 }
             }
         });
+    }
+
+    function getSeriesTimeExtent(series, customDatasets) {
+        var values = [];
+        (series || []).forEach(function (item) {
+            var value = item && item.date;
+            var time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+            if (isFinite(time)) values.push(time);
+        });
+        (customDatasets || []).forEach(function (dataset) {
+            (dataset.data || []).forEach(function (item) {
+                var value = item && item.x != null ? item.x : null;
+                var time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+                if (isFinite(time)) values.push(time);
+            });
+        });
+        if (!values.length) return { min: null, max: null, spanMs: 0 };
+        var min = Math.min.apply(Math, values);
+        var max = Math.max.apply(Math, values);
+        return { min: min, max: max, spanMs: Math.max(0, max - min) };
+    }
+
+    function getTimeAxisConfig(spanMs, isHourly) {
+        if (!isHourly) return { unit: 'day', stepSize: 1 };
+        var minutes = spanMs / 60000;
+        if (minutes <= 120) return { unit: 'minute', stepSize: 15 };
+        if (minutes <= 360) return { unit: 'minute', stepSize: 30 };
+        if (minutes <= 900) return { unit: 'hour', stepSize: 1 };
+        if (minutes <= 1800) return { unit: 'hour', stepSize: 2 };
+        if (minutes <= 4320) return { unit: 'hour', stepSize: 6 };
+        return { unit: 'day', stepSize: Math.max(1, Math.ceil(minutes / 1440 / 10)) };
     }
 
     function colorWithAlpha(color, alpha) {
