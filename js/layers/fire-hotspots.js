@@ -86,11 +86,11 @@
             { t: 1.0,  c: [ 12,  74, 110] }
         ],
         'FIRMS-MODIS-AQUA': [
-            { t: 0.0,  c: [255, 237, 213] },
-            { t: 0.25, c: [253, 186, 116] },
-            { t: 0.5,  c: [249, 115,  22] },
-            { t: 0.75, c: [194,  65,  12] },
-            { t: 1.0,  c: [124,  45,  18] }
+            { t: 0.0,  c: [253, 242, 248] },
+            { t: 0.25, c: [249, 168, 212] },
+            { t: 0.5,  c: [236,  72, 153] },
+            { t: 0.75, c: [190,  24,  93] },
+            { t: 1.0,  c: [131,  24,  67] }
         ],
         'FIRMS-MODIS-TERRA': [
             { t: 0.0,  c: [254, 226, 226] },
@@ -166,6 +166,9 @@
     var loadedArchiveMonths = {};
     var archiveLoadInProgressKey = null;
     var archiveLoadFailedKey = null;
+    var externalArchiveManifests = {};
+    var loadedExternalArchiveChunks = {};
+    var externalArchiveLoads = {};
     var mapRef        = null;
     var dataBaseUrl   = '';
     var legendControl = null;
@@ -902,6 +905,28 @@
             });
     }
 
+    function loadExternalArchive(dataset, range) {
+        if (!range) return Promise.resolve([]);
+        var name = dataset === 'FIRMS' ? 'firms' : 's3';
+        var key = name + ':' + range.start.toISOString() + '|' + range.end.toISOString();
+        if (externalArchiveLoads[key]) return externalArchiveLoads[key];
+        externalArchiveLoads[key] = (externalArchiveManifests[name] ? Promise.resolve(externalArchiveManifests[name]) : fetch(dataBaseUrl + '/fire/' + name + '_archive_manifest.json?v=' + Date.now()).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (manifest) { externalArchiveManifests[name] = manifest; return manifest; })).then(function (manifest) {
+            var chunks = (manifest.chunks || []).filter(function (chunk) { return new Date(chunk.end) >= range.start && new Date(chunk.start) <= range.end && !loadedExternalArchiveChunks[name + ':' + chunk.key]; });
+            if (!chunks.length) return [];
+            return Promise.all(chunks.map(function (chunk) {
+                var normalizer = dataset === 'S3' ? function (feature) { return normalizeFeature(normalizeS3Feature(feature, chunk.path)); } : normalizeFeature;
+                return loadByFormat(dataBaseUrl + '/fire/' + chunk.path, '.fgb', normalizer).then(function (features) { loadedExternalArchiveChunks[name + ':' + chunk.key] = true; mergeFeatures(features); return features; });
+            }));
+        }).finally(function () { delete externalArchiveLoads[key]; });
+        return externalArchiveLoads[key];
+    }
+
+    function loadNeededExternalArchives(range) {
+        var loads = [];
+        if (firmsVisible) loads.push(loadExternalArchive('FIRMS', range));
+        if (s3Visible) loads.push(loadExternalArchive('S3', range));
+        return Promise.all(loads);
+    }
     function loadArchiveManifest() {
         if (archiveManifest) return Promise.resolve(archiveManifest);
         return fetch(dataBaseUrl + '/fire/sfide_archive_manifest.json?v=' + Date.now())
@@ -1091,6 +1116,12 @@
 
         var range = getTimeRange();
 
+        // External polar-orbiting archives are fetched only for the requested interval.
+        var externalReadyKey = 'ready:' + range.start.toISOString() + '|' + range.end.toISOString();
+        if ((firmsVisible || s3Visible) && !externalArchiveLoads[externalReadyKey]) {
+            externalArchiveLoads[externalReadyKey] = loadNeededExternalArchives(range).then(function () { externalArchiveLoads[externalReadyKey] = true; applyFilters(); }).catch(function (err) { console.warn('[FIRE] External archive load failed:', err); externalArchiveLoads[externalReadyKey] = true; applyFilters(); });
+            return;
+        }
         // SFIDE archive data is separate from the recent FIRMS/S3 files.
         var archiveKey = getSfideArchiveLoadKey(range);
         if (archiveKey) {

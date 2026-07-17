@@ -10,6 +10,7 @@ the combined data/fire changes.
 from __future__ import annotations
 
 import argparse
+import build_external_hotspot_archives
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -82,7 +83,7 @@ def run_once(args: argparse.Namespace) -> None:
             output_dir=output_dir,
             recent_days=args.firms_recent_days,
             lookahead_days=args.firms_lookahead_days,
-            full_rebuild=args.full_rebuild_firms,
+            full_rebuild=False,
             git=False,
             repo_root=args.repo_root,
             git_exe=args.git_exe,
@@ -101,7 +102,7 @@ def run_once(args: argparse.Namespace) -> None:
             output_dir=output_dir,
             recent_days=args.s3_recent_days,
             lookahead_days=args.s3_lookahead_days,
-            full_rebuild=args.full_rebuild_s3,
+            full_rebuild=False,
             git=False,
             repo_root=args.repo_root,
             git_exe=args.git_exe,
@@ -113,6 +114,22 @@ def run_once(args: argparse.Namespace) -> None:
     else:
         print(f"WARNING: Sentinel-3 source path not found; skipping Sentinel-3 update: {s3_source}", flush=True)
 
+    if not args.skip_external_archives:
+        print('Updating FIRMS and Sentinel-3 historical archives...', flush=True)
+        archive_args = argparse.Namespace(
+            output_dir=output_dir,
+            firms_archive_source=args.firms_archive_source_dir,
+            firms_nrt_source=firms_source,
+            s3_source=s3_source,
+            dataset='all',
+            incremental=not (args.full_rebuild_firms or args.full_rebuild_s3),
+        )
+        if archive_args.incremental:
+            build_external_hotspot_archives.build_firms(archive_args.firms_archive_source, archive_args.firms_nrt_source, output_dir, True)
+            build_external_hotspot_archives.build_s3(archive_args.s3_source, output_dir, True)
+        else:
+            build_external_hotspot_archives.build_firms(archive_args.firms_archive_source, archive_args.firms_nrt_source, output_dir)
+            build_external_hotspot_archives.build_s3(archive_args.s3_source, output_dir)
     mtg_fir_source = args.mtg_fir_source_dir.resolve()
     if mtg_fir_source.exists():
         mtg_fir_args = argparse.Namespace(
@@ -140,6 +157,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Update SFIDE, NASA FIRMS, Sentinel-3, and MTG-FIR hotspot databases for EOSIAL Viewer.")
     parser.add_argument("--sfide-source-dir", type=Path, default=update_sfide_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--firms-source-dir", type=Path, default=update_firms_database.DEFAULT_SOURCE_DIR)
+    parser.add_argument("--firms-archive-source-dir", type=Path, default=Path(r"F:\Valerio\dfdi\data\hotspots\ITA"))
+
     parser.add_argument("--s3-source-dir", type=Path, default=update_s3_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--mtg-fir-source-dir", type=Path, default=update_mtg_fir_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_WEB_ROOT / "data" / "fire")
@@ -148,6 +167,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--git", action="store_true")
     parser.add_argument("--repo-root", type=Path, default=DEFAULT_WEB_ROOT)
     parser.add_argument("--git-exe", default="git")
+    parser.add_argument("--skip-external-archives", action="store_true", help="Skip FIRMS/Sentinel-3 archive maintenance.")
     parser.add_argument("--full-rebuild-sfide", action="store_true")
     parser.add_argument("--full-rebuild-firms", action="store_true")
     parser.add_argument("--full-rebuild-s3", action="store_true")
