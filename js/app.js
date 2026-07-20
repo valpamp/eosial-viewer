@@ -940,5 +940,6 @@
     // Initialise layers
     if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
     EV.fireHotspots.init(map, DATA_BASE);
+    if (EV.onboarding) EV.onboarding.init();
 
 })();
