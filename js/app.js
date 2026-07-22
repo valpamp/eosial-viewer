@@ -909,10 +909,11 @@
     /* ── Smooth sidebar toggle ─────────────────────────────────── */
 
     // Override sidebar toggle for smooth map resize
-    var panelOpen = true;
+    var panelOpen = window.matchMedia('(min-width: 640px)').matches;
     var panel = document.getElementById('control-panel');
     var toggleBtn = document.getElementById('toggle-panel-btn');
     var toggleIcon = document.getElementById('toggle-panel-icon');
+    if (!panelOpen) toggleIcon.style.transform = 'rotate(180deg)';
 
     toggleBtn.addEventListener('click', function () {
         panelOpen = !panelOpen;
@@ -948,8 +949,12 @@
     // Initialise layers
     if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
     var fireInit = EV.fireHotspots.init(map, DATA_BASE);
+    if (EV.mobileUI) EV.mobileUI.init(map);
     if (urlParams.has('src') && fireInit && fireInit.then) {
-        fireInit.then(function () { EV.fireHotspots.applyShareParams(urlParams); });
+        fireInit.then(function () {
+            EV.fireHotspots.applyShareParams(urlParams);
+            if (EV.mobileUI) EV.mobileUI.update();
+        });
     }
     if (EV.onboarding) EV.onboarding.init();
 

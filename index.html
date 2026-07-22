@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
     <!-- App styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=20260722.2">
 </head>
 <body class="font-sans overflow-hidden bg-gray-100">
 
@@ -130,6 +130,31 @@
     <!-- Map -->
     <div id="map"></div>
 
+    <!-- Mobile map controls -->
+    <nav id="mobile-map-dock" class="mobile-map-dock" aria-label="Map controls">
+        <button type="button" data-mobile-panel="layers" aria-controls="mobile-control-sheet" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5ZM2 12l10 5 10-5M2 17l10 5 10-5"/></svg>
+            <span>Layers</span><small id="mobile-layers-summary">1 active</small>
+        </button>
+        <button type="button" data-mobile-panel="time" aria-controls="mobile-control-sheet" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>Time</span><small id="mobile-time-summary">Last 6h</small>
+        </button>
+        <button type="button" data-mobile-panel="filters" aria-controls="mobile-control-sheet" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            <span>Filters</span><small id="mobile-filter-summary">SFIDE &middot; 20 MW</small>
+        </button>
+    </nav>
+
+    <div id="mobile-sheet-backdrop" class="mobile-sheet-backdrop hidden"></div>
+    <section id="mobile-control-sheet" class="mobile-control-sheet" aria-hidden="true" aria-labelledby="mobile-sheet-title">
+        <div id="mobile-sheet-handle" class="mobile-sheet-handle" aria-hidden="true"><span></span></div>
+        <header class="mobile-sheet-header">
+            <div><small>Active Fire Viewer</small><h2 id="mobile-sheet-title">Controls</h2></div>
+            <button id="mobile-sheet-close" type="button" aria-label="Close controls">&times;</button>
+        </header>
+        <div id="mobile-sheet-body" class="mobile-sheet-body"></div>
+    </section>
     <!-- Product Toolbar -->
     <div id="product-toolbar" class="product-toolbar hidden">
         <div id="product-toolbar-content" class="product-toolbar-content"></div>
@@ -302,9 +327,10 @@
     <script src="js/fire-animation.js"></script>
     <script src="js/timeseries.js"></script>
     <script src="js/onboarding.js"></script>
+    <script src="js/mobile-ui.js?v=20260722.2"></script>
     <script src="js/layers/admin-boundaries.js"></script>
-    <script src="js/layers/fire-hotspots.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/layers/fire-hotspots.js?v=20260722.2"></script>
+    <script src="js/app.js?v=20260722.2"></script>
 
 </body>
 </html>
