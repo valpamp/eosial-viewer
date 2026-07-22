@@ -829,11 +829,19 @@
 
     document.getElementById('btn-copy-link').addEventListener('click', function () {
         var c = map.getCenter();
-        var url = location.origin + location.pathname +
-                  '?lat=' + c.lat.toFixed(5) + '&lng=' + c.lng.toFixed(5) +
-                  '&z=' + map.getZoom();
+        var params = new URLSearchParams();
+        params.set('lat', c.lat.toFixed(5));
+        params.set('lng', c.lng.toFixed(5));
+        params.set('z', map.getZoom());
+        if (EV.fireHotspots && EV.fireHotspots.getShareParams) {
+            var fireState = EV.fireHotspots.getShareParams();
+            Object.keys(fireState).forEach(function (key) {
+                params.set(key, fireState[key]);
+            });
+        }
+        var url = location.origin + location.pathname + '?' + params.toString();
         navigator.clipboard.writeText(url).then(function () {
-            alert('Link copied to clipboard!');
+            alert('Link copied with map, time, satellite, and filter settings!');
         });
     });
 
@@ -857,7 +865,7 @@
         var lng = parseFloat(params.get('lng'));
         var z   = parseInt(params.get('z'));
         if (!isNaN(lat) && !isNaN(lng)) map.setView([lat, lng], isNaN(z) ? 10 : z);
-
+        return params;
     }
 
     /* ── Cursor info (coords + hover value) ───────────────────── */
@@ -927,7 +935,7 @@
 
     /* ── Boot ──────────────────────────────────────────────────── */
 
-    applyUrlParams();
+    var urlParams = applyUrlParams();
 
     // Register layers
     registerLayer(EV.sfideHotspots);
@@ -939,7 +947,10 @@
 
     // Initialise layers
     if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
-    EV.fireHotspots.init(map, DATA_BASE);
+    var fireInit = EV.fireHotspots.init(map, DATA_BASE);
+    if (urlParams.has('src') && fireInit && fireInit.then) {
+        fireInit.then(function () { EV.fireHotspots.applyShareParams(urlParams); });
+    }
     if (EV.onboarding) EV.onboarding.init();
 
 })();

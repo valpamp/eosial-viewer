@@ -12,7 +12,7 @@ Interactive web viewer for active fire detections and satellite wildfire managem
 - **Location search** - Geocoding via OpenStreetMap Nominatim
 - **Multiple basemaps** - CartoDB Light/Dark, OpenStreetMap, Google Satellite, OpenTopoMap
 - **Dark mode** - Full UI dark theme toggle
-- **Shareable permalinks** - URLs encode map view, AOI, and date
+- **Shareable permalinks** - URLs preserve the map view, time interval, visible hotspot sources, selected satellites, and filter values
 
 ## Quick start
 

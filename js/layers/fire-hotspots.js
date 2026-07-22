@@ -173,6 +173,7 @@
     var mapRef        = null;
     var dataBaseUrl   = '';
     var legendControl = null;
+    var pendingSharedSatellites = null;
 
     /* ── FRP color ─────────────────────────────────────────────── */
 
@@ -1315,7 +1316,9 @@
             if (!target) return;
             var div = document.createElement('label');
             div.className = 'toolbar-pill';
-            var checked = isDefaultSatelliteSelected(sat, sorted) ? ' checked' : '';
+            var selected = pendingSharedSatellites !== null ?
+                pendingSharedSatellites.indexOf(sat) !== -1 : isDefaultSatelliteSelected(sat, sorted);
+            var checked = selected ? ' checked' : '';
             var swatchColor = paletteSample(sat);
             div.innerHTML =
                 '<input type="checkbox" value="' + sat + '" class="fire-sat-filter"' + checked + '>' +
@@ -1902,6 +1905,115 @@
         return series;
     }
 
+    /* Shareable viewer state */
+
+    function csvValues(selector) {
+        return getCheckedValues(selector).join(',');
+    }
+
+    function setCheckedValues(selector, csv) {
+        if (csv === null || csv === undefined) return;
+        var values = String(csv).split(',').filter(Boolean);
+        document.querySelectorAll(selector).forEach(function (cb) {
+            cb.checked = values.indexOf(cb.value) !== -1;
+        });
+    }
+
+    function setInputFromParam(params, param, id) {
+        if (!params.has(param)) return;
+        var input = document.getElementById(id);
+        if (input) input.value = params.get(param);
+    }
+
+    function getShareParams() {
+        var result = {};
+        var activeTime = document.querySelector('.fire-time-btn.active');
+        if (activeTime) {
+            result.fh = activeTime.getAttribute('data-hours');
+        } else {
+            var range = getTimeRange();
+            result.fstart = range.start.toISOString();
+            result.fend = range.end.toISOString();
+        }
+        result.src = ['SFIDE', 'FIRMS', 'S3', 'MTG_FIR'].filter(getSourceVisible).join(',');
+        result.ftab = activeFireSourceTab;
+        result.sat = csvValues('.fire-sat-filter');
+        result.type = csvValues('.fire-type-filter');
+        result.viirs = csvValues('.fire-viirs-conf-filter');
+        result.mtgr = csvValues('.fire-mtg-fir-result-filter');
+        result.sfconf = textInputValue('fire-sfide-min-conf');
+        result.sffrp = textInputValue('fire-sfide-min-frp');
+        result.fmconf = textInputValue('fire-firms-modis-min-conf');
+        result.fmfrp = textInputValue('fire-firms-min-frp');
+        result.s3conf = textInputValue('fire-s3-min-conf');
+        result.s3frp = textInputValue('fire-s3-min-frp');
+        result.mtgprob = textInputValue('fire-mtg-fir-min-prob');
+        return result;
+    }
+
+    function applyShareParams(params) {
+        if (!params || !params.has('src')) return;
+
+        var allowedSources = ['SFIDE', 'FIRMS', 'S3', 'MTG_FIR'];
+        var sources = String(params.get('src') || '').split(',').filter(function (source) {
+            return allowedSources.indexOf(source) !== -1;
+        });
+        sfideVisible = sources.indexOf('SFIDE') !== -1;
+        firmsVisible = sources.indexOf('FIRMS') !== -1;
+        s3Visible = sources.indexOf('S3') !== -1;
+        mtgFirVisible = sources.indexOf('MTG_FIR') !== -1;
+        allowedSources.forEach(function (source) {
+            syncSidebarLayerToggle(source, getSourceVisible(source));
+        });
+
+        var requestedTab = params.get('ftab');
+        activeFireSourceTab = allowedSources.indexOf(requestedTab) !== -1 ? requestedTab : firstVisibleSource();
+
+        var timeButtons = document.querySelectorAll('.fire-time-btn');
+        timeButtons.forEach(function (button) {
+            button.classList.remove('active', 'bg-blue-100', 'text-blue-700');
+            button.classList.add('bg-gray-100', 'text-gray-700');
+        });
+        if (params.has('fh')) {
+            var preset = document.querySelector('.fire-time-btn[data-hours="' + params.get('fh') + '"]');
+            if (preset) {
+                preset.classList.add('active', 'bg-blue-100', 'text-blue-700');
+                preset.classList.remove('bg-gray-100', 'text-gray-700');
+            }
+        } else if (params.has('fstart') && params.has('fend')) {
+            var start = new Date(params.get('fstart'));
+            var end = new Date(params.get('fend'));
+            if (isFinite(start.getTime()) && isFinite(end.getTime()) && start < end) {
+                document.getElementById('fire-start-time').value = formatEuropeanDateTime(start);
+                document.getElementById('fire-end-time').value = formatEuropeanDateTime(end);
+            }
+        }
+
+        setInputFromParam(params, 'sfconf', 'fire-sfide-min-conf');
+        setInputFromParam(params, 'sffrp', 'fire-sfide-min-frp');
+        setInputFromParam(params, 'fmconf', 'fire-firms-modis-min-conf');
+        setInputFromParam(params, 'fmfrp', 'fire-firms-min-frp');
+        setInputFromParam(params, 's3conf', 'fire-s3-min-conf');
+        setInputFromParam(params, 's3frp', 'fire-s3-min-frp');
+        setInputFromParam(params, 'mtgprob', 'fire-mtg-fir-min-prob');
+        setCheckedValues('.fire-type-filter', params.has('type') ? params.get('type') : null);
+        setCheckedValues('.fire-viirs-conf-filter', params.has('viirs') ? params.get('viirs') : null);
+        setCheckedValues('.fire-mtg-fir-result-filter', params.has('mtgr') ? params.get('mtgr') : null);
+
+        if (params.has('sat')) {
+            pendingSharedSatellites = String(params.get('sat') || '').split(',').filter(Boolean);
+            setCheckedValues('.fire-sat-filter', params.get('sat'));
+        }
+
+        var targetMap = mapRef;
+        if (clusterGroup && targetMap) {
+            if (anySourceVisible()) clusterGroup.addTo(targetMap);
+            else targetMap.removeLayer(clusterGroup);
+        }
+        updateFireControlVisibility();
+        updateDatabaseLastUpdate();
+        applyFilters();
+    }
     /* ── Public API ────────────────────────────────────────────── */
 
     EV.fireHotspots = {
@@ -1966,6 +2078,8 @@
 
         setVisible: setVisible,
         queryPolygon: queryPolygon,
+        getShareParams: getShareParams,
+        applyShareParams: applyShareParams,
         setAnimationMode: function (active) {
             if (!clusterGroup || !mapRef) return;
             if (active) {
