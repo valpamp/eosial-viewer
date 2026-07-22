@@ -1631,12 +1631,6 @@
             div.style.display = 'none';
             updateLegendContent(div);
             L.DomEvent.disableClickPropagation(div);
-            L.DomEvent.on(div, 'click', function (event) {
-                var button = event.target.closest('.fire-legend-toggle');
-                if (!button || !window.matchMedia('(max-width: 760px)').matches) return;
-                var expanded = div.classList.toggle('mobile-expanded');
-                button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            });
             return div;
         };
         legendControl.addTo(map);
@@ -1671,8 +1665,6 @@
             '<span class="fire-legend-shape fire-legend-diamond">Offshore</span></div>' : '';
 
         div.innerHTML =
-            '<button type="button" class="fire-legend-toggle" aria-expanded="' +
-            (div.classList.contains('mobile-expanded') ? 'true' : 'false') + '">Legend</button>' +
             '<div class="fire-legend-section"><h4>Satellite</h4>' + satelliteRows + '</div>' +
             fireTypeSection +
             '<div class="fire-legend-section"><h4>FRP [MW]</h4>' +

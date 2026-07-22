@@ -342,7 +342,6 @@
         document.body.classList.toggle('querying', measureActive);
 
         if (measureActive) {
-            if (touchRectangleActive) cancelTouchRectangle();
             // Cancel point query if active
             pointQueryActive = false;
             document.getElementById('btn-draw-point').classList.remove('active');
@@ -680,138 +679,7 @@
     var rectangleDrawer = null;
     var drawnItems  = new L.FeatureGroup();
     map.addLayer(drawnItems);
-    var touchRectangleActive = false;
-    var touchRectangleStart = null;
-    var touchRectangleStartPoint = null;
-    var touchRectanglePreview = null;
-    var touchPointerId = null;
-    var touchMapDraggingWasEnabled = false;
-    var touchQueryHint = document.createElement('div');
-    var mapContainer = map.getContainer();
-    touchQueryHint.className = 'touch-query-hint hidden';
-    touchQueryHint.innerHTML = '<span>Drag to select an area</span><button type="button">Cancel</button>';
-    document.body.appendChild(touchQueryHint);
-    touchQueryHint.querySelector('button').addEventListener('click', cancelTouchRectangle);
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && touchRectangleActive) cancelTouchRectangle();
-    });
-    var touchLayoutMedia = window.matchMedia('(max-width: 760px)');
-    function handleTouchLayoutChange(event) {
-        if (!event.matches && touchRectangleActive) cancelTouchRectangle();
-    }
-    if (touchLayoutMedia.addEventListener) {
-        touchLayoutMedia.addEventListener('change', handleTouchLayoutChange);
-    } else {
-        touchLayoutMedia.addListener(handleTouchLayoutChange);
-    }
 
-    function useTouchRectangle() {
-        return touchLayoutMedia.matches;
-    }
-
-    function pointerLatLng(event) {
-        var rect = mapContainer.getBoundingClientRect();
-        return map.containerPointToLatLng(L.point(event.clientX - rect.left, event.clientY - rect.top));
-    }
-
-    function setTouchQueryMessage(message) {
-        touchQueryHint.querySelector('span').textContent = message;
-        touchQueryHint.classList.remove('hidden');
-    }
-
-    function resetTouchRectangle() {
-        touchRectangleActive = false;
-        touchRectangleStart = null;
-        touchRectangleStartPoint = null;
-        touchPointerId = null;
-        if (touchRectanglePreview) {
-            drawnItems.removeLayer(touchRectanglePreview);
-            touchRectanglePreview = null;
-        }
-        if (touchMapDraggingWasEnabled && !map.dragging.enabled()) map.dragging.enable();
-        touchMapDraggingWasEnabled = false;
-        document.body.classList.remove('touch-rectangle-drawing');
-        touchQueryHint.classList.add('hidden');
-    }
-
-    function cancelTouchRectangle() {
-        resetTouchRectangle();
-        document.getElementById('btn-draw-polygon').classList.remove('active');
-        document.body.classList.remove('querying');
-    }
-
-    function beginTouchRectangle() {
-        touchRectangleActive = true;
-        touchRectangleStart = null;
-        touchPointerId = null;
-        document.body.classList.add('touch-rectangle-drawing');
-        setTouchQueryMessage('Drag to select an area');
-    }
-
-    function onTouchRectanglePointerDown(event) {
-        if (!touchRectangleActive || touchPointerId !== null || event.isPrimary === false) return;
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        touchPointerId = event.pointerId;
-        touchRectangleStart = pointerLatLng(event);
-        touchRectangleStartPoint = L.point(event.clientX, event.clientY);
-        touchMapDraggingWasEnabled = map.dragging.enabled();
-        if (touchMapDraggingWasEnabled) map.dragging.disable();
-        if (mapContainer.setPointerCapture) mapContainer.setPointerCapture(event.pointerId);
-        touchRectanglePreview = L.rectangle(L.latLngBounds(touchRectangleStart, touchRectangleStart), {
-            color: '#2563eb',
-            weight: 2,
-            fillColor: '#60a5fa',
-            fillOpacity: 0.14,
-            interactive: false
-        }).addTo(drawnItems);
-        setTouchQueryMessage('Release to analyse this area');
-    }
-
-    function onTouchRectanglePointerMove(event) {
-        if (!touchRectangleActive || event.pointerId !== touchPointerId || !touchRectanglePreview) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        touchRectanglePreview.setBounds(L.latLngBounds(touchRectangleStart, pointerLatLng(event)));
-    }
-
-    function onTouchRectanglePointerUp(event) {
-        if (!touchRectangleActive || event.pointerId !== touchPointerId || !touchRectanglePreview) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        touchRectanglePreview.setBounds(L.latLngBounds(touchRectangleStart, pointerLatLng(event)));
-        var distance = touchRectangleStartPoint.distanceTo(L.point(event.clientX, event.clientY));
-        if (mapContainer.hasPointerCapture && mapContainer.hasPointerCapture(event.pointerId)) {
-            mapContainer.releasePointerCapture(event.pointerId);
-        }
-        if (distance < 12) {
-            drawnItems.removeLayer(touchRectanglePreview);
-            touchRectanglePreview = null;
-            touchRectangleStart = null;
-            touchRectangleStartPoint = null;
-            touchPointerId = null;
-            if (touchMapDraggingWasEnabled && !map.dragging.enabled()) map.dragging.enable();
-            touchMapDraggingWasEnabled = false;
-            setTouchQueryMessage('Drag to select an area');
-            return;
-        }
-        var rectangle = L.rectangle(touchRectanglePreview.getBounds(), {
-            color: '#2563eb',
-            weight: 2,
-            fillColor: '#60a5fa',
-            fillOpacity: 0.14
-        });
-        resetTouchRectangle();
-        map.fire(L.Draw.Event.CREATED, { layer: rectangle, layerType: 'rectangle' });
-    }
-
-    mapContainer.addEventListener('pointerdown', onTouchRectanglePointerDown, true);
-    mapContainer.addEventListener('pointermove', onTouchRectanglePointerMove, true);
-    mapContainer.addEventListener('pointerup', onTouchRectanglePointerUp, true);
-    mapContainer.addEventListener('pointercancel', function (event) {
-        if (event.pointerId === touchPointerId) cancelTouchRectangle();
-    }, true);
     // Point query
     var pointQueryActive = false;
 
@@ -819,10 +687,6 @@
         pointQueryActive = !pointQueryActive;
         this.classList.toggle('active', pointQueryActive);
         document.body.classList.toggle('querying', pointQueryActive);
-        if (pointQueryActive && touchRectangleActive) {
-            cancelTouchRectangle();
-            document.body.classList.add('querying');
-        }
         // Cancel polygon mode
         if (pointQueryActive && drawControl) {
             if (rectangleDrawer) {
@@ -866,10 +730,6 @@
             });
         }
 
-        if (touchRectangleActive) {
-            cancelTouchRectangle();
-            return;
-        }
         if (drawControl) {
             if (rectangleDrawer) {
                 rectangleDrawer.disable();
@@ -884,11 +744,6 @@
 
         this.classList.add('active');
         document.body.classList.add('querying');
-        if (useTouchRectangle()) {
-            if (EV.mobileUI) EV.mobileUI.close();
-            beginTouchRectangle();
-            return;
-        }
 
         drawControl = new L.Control.Draw({
             draw: {
@@ -905,7 +760,6 @@
     });
 
     map.on(L.Draw.Event.CREATED, function (e) {
-        resetTouchRectangle();
         if (rectangleDrawer) {
             rectangleDrawer.disable();
             rectangleDrawer = null;
@@ -1055,11 +909,10 @@
     /* ── Smooth sidebar toggle ─────────────────────────────────── */
 
     // Override sidebar toggle for smooth map resize
-    var panelOpen = window.matchMedia('(min-width: 640px)').matches;
+    var panelOpen = true;
     var panel = document.getElementById('control-panel');
     var toggleBtn = document.getElementById('toggle-panel-btn');
     var toggleIcon = document.getElementById('toggle-panel-icon');
-    if (!panelOpen) toggleIcon.style.transform = 'rotate(180deg)';
 
     toggleBtn.addEventListener('click', function () {
         panelOpen = !panelOpen;
@@ -1095,12 +948,8 @@
     // Initialise layers
     if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
     var fireInit = EV.fireHotspots.init(map, DATA_BASE);
-    if (EV.mobileUI) EV.mobileUI.init(map);
     if (urlParams.has('src') && fireInit && fireInit.then) {
-        fireInit.then(function () {
-            EV.fireHotspots.applyShareParams(urlParams);
-            if (EV.mobileUI) EV.mobileUI.update();
-        });
+        fireInit.then(function () { EV.fireHotspots.applyShareParams(urlParams); });
     }
     if (EV.onboarding) EV.onboarding.init();
 
