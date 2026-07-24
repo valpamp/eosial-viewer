@@ -27,6 +27,7 @@
     <script src="https://unpkg.com/flatgeobuf@4.4.0/dist/flatgeobuf-geojson.min.js"></script>
     <script src="https://unpkg.com/shpjs@6.2.0/dist/shp.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/proj4@2.20.9/dist/proj4.js"></script>
     <!-- sql.js (for GeoPackage) is lazy-loaded only when a .gpkg file is detected -->
 <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -43,6 +44,7 @@
 
     <!-- App styles -->
     <link rel="stylesheet" href="css/style.css?v=20260722.2">
+    <link rel="stylesheet" href="css/pixel-grids.css?v=20260724.2">
 </head>
 <body class="font-sans overflow-hidden bg-gray-100">
 
@@ -63,8 +65,7 @@
 
             <!-- Layer Selector -->
             <div class="mb-4">
-                <h2 class="text-sm font-semibold text-gray-700 mb-2">Layers</h2>
-                <div id="layer-toggles" class="space-y-2">
+                <div id="layer-toggles">
                     <!-- populated by app.js -->
                 </div>
             </div>
@@ -329,8 +330,9 @@
     <script src="js/onboarding.js"></script>
     <script src="js/mobile-ui.js?v=20260722.2"></script>
     <script src="js/layers/admin-boundaries.js"></script>
-    <script src="js/layers/fire-hotspots.js?v=20260722.2"></script>
-    <script src="js/app.js?v=20260722.2"></script>
+    <script src="js/layers/pixel-grids.js?v=20260724.3"></script>
+    <script src="js/layers/fire-hotspots.js?v=20260724.3"></script>
+    <script src="js/app.js?v=20260724.2"></script>
 
 </body>
 </html>

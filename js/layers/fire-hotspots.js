@@ -20,7 +20,6 @@
         'MTG-1': 20,
         'MET-11': 20,
         'MET-10': 20,
-        'MET-09': 20,
         'FIRMS-MODIS-AQUA': 0,
         'FIRMS-MODIS-TERRA': 0,
         'FIRMS-NPP': 0,
@@ -35,7 +34,6 @@
         'MTG-1': 'MTG-FCI',
         'MET-11': 'MSG-RSS',
         'MET-10': 'MSG-HRIT',
-        'MET-09': 'MSG-IODC',
         'MET-08': 'MSG-HRIT',
         'FIRMS-MODIS-AQUA': 'NASA FIRMS MODIS/Aqua C6.1',
         'FIRMS-MODIS-TERRA': 'NASA FIRMS MODIS/Terra C6.1',
@@ -70,13 +68,6 @@
             { t: 0.5,  c: [ 20, 184, 166] },
             { t: 0.75, c: [ 15, 118, 110] },
             { t: 1.0,  c: [ 17,  94,  89] }
-        ],
-        'MET-09': [
-            { t: 0.0,  c: [250, 245, 255] },
-            { t: 0.25, c: [221, 214, 254] },
-            { t: 0.5,  c: [167, 139, 250] },
-            { t: 0.75, c: [124,  58, 237] },
-            { t: 1.0,  c: [ 91,  33, 182] }
         ],
         'MET-08': [
             { t: 0.0,  c: [240, 249, 255] },
@@ -698,9 +689,19 @@
         return features;
     }
 
+    function isExcludedSfideFeature(properties) {
+        var satellite = String(properties.SATELLITE || '').trim().toUpperCase();
+        if (satellite === 'MET-09') return true;
+        var descriptor = ['PRODUCT', 'INSTRUMENT', 'SERVICE', 'AREA_ID', 'SOURCE_AREA']
+            .map(function (key) { return String(properties[key] || ''); })
+            .join(' ')
+            .toUpperCase();
+        return descriptor.indexOf('IODC') !== -1;
+    }
     function normalizeFeature(feature) {
         if (!feature || !feature.properties) return null;
         var p = feature.properties;
+        if (isExcludedSfideFeature(p)) return null;
         if (p.DATASET === 'S3') {
             p.DATASET_LABEL = getDatasetLabel('S3');
         } else if (p.DATASET === 'MTG_FIR') {

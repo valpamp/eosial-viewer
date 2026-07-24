@@ -647,32 +647,55 @@
 
     /* ── Layer registration ────────────────────────────────────── */
 
-    function registerLayer(layerDef) {
+    function registerLayer(layerDef, sidebarGroup) {
+        if (!layerDef) return;
+        layerDef.sidebarGroup = sidebarGroup;
         layers.push(layerDef);
     }
 
     function buildLayerToggles() {
         var container = document.getElementById('layer-toggles');
+        var groups = [
+            { id: 'hotspots', title: 'Hotspot Databases' },
+            { id: 'additional', title: 'Additional Layers' }
+        ];
         container.innerHTML = '';
-        layers.forEach(function (lyr) {
-            var label = document.createElement('label');
-            label.className = 'layer-toggle';
-            var cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.dataset.layerId = lyr.id;
-            cb.checked = lyr.defaultVisible;
-            cb.addEventListener('change', function () {
-                lyr.setVisible(this.checked, map);
+        groups.forEach(function (group) {
+            var groupLayers = layers.filter(function (layer) {
+                return layer.sidebarGroup === group.id;
             });
-            var span = document.createElement('span');
-            span.className = 'layer-name';
-            span.textContent = lyr.name;
-            label.appendChild(cb);
-            label.appendChild(span);
-            container.appendChild(label);
+            if (!groupLayers.length) return;
+
+            var section = document.createElement('section');
+            section.className = 'sidebar-layer-group';
+            var heading = document.createElement('h2');
+            heading.className = 'sidebar-layer-group-title';
+            heading.textContent = group.title;
+            var list = document.createElement('div');
+            list.className = 'sidebar-layer-group-list space-y-2';
+            section.appendChild(heading);
+            section.appendChild(list);
+
+            groupLayers.forEach(function (lyr) {
+                var label = document.createElement('label');
+                label.className = 'layer-toggle';
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.dataset.layerId = lyr.id;
+                cb.checked = lyr.defaultVisible;
+                cb.addEventListener('change', function () {
+                    lyr.setVisible(this.checked, map);
+                });
+                var span = document.createElement('span');
+                span.className = 'layer-name';
+                span.textContent = lyr.name;
+                label.appendChild(cb);
+                label.appendChild(span);
+                list.appendChild(label);
+            });
+            container.appendChild(section);
         });
     }
-
     /* ── Query tools (point + polygon) ─────────────────────────── */
 
     var drawControl = null;
@@ -939,15 +962,21 @@
     var urlParams = applyUrlParams();
 
     // Register layers
-    registerLayer(EV.sfideHotspots);
-    registerLayer(EV.firmsHotspots);
-    registerLayer(EV.s3Hotspots);
-    registerLayer(EV.mtgFirHotspots);
-    if (EV.adminL0) registerLayer(EV.adminL0);
+    registerLayer(EV.sfideHotspots, 'hotspots');
+    registerLayer(EV.firmsHotspots, 'hotspots');
+    registerLayer(EV.s3Hotspots, 'hotspots');
+    registerLayer(EV.mtgFirHotspots, 'hotspots');
+    if (EV.adminL0) registerLayer(EV.adminL0, 'additional');
+    if (EV.pixelGridLayers) {
+        EV.pixelGridLayers.forEach(function (layer) {
+            registerLayer(layer, 'additional');
+        });
+    }
     buildLayerToggles();
 
     // Initialise layers
     if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
+    if (EV.pixelGrids) EV.pixelGrids.init(map, DATA_BASE);
     var fireInit = EV.fireHotspots.init(map, DATA_BASE);
     if (EV.mobileUI) EV.mobileUI.init(map);
     if (urlParams.has('src') && fireInit && fireInit.then) {

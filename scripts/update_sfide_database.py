@@ -39,6 +39,8 @@ ARCHIVE_MANIFEST = "sfide_archive_manifest.json"
 UPDATE_STATE = "sfide_update_state.json"
 DEFAULT_ARCHIVE_PERIOD = "week"
 DEFAULT_ARCHIVE_START_DATE = "2025-06-01"
+EXCLUDED_SATELLITES = {"MET-09"}
+EXCLUDED_SOURCE_TOKENS = ("IODC",)
 
 
 def try_import_geopandas():
@@ -140,6 +142,23 @@ def feature_satellite(feature: dict[str, Any]) -> str:
     return str(value).strip() if value not in (None, "") else "UNKNOWN"
 
 
+def feature_is_excluded(feature: dict[str, Any]) -> bool:
+    props = feature.get("properties") or {}
+    satellite = str(props.get("SATELLITE") or "").strip().upper()
+    if satellite in EXCLUDED_SATELLITES:
+        return True
+    descriptor = " ".join(
+        str(props.get(key) or "")
+        for key in ("PRODUCT", "INSTRUMENT", "SERVICE", "AREA_ID", "SOURCE_AREA")
+    ).upper()
+    return any(token in descriptor for token in EXCLUDED_SOURCE_TOKENS)
+
+
+def source_path_is_excluded(path: Path) -> bool:
+    text = str(path).upper()
+    return any(token in text for token in EXCLUDED_SOURCE_TOKENS)
+
+
 def round_float(value: Any) -> Any:
     try:
         return round(float(value), 6)
@@ -151,6 +170,8 @@ def normalize_feature(feature: dict[str, Any]) -> dict[str, Any] | None:
     if not feature:
         return None
     props = dict(feature.get("properties") or {})
+    if feature_is_excluded({"properties": props}):
+        return None
     geometry = feature.get("geometry")
     if not geometry and "geometry" in props:
         geometry = props.pop("geometry")
@@ -386,6 +407,9 @@ def collect_features(
 
     for index, path in enumerate(files, start=1):
         detail = path.name
+        if source_path_is_excluded(path):
+            skipped += 1
+            continue
         try:
             features = read_features(path, gpd)
         except Exception as exc:
@@ -689,6 +713,8 @@ def parse_state_satellite_dates(state: dict[str, Any]) -> dict[str, datetime]:
         return {}
     parsed: dict[str, datetime] = {}
     for sat, value in raw.items():
+        if str(sat).strip().upper() in EXCLUDED_SATELLITES:
+            continue
         dt = parse_state_datetime(value)
         if dt:
             parsed[str(sat)] = dt
