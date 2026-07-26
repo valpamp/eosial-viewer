@@ -16,26 +16,22 @@
         'msg-hrit-grid-3km': {
             id: 'msg-hrit-grid-3km',
             name: 'MSG-HRIT 3 km Pixel Grid',
-            file: 'pixel-grids/msg_hrit_3km.json',
-            color: '#0f766e'
+            file: 'pixel-grids/msg_hrit_3km.json'
         },
         'msg-rss-grid-3km': {
             id: 'msg-rss-grid-3km',
             name: 'MSG-RSS 3 km Pixel Grid',
-            file: 'pixel-grids/msg_rss_3km.json',
-            color: '#7c3aed'
+            file: 'pixel-grids/msg_rss_3km.json'
         },
         'mtg-fci-grid-1km': {
             id: 'mtg-fci-grid-1km',
             name: 'MTG-FCI 1 km Pixel Grid',
-            file: 'pixel-grids/mtg_fci_1km.json',
-            color: '#075985'
+            file: 'pixel-grids/mtg_fci_1km.json'
         },
         'mtg-fir-grid-2km': {
             id: 'mtg-fir-grid-2km',
             name: 'MTG-FIR 2 km Pixel Grid',
-            file: 'pixel-grids/mtg_fir_2km.json',
-            color: '#9f1239'
+            file: 'pixel-grids/mtg_fir_2km.json'
         }
     };
 
@@ -71,47 +67,6 @@
         if (input) input.checked = checked;
     }
 
-    function findRun(runs, column) {
-        var low = 0;
-        var high = runs.length - 1;
-        while (low <= high) {
-            var middle = (low + high) >> 1;
-            var run = runs[middle];
-            if (column < run[0]) high = middle - 1;
-            else if (column > run[1]) low = middle + 1;
-            else return run;
-        }
-        return null;
-    }
-
-    function cellAtLatLng(metadata, latlng) {
-        var nativePoint;
-        try {
-            nativePoint = proj4('WGS84', metadata.projection, [latlng.lng, latlng.lat]);
-        } catch (error) {
-            return null;
-        }
-        var column = Math.floor((nativePoint[0] - metadata.origin_x) / metadata.pixel_x);
-        var row = Math.floor((nativePoint[1] - metadata.origin_y) / metadata.pixel_y);
-        if (row < 0 || row >= metadata.height || column < 0 || column >= metadata.width) {
-            return null;
-        }
-        if (!findRun(metadata.runs[row], column)) return null;
-        return { row: row, column: column };
-    }
-
-    function globalCellDetails(metadata, cell) {
-        var row = metadata.global_row_offset + cell.row;
-        var column = metadata.global_column_offset + cell.column;
-        var km = metadata.resolution_m / 1000;
-        return {
-            row: row,
-            column: column,
-            pixelId: (metadata.pixel_prefix || 'FCI') + '_' + km + 'KM_R' +
-                String(row).padStart(5, '0') + '_C' + String(column).padStart(5, '0')
-        };
-    }
-
     var PixelGridCanvas = L.Layer.extend({
         initialize: function (definition, metadata) {
             this.definition = definition;
@@ -127,13 +82,11 @@
             this.canvas.setAttribute('aria-hidden', 'true');
             map.getPane('pixelGridPane').appendChild(this.canvas);
             map.on('moveend zoomend resize', this.scheduleRedraw, this);
-            map.on('click', this.handleClick, this);
             this.scheduleRedraw();
         },
 
         onRemove: function (map) {
             map.off('moveend zoomend resize', this.scheduleRedraw, this);
-            map.off('click', this.handleClick, this);
             if (this.frame) cancelAnimationFrame(this.frame);
             this.frame = null;
             if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
@@ -290,7 +243,7 @@
             context.strokeStyle = 'rgba(255,255,255,0.82)';
             context.lineWidth = 2.4;
             context.stroke();
-            context.strokeStyle = this.definition.color;
+            context.strokeStyle = 'rgba(0,0,0,0.82)';
             context.lineWidth = 0.8;
             context.stroke();
             setStatus(
@@ -298,24 +251,6 @@
                 ' cells in view',
                 false
             );
-        },
-
-        handleClick: function (event) {
-            if (this.map.getZoom() < this.metadata.min_zoom) return;
-            var cell = cellAtLatLng(this.metadata, event.latlng);
-            if (!cell) return;
-            var details = globalCellDetails(this.metadata, cell);
-            L.popup({ className: 'pixel-grid-popup', maxWidth: 260 })
-                .setLatLng(event.latlng)
-                .setContent(
-                    '<strong>' + this.definition.name + '</strong>' +
-                    '<dl><dt>Pixel ID</dt><dd>' + details.pixelId + '</dd>' +
-                    '<dt>Resolution</dt><dd>' + this.metadata.resolution_m.toLocaleString() +
-                    ' m</dd><dt>Row</dt><dd>' + details.row.toLocaleString() +
-                    '</dd><dt>Column</dt><dd>' + details.column.toLocaleString() +
-                    '</dd></dl>'
-                )
-                .openOn(this.map);
         }
     });
 

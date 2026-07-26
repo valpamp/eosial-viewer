@@ -20,35 +20,6 @@
     font-weight: 600;
 }
 
-.pixel-grid-popup .leaflet-popup-content {
-    margin: 12px 14px;
-}
-
-.pixel-grid-popup strong {
-    display: block;
-    margin-bottom: 8px;
-    color: #0f172a;
-}
-
-.pixel-grid-popup dl {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 4px 12px;
-    margin: 0;
-    font-size: 12px;
-}
-
-.pixel-grid-popup dt {
-    color: #64748b;
-    font-weight: 600;
-}
-
-.pixel-grid-popup dd {
-    margin: 0;
-    color: #1e293b;
-    font-weight: 600;
-}
-
 body.dark .pixel-grid-status {
     border-color: #52525b;
     background: rgba(39, 39, 42, 0.95);
