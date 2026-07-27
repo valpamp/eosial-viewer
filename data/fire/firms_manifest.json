@@ -1,10 +1,10 @@
 {
-  "generated": "2026-07-27T11:00:06.666054+00:00",
+  "generated": "2026-07-27T11:30:06.916126+00:00",
   "source": "NASA FIRMS NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-07-27T04:04:00+00:00",
-  "feature_count": 1333,
+  "latest_hotspot": "2026-07-27T08:50:00+00:00",
+  "feature_count": 1347,
   "files": [
     {
       "path": "firms/FIRMS_ITA_2026205.fgb",
@@ -78,17 +78,18 @@
       "label": "FIRMS_ITA_2026208",
       "date": "2026-07-27",
       "start": "2026-07-27T00:35:00+00:00",
-      "end": "2026-07-27T04:04:00+00:00",
-      "count": 57,
+      "end": "2026-07-27T08:50:00+00:00",
+      "count": 71,
       "products": {
         "noaa-21-viirs-c2": 28,
         "suomi-npp-viirs-c2": 17,
-        "noaa-20-viirs-c2": 11,
-        "modis-c6.1": 1
+        "modis-c6.1": 15,
+        "noaa-20-viirs-c2": 11
       },
       "satellites": {
         "N21": 28,
         "N": 17,
+        "T": 14,
         "N20": 11,
         "A": 1
       }
