@@ -1,12 +1,11 @@
 {
-  "generated": "2026-07-26T23:30:27.365985+00:00",
-  "latest_hotspot": "2026-07-26T23:10:00+00:00",
+  "generated": "2026-07-27T00:00:27.718429+00:00",
+  "latest_hotspot": "2026-07-26T23:40:00+00:00",
   "latest_by_satellite": {
-    "MTG-FIR": "2026-07-26T23:10:00+00:00"
+    "MTG-FIR": "2026-07-26T23:40:00+00:00"
   },
-  "feature_count": 1038,
+  "feature_count": 691,
   "files": [
-    "mtg_fir/MTG_FIR_ITA_20260723.fgb",
     "mtg_fir/MTG_FIR_ITA_20260724.fgb",
     "mtg_fir/MTG_FIR_ITA_20260725.fgb",
     "mtg_fir/MTG_FIR_ITA_20260726.fgb"
