@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-08T14:30:07.815798+00:00",
+  "generated": "2026-08-08T15:00:09.269090+00:00",
   "format": "fgb",
   "archive_period": "week",
   "months": [
@@ -628,7 +628,7 @@
       "label": "2026 week 32",
       "start": "2026-08-03T00:28:00+00:00",
       "end": "2026-08-08T14:20:00+00:00",
-      "count": 27857,
+      "count": 28266,
       "files": {
         "fgb": "archive/sfide_2026_W32.fgb"
       }
