@@ -1,10 +1,10 @@
 {
-  "generated": "2026-08-08T12:00:22.987985+00:00",
-  "latest_hotspot": "2026-08-08T11:40:00+00:00",
+  "generated": "2026-08-08T12:30:24.326411+00:00",
+  "latest_hotspot": "2026-08-08T12:00:00+00:00",
   "latest_by_satellite": {
-    "MTG-FIR": "2026-08-08T11:40:00+00:00"
+    "MTG-FIR": "2026-08-08T12:00:00+00:00"
   },
-  "feature_count": 2065,
+  "feature_count": 2072,
   "files": [
     "mtg_fir/MTG_FIR_ITA_20260805.fgb",
     "mtg_fir/MTG_FIR_ITA_20260806.fgb",
