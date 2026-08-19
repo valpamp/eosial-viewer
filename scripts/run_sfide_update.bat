@@ -44,8 +44,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$hook = '%CONDA_HOOK%';" ^
   "$envPath = '%CONDA_ENV%';" ^
   "$log = '%LOG_FILE%';" ^
+  "$env:GIT_TERMINAL_PROMPT = '0';" ^
+  "$env:GCM_INTERACTIVE = '0';" ^
+  "$env:GCM_GUI_PROMPT = '0';" ^
   "function LogLine([string]$msg) { $line = '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] ' + $msg; $line | Tee-Object -FilePath $log -Append }" ^
   "LogLine 'Batch wrapper started.';" ^
+  "LogLine 'Interactive Git authentication prompts are disabled for this scheduled run.';" ^
   "LogLine ('Repository: ' + $repo);" ^
   "LogLine ('SFIDE source: ' + $source);" ^
   "$firmsSource = '%FIRMS_SOURCE_DIR%';" ^

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import build_external_hotspot_archives
+import os
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -23,33 +24,50 @@ import update_sfide_database
 
 
 DEFAULT_WEB_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_GIT_TIMEOUT_SECONDS = 120.0
 
 
-def commit_and_push(repo_root: Path, output_dir: Path, git_exe: str) -> None:
+def run_git(command: list[str], timeout_seconds: float, **kwargs: object) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env.setdefault("GIT_TERMINAL_PROMPT", "0")
+    env.setdefault("GCM_INTERACTIVE", "0")
+    env.setdefault("GCM_GUI_PROMPT", "0")
+    try:
+        return subprocess.run(command, env=env, timeout=timeout_seconds, **kwargs)
+    except subprocess.TimeoutExpired as exc:
+        rendered_command = " ".join(command)
+        raise RuntimeError(
+            f"Git command timed out after {timeout_seconds:g} seconds: {rendered_command}. "
+            "Check network access and the repository credentials."
+        ) from exc
+
+
+def commit_and_push(repo_root: Path, output_dir: Path, git_exe: str, timeout_seconds: float) -> None:
     try:
         rel_output = output_dir.relative_to(repo_root)
     except ValueError:
         rel_output = output_dir
 
-    status = subprocess.run(
+    status = run_git(
         [git_exe, "-C", str(repo_root), "status", "--porcelain", "--", str(rel_output)],
+        timeout_seconds,
         check=True,
         capture_output=True,
         text=True,
     )
-    if not status.stdout.strip():
-        print("No hotspot database changes to commit.", flush=True)
-        return
+    if status.stdout.strip():
+        try:
+            git_add_path = str(output_dir.relative_to(repo_root))
+        except ValueError:
+            git_add_path = str(output_dir)
+        run_git([git_exe, "-C", str(repo_root), "add", "-A", "--", git_add_path], timeout_seconds, check=True)
+        message = "Auto-update hotspot databases " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        run_git([git_exe, "-C", str(repo_root), "commit", "-m", message], timeout_seconds, check=True)
+    else:
+        print("No new hotspot database changes to commit; checking for an earlier unpushed commit.", flush=True)
 
-    try:
-        git_add_path = str(output_dir.relative_to(repo_root))
-    except ValueError:
-        git_add_path = str(output_dir)
-    subprocess.run([git_exe, "-C", str(repo_root), "add", "-A", "--", git_add_path], check=True)
-    message = "Auto-update hotspot databases " + datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    subprocess.run([git_exe, "-C", str(repo_root), "commit", "-m", message], check=True)
-    subprocess.run([git_exe, "-C", str(repo_root), "push"], check=True)
-    print("Committed and pushed hotspot database updates.", flush=True)
+    run_git([git_exe, "-C", str(repo_root), "push"], timeout_seconds, check=True)
+    print("Hotspot database commits are pushed to the remote repository.", flush=True)
 
 
 def run_once(args: argparse.Namespace) -> None:
@@ -150,7 +168,7 @@ def run_once(args: argparse.Namespace) -> None:
         print(f"WARNING: MTG-FIR source path not found; skipping MTG-FIR update: {mtg_fir_source}", flush=True)
 
     if args.git:
-        commit_and_push(args.repo_root.resolve(), output_dir, args.git_exe)
+        commit_and_push(args.repo_root.resolve(), output_dir, args.git_exe, args.git_timeout_seconds)
 
 
 def parse_args() -> argparse.Namespace:
@@ -167,6 +185,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--git", action="store_true")
     parser.add_argument("--repo-root", type=Path, default=DEFAULT_WEB_ROOT)
     parser.add_argument("--git-exe", default="git")
+    parser.add_argument(
+        "--git-timeout-seconds",
+        type=float,
+        default=DEFAULT_GIT_TIMEOUT_SECONDS,
+        help="Abort a non-responsive Git command after this many seconds (default: 120).",
+    )
     parser.add_argument("--skip-external-archives", action="store_true", help="Skip FIRMS/Sentinel-3 archive maintenance.")
     parser.add_argument("--full-rebuild-sfide", action="store_true")
     parser.add_argument("--full-rebuild-firms", action="store_true")
