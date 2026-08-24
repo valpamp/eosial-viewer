@@ -1,13 +1,7 @@
 {
-  "generated": "2026-08-23T23:30:22.492271+00:00",
-  "latest_hotspot": "2026-08-20T09:53:13+00:00",
-  "latest_by_satellite": {
-    "S3A": "2026-08-20T09:53:13+00:00",
-    "S3B": "2026-08-20T09:15:24+00:00"
-  },
-  "feature_count": 7,
-  "files": [
-    "s3/S3_FRP_S3A_ITA_20260820095055.fgb",
-    "s3/S3_FRP_S3B_ITA_20260820091214.fgb"
-  ]
+  "generated": "2026-08-24T00:00:22.892774+00:00",
+  "latest_hotspot": null,
+  "latest_by_satellite": {},
+  "feature_count": 0,
+  "files": []
 }
