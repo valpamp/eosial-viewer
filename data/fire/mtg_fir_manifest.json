@@ -1,10 +1,10 @@
 {
-  "generated": "2026-08-28T09:00:23.407595+00:00",
+  "generated": "2026-08-28T09:30:23.519881+00:00",
   "source": "Official EUMETSAT MTG-FIR external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-08-28T04:30:00+00:00",
-  "feature_count": 1185,
+  "latest_hotspot": "2026-08-28T09:00:00+00:00",
+  "feature_count": 1188,
   "files": [
     {
       "path": "mtg_fir/MTG_FIR_ITA_20260825.fgb",
@@ -63,14 +63,14 @@
       "label": "MTG_FIR_ITA_20260828",
       "date": "2026-08-28",
       "start": "2026-08-28T00:00:00+00:00",
-      "end": "2026-08-28T04:30:00+00:00",
-      "count": 96,
+      "end": "2026-08-28T09:00:00+00:00",
+      "count": 99,
       "satellites": {
-        "MTG-FIR": 96
+        "MTG-FIR": 99
       },
       "fire_results": {
-        "1": 46,
-        "2": 40,
+        "1": 48,
+        "2": 41,
         "3": 10
       }
     }
