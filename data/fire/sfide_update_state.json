@@ -1,12 +1,12 @@
 {
-  "generated": "2026-09-02T17:30:08.345901+00:00",
-  "latest_hotspot": "2026-09-02T17:18:00+00:00",
+  "generated": "2026-09-02T18:00:09.428213+00:00",
+  "latest_hotspot": "2026-09-02T17:48:00+00:00",
   "latest_by_satellite": {
-    "MET-10": "2026-09-02T15:00:00+00:00",
-    "MET-11": "2026-09-02T14:50:00+00:00",
-    "MTG-1": "2026-09-02T17:18:00+00:00"
+    "MET-10": "2026-09-02T17:30:00+00:00",
+    "MET-11": "2026-09-02T17:40:00+00:00",
+    "MTG-1": "2026-09-02T17:48:00+00:00"
   },
-  "feature_count": 1548390,
+  "feature_count": 1548414,
   "format": "fgb",
   "archive_period": "week",
   "archive_manifest": "sfide_archive_manifest.json"
