@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-03T02:00:08.782847+00:00",
+  "generated": "2026-09-03T02:30:10.684766+00:00",
   "latest_hotspot": "2026-09-02T19:25:00+00:00",
   "latest_by_product": {
     "modis-c6.1": "2026-09-02T19:25:00+00:00",
@@ -11,6 +11,7 @@
   "files": [
     "firms/FIRMS_ITA_2026243.fgb",
     "firms/FIRMS_ITA_2026244.fgb",
-    "firms/FIRMS_ITA_2026245.fgb"
+    "firms/FIRMS_ITA_2026245.fgb",
+    "firms/FIRMS_ITA_2026246.fgb"
   ]
 }
