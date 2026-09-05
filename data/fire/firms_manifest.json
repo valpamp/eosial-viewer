@@ -1,33 +1,11 @@
 {
-  "generated": "2026-09-04T09:30:08.737829+00:00",
+  "generated": "2026-09-05T08:30:12.753184+00:00",
   "source": "NASA FIRMS NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-09-04T02:43:00+00:00",
-  "feature_count": 1471,
+  "latest_hotspot": "2026-09-05T03:15:00+00:00",
+  "feature_count": 1582,
   "files": [
-    {
-      "path": "firms/FIRMS_ITA_2026244.fgb",
-      "format": "fgb",
-      "label": "FIRMS_ITA_2026244",
-      "date": "2026-09-01",
-      "start": "2026-09-01T00:01:00+00:00",
-      "end": "2026-09-01T23:58:00+00:00",
-      "count": 455,
-      "products": {
-        "suomi-npp-viirs-c2": 164,
-        "noaa-20-viirs-c2": 164,
-        "noaa-21-viirs-c2": 122,
-        "modis-c6.1": 5
-      },
-      "satellites": {
-        "N": 164,
-        "N20": 164,
-        "N21": 122,
-        "A": 3,
-        "T": 2
-      }
-    },
     {
       "path": "firms/FIRMS_ITA_2026245.fgb",
       "format": "fgb",
@@ -78,17 +56,41 @@
       "label": "FIRMS_ITA_2026247",
       "date": "2026-09-04",
       "start": "2026-09-04T00:03:00+00:00",
-      "end": "2026-09-04T02:43:00+00:00",
-      "count": 147,
+      "end": "2026-09-04T23:48:00+00:00",
+      "count": 503,
       "products": {
-        "noaa-21-viirs-c2": 50,
-        "suomi-npp-viirs-c2": 49,
-        "noaa-20-viirs-c2": 48
+        "suomi-npp-viirs-c2": 169,
+        "noaa-21-viirs-c2": 160,
+        "noaa-20-viirs-c2": 149,
+        "modis-c6.1": 25
       },
       "satellites": {
-        "N21": 50,
-        "N": 49,
-        "N20": 48
+        "N": 169,
+        "N21": 160,
+        "N20": 149,
+        "T": 18,
+        "A": 7
+      }
+    },
+    {
+      "path": "firms/FIRMS_ITA_2026248.fgb",
+      "format": "fgb",
+      "label": "FIRMS_ITA_2026248",
+      "date": "2026-09-05",
+      "start": "2026-09-05T00:22:00+00:00",
+      "end": "2026-09-05T03:15:00+00:00",
+      "count": 210,
+      "products": {
+        "noaa-20-viirs-c2": 83,
+        "suomi-npp-viirs-c2": 80,
+        "noaa-21-viirs-c2": 42,
+        "modis-c6.1": 5
+      },
+      "satellites": {
+        "N20": 83,
+        "N": 80,
+        "N21": 42,
+        "A": 5
       }
     }
   ]
