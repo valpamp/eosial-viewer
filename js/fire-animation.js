@@ -269,7 +269,13 @@
         if (!EV.pixelGrids || !EV.pixelGrids.hasHotspotGrid ||
                 !EV.pixelGrids.hasHotspotGrid(point.satellite)) return null;
         return EV.pixelGrids.getHotspotFootprint(
-            point.satellite, point.latitude, point.longitude
+            point.satellite, point.latitude, point.longitude, {
+                PIXEL_SCAN_KM: point.pixelScanKm,
+                PIXEL_TRACK_KM: point.pixelTrackKm,
+                IFOV_AREA_M2: point.ifovAreaM2,
+                EFF_ACROSS_KM: point.effAcrossKm,
+                EFF_ALONG_KM: point.effAlongKm
+            }
         );
     }
     function rebuildFrames() {

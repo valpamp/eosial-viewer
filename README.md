@@ -61,7 +61,7 @@ eosial-viewer/
 |   |-- timeseries.js           # Chart.js timeseries modal
 |   `-- layers/
 |       |-- fire-hotspots.js    # Fire filtering, markers, and native pixel footprints
-|       `-- pixel-grids.js      # MSG/MTG native-grid projection and overlays
+|       `-- pixel-grids.js      # Native geostationary grids and polar pixel footprints
 |-- data/
 |   `-- fire/
 |       |-- sfide_aggregate_72h.fgb       # Recent fire hotspot detections
@@ -117,7 +117,7 @@ Hotspot features should contain Point geometry and these properties where availa
 | `CONFIDENCE` | Detection confidence (%) |
 | `FRP_WOOSTER` or `FRP_MODIS` | Fire Radiative Power (MW) |
 
-The viewer loads recent and archived FlatGeobuf chunks through their manifests. At broad map scales detections use clustered markers; at detailed zoom levels MSG/MTG detections use vector footprints computed from the compact native-grid metadata in `data/pixel-grids/`. FIRMS and Sentinel-3 remain point detections.
+The viewer loads recent and archived FlatGeobuf chunks through their manifests. At broad map scales detections use clustered markers. At detailed zoom levels MSG/MTG detections use vector footprints computed from compact native-grid metadata in `data/pixel-grids/`; FIRMS footprints use each detection's `scan` and `track` dimensions, and Sentinel-3 footprints use the projected IFOV area. Polar-orbiter footprints are per-detection approximations because these satellites do not use a fixed Earth grid.
 
 ## Dependencies
 

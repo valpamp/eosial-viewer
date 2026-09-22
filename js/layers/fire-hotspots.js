@@ -381,6 +381,8 @@
         p.DAYNIGHT = firstProp(p, ['daynight', 'DAYNIGHT']) || '';
         p.BRIGHT_MIR = Number(firstProp(p, ['brightness', 'BRIGHTNESS', 'bright_ti4', 'BRIGHT_TI4']));
         p.BRIGHT_TIR = Number(firstProp(p, ['bright_t31', 'BRIGHT_T31', 'bright_ti5', 'BRIGHT_TI5']));
+        p.PIXEL_SCAN_KM = numberOrNull(firstProp(p, ['scan', 'SCAN']));
+        p.PIXEL_TRACK_KM = numberOrNull(firstProp(p, ['track', 'TRACK']));
         if (!isFinite(p.BRIGHT_MIR)) p.BRIGHT_MIR = null;
         if (!isFinite(p.BRIGHT_TIR)) p.BRIGHT_TIR = null;
         return feature;
@@ -446,11 +448,11 @@
         var lat = numberOrNull(firstProp(p, ['LATITUDE', 'latitude', 'lat', 'y']));
         p.LONGITUDE = lon != null ? lon : Number(coords ? coords[0] : NaN);
         p.LATITUDE = lat != null ? lat : Number(coords ? coords[1] : NaN);
-        p.DATETIME = normalizeS3DateTime(
-            firstProp(p, ['OBS_DATE', 'obs_date', 'DATE', 'date', 'acq_date', 'ACQ_DATE']),
-            firstProp(p, ['OBS_TIME', 'obs_time', 'TIME', 'time', 'acq_time', 'ACQ_TIME']),
-            firstProp(p, ['DATETIME', 'datetime', 'acq_datetime', 'ACQ_DATETIME', 'timestamp', 'TIMESTAMP'])
-        );
+        var observationDate = firstProp(p, ['OBS_DATE', 'obs_date', 'DATE', 'date', 'acq_date', 'ACQ_DATE']);
+        var observationTime = firstProp(p, ['OBS_TIME', 'obs_time', 'TIME', 'time', 'acq_time', 'ACQ_TIME']);
+        var observationIso = firstProp(p, ['DATETIME', 'datetime', 'acq_datetime', 'ACQ_DATETIME', 'timestamp', 'TIMESTAMP']);
+        p.DATETIME = normalizeS3DateTime(observationDate, observationTime, observationIso);
+        p.ACQUISITION_KEY = String(observationIso || ((observationDate || '') + ' ' + (observationTime || ''))).trim();
         p.TYPE = 0;
         var frp = numberOrNull(firstProp(p, ['FRP_WOOSTER', 'FRP', 'frp', 'FRP_MW', 'frp_mw']));
         p.FRP_WOOSTER = frp != null ? frp : 0;
@@ -458,6 +460,11 @@
         p.CONFIDENCE = numberOrNull(p.CONFIDENCE_RAW);
         p.BRIGHT_MIR = numberOrNull(firstProp(p, ['BRIGHT_MIR', 'bright_mir', 'BT_MIR', 'bt_mir', 'mwir_bt_k', 'MWIR_BT_K', 'S7_BT']));
         p.BRIGHT_TIR = numberOrNull(firstProp(p, ['BRIGHT_TIR', 'bright_tir', 'BT_TIR', 'bt_tir', 'S8_BT']));
+        p.FRP_SOURCE = firstProp(p, ['FRP_SOURCE', 'frp_source']) || '';
+        p.USED_CHANNEL = firstProp(p, ['USED_CHANNEL', 'used_channel']) || '';
+        p.IFOV_AREA_M2 = numberOrNull(firstProp(p, ['IFOV_AREA_M2', 'ifov_area_m2']));
+        p.EFF_ACROSS_KM = numberOrNull(firstProp(p, ['EFF_ACROSS_KM', 'eff_across_km']));
+        p.EFF_ALONG_KM = numberOrNull(firstProp(p, ['EFF_ALONG_KM', 'eff_along_km']));
         p.DAYNIGHT = firstProp(p, ['DAYNIGHT', 'daynight', 'day_night']) || '';
         feature.properties = p;
         return feature;
@@ -736,23 +743,37 @@
 
     function featureKey(feature) {
         var p = feature.properties || {};
-        return [
+        var parts = [
             p.DATASET || '',
             p.SATELLITE || '',
             Number(p.LATITUDE || 0).toFixed(6),
             Number(p.LONGITUDE || 0).toFixed(6),
-            p.DATETIME || '',
-            p.FRP_WOOSTER || p.FRP_MODIS || '',
-            p.TYPE || ''
-        ].join('|');
+            p.DATASET === 'S3' ? (p.ACQUISITION_KEY || p.DATETIME || '') : (p.DATETIME || '')
+        ];
+        if (p.DATASET !== 'S3') {
+            parts.push(p.FRP_WOOSTER || p.FRP_MODIS || '', p.TYPE || '');
+        }
+        return parts.join('|');
+    }
+
+    function preferS3Feature(candidate, existing) {
+        var candidateSource = String(candidate.properties.FRP_SOURCE || '').toLowerCase();
+        var existingSource = String(existing.properties.FRP_SOURCE || '').toLowerCase();
+        return candidateSource.indexOf('standard') === 0 && existingSource.indexOf('standard') !== 0;
     }
 
     function mergeFeatures(features) {
         for (var i = 0; i < features.length; i++) {
-            var key = featureKey(features[i]);
-            if (!featureIds[key]) {
-                allFeatures.push(features[i]);
-                featureIds[key] = true;
+            var candidate = features[i];
+            var key = featureKey(candidate);
+            var existing = featureIds[key];
+            if (!existing) {
+                allFeatures.push(candidate);
+                featureIds[key] = candidate;
+            } else if (candidate.properties.DATASET === 'S3' && preferS3Feature(candidate, existing)) {
+                var existingIndex = allFeatures.indexOf(existing);
+                if (existingIndex !== -1) allFeatures[existingIndex] = candidate;
+                featureIds[key] = candidate;
             }
         }
         allFeatures.sort(function (a, b) {
@@ -1307,7 +1328,7 @@
             var latlng = L.latLng(p.LATITUDE, p.LONGITUDE);
             if (useFootprints && EV.pixelGrids.hasHotspotGrid(p.SATELLITE)) {
                 if (!paddedBounds.contains(latlng)) return;
-                var footprint = EV.pixelGrids.getHotspotFootprint(p.SATELLITE, p.LATITUDE, p.LONGITUDE);
+                var footprint = EV.pixelGrids.getHotspotFootprint(p.SATELLITE, p.LATITUDE, p.LONGITUDE, p);
                 if (footprint) {
                     var bucket = footprintBuckets[footprint.key];
                     if (!bucket) {
@@ -1915,7 +1936,12 @@
                 fireType: Number(p.TYPE) || 0,
                 fireTypeLabel: typeConf.label,
                 hasFireClass: !isFirmsFeature(p) && !isS3Feature(p) && !isMtgFirFeature(p),
-                frp: p.FRP_WOOSTER != null ? p.FRP_WOOSTER : null
+                frp: p.FRP_WOOSTER != null ? p.FRP_WOOSTER : null,
+                pixelScanKm: p.PIXEL_SCAN_KM,
+                pixelTrackKm: p.PIXEL_TRACK_KM,
+                ifovAreaM2: p.IFOV_AREA_M2,
+                effAcrossKm: p.EFF_ACROSS_KM,
+                effAlongKm: p.EFF_ALONG_KM
             };
         }).filter(function (point) { return point !== null; })
           .sort(function (a, b) { return a.time - b.time; });

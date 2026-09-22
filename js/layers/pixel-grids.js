@@ -1,40 +1,18 @@
 /**
- * Viewport-limited canvas rendering for native MSG/MTG pixel grids.
+ * Native MSG/MTG grid projection and per-detection polar-sensor footprints.
  */
 (function () {
     'use strict';
 
-    var mapRef = null;
     var dataBase = 'data';
-    var activeLayer = null;
-    var activeDefinition = null;
-    var statusControl = null;
-    var statusElement = null;
-    var MAX_VISIBLE_CELLS = 16000;
     var metadataCache = Object.create(null);
     var metadataLoads = Object.create(null);
 
     var definitions = {
-        'msg-hrit-grid-3km': {
-            id: 'msg-hrit-grid-3km',
-            name: 'MSG-HRIT 3 km Pixel Grid',
-            file: 'pixel-grids/msg_hrit_3km.json'
-        },
-        'msg-rss-grid-3km': {
-            id: 'msg-rss-grid-3km',
-            name: 'MSG-RSS 3 km Pixel Grid',
-            file: 'pixel-grids/msg_rss_3km.json'
-        },
-        'mtg-fci-grid-1km': {
-            id: 'mtg-fci-grid-1km',
-            name: 'MTG-FCI 1 km Pixel Grid',
-            file: 'pixel-grids/mtg_fci_1km.json'
-        },
-        'mtg-fir-grid-2km': {
-            id: 'mtg-fir-grid-2km',
-            name: 'MTG-FIR 2 km Pixel Grid',
-            file: 'pixel-grids/mtg_fir_2km.json'
-        }
+        'msg-hrit-grid-3km': { id: 'msg-hrit-grid-3km', file: 'pixel-grids/msg_hrit_3km.json' },
+        'msg-rss-grid-3km': { id: 'msg-rss-grid-3km', file: 'pixel-grids/msg_rss_3km.json' },
+        'mtg-fci-grid-1km': { id: 'mtg-fci-grid-1km', file: 'pixel-grids/mtg_fci_1km.json' },
+        'mtg-fir-grid-2km': { id: 'mtg-fir-grid-2km', file: 'pixel-grids/mtg_fir_2km.json' }
     };
 
     var hotspotGridIds = {
@@ -42,6 +20,17 @@
         'MET-11': 'msg-rss-grid-3km',
         'MTG-1': 'mtg-fci-grid-1km',
         'MTG-FIR': 'mtg-fir-grid-2km'
+    };
+
+    var polarFootprintDefaults = {
+        'FIRMS-MODIS-AQUA': [1, 1],
+        'FIRMS-MODIS-TERRA': [1, 1],
+        'FIRMS-MODIS': [1, 1],
+        'FIRMS-NOAA20': [0.375, 0.375],
+        'FIRMS-NOAA21': [0.375, 0.375],
+        'FIRMS-NPP': [0.375, 0.375],
+        'S3A': [1, 1],
+        'S3B': [1, 1]
     };
 
     function loadDefinitionMetadata(definition) {
@@ -64,7 +53,6 @@
         return metadataLoads[definition.id];
     }
 
-
     function nativeCorner(metadata, row, column) {
         var x = metadata.origin_x + column * metadata.pixel_x;
         var y = metadata.origin_y + row * metadata.pixel_y;
@@ -76,7 +64,55 @@
         }
     }
 
-    function hotspotFootprint(satellite, latitude, longitude) {
+    function finitePositive(value) {
+        var number = Number(value);
+        return isFinite(number) && number > 0 ? number : null;
+    }
+
+    function polarFootprint(satellite, latitude, longitude, properties) {
+        var fallback = polarFootprintDefaults[satellite];
+        if (!fallback || !isFinite(latitude) || !isFinite(longitude)) return null;
+        properties = properties || {};
+        var widthKm;
+        var heightKm;
+
+        if (satellite.indexOf('FIRMS-') === 0) {
+            widthKm = finitePositive(properties.PIXEL_SCAN_KM) || fallback[0];
+            heightKm = finitePositive(properties.PIXEL_TRACK_KM) || fallback[1];
+        } else {
+            var acrossKm = finitePositive(properties.EFF_ACROSS_KM);
+            var alongKm = finitePositive(properties.EFF_ALONG_KM);
+            var areaM2 = finitePositive(properties.IFOV_AREA_M2);
+            if (areaM2) {
+                widthKm = heightKm = Math.sqrt(areaM2) / 1000;
+            } else if (acrossKm && alongKm) {
+                widthKm = heightKm = Math.sqrt(acrossKm * alongKm);
+            } else {
+                widthKm = fallback[0];
+                heightKm = fallback[1];
+            }
+        }
+
+        var halfLatitude = (heightKm / 2) / 111.32;
+        var longitudeScale = 111.32 * Math.max(0.05, Math.cos(latitude * Math.PI / 180));
+        var halfLongitude = (widthKm / 2) / longitudeScale;
+        return {
+            key: 'polar:' + satellite + ':' + Number(latitude).toFixed(6) + ':' +
+                Number(longitude).toFixed(6) + ':' + widthKm.toFixed(4) + ':' + heightKm.toFixed(4),
+            corners: [
+                [latitude - halfLatitude, longitude - halfLongitude],
+                [latitude - halfLatitude, longitude + halfLongitude],
+                [latitude + halfLatitude, longitude + halfLongitude],
+                [latitude + halfLatitude, longitude - halfLongitude]
+            ],
+            approximate: true
+        };
+    }
+
+    function hotspotFootprint(satellite, latitude, longitude, properties) {
+        if (polarFootprintDefaults[satellite]) {
+            return polarFootprint(satellite, latitude, longitude, properties);
+        }
         var definition = definitions[hotspotGridIds[satellite]];
         var metadata = definition && metadataCache[definition.id];
         if (!metadata || !isFinite(latitude) || !isFinite(longitude)) return null;
@@ -104,277 +140,9 @@
         };
     }
 
-    function ensurePane(map) {
-        if (map.getPane('pixelGridPane')) return;
-        var pane = map.createPane('pixelGridPane');
-        pane.style.zIndex = 455;
-        pane.style.pointerEvents = 'none';
-    }
-
-    function ensureStatusControl(map) {
-        if (statusControl) return;
-        statusControl = L.control({ position: 'bottomleft' });
-        statusControl.onAdd = function () {
-            statusElement = L.DomUtil.create('div', 'pixel-grid-status hidden');
-            L.DomEvent.disableClickPropagation(statusElement);
-            return statusElement;
-        };
-        statusControl.addTo(map);
-    }
-
-    function setStatus(message, muted) {
-        if (!statusElement) return;
-        statusElement.textContent = message || '';
-        statusElement.classList.toggle('hidden', !message);
-        statusElement.classList.toggle('pixel-grid-status-muted', !!muted);
-    }
-
-    function setToggleChecked(layerId, checked) {
-        var input = document.querySelector(
-            '#layer-toggles input[data-layer-id="' + layerId + '"]'
-        );
-        if (input) input.checked = checked;
-    }
-
-    var PixelGridCanvas = L.Layer.extend({
-        initialize: function (definition, metadata) {
-            this.definition = definition;
-            this.metadata = metadata;
-            this.canvas = null;
-            this.frame = null;
-            this.lastMessage = '';
-        },
-
-        onAdd: function (map) {
-            this.map = map;
-            this.canvas = L.DomUtil.create('canvas', 'pixel-grid-canvas');
-            this.canvas.setAttribute('aria-hidden', 'true');
-            map.getPane('pixelGridPane').appendChild(this.canvas);
-            map.on('moveend zoomend resize', this.scheduleRedraw, this);
-            this.scheduleRedraw();
-        },
-
-        onRemove: function (map) {
-            map.off('moveend zoomend resize', this.scheduleRedraw, this);
-            if (this.frame) cancelAnimationFrame(this.frame);
-            this.frame = null;
-            if (this.canvas && this.canvas.parentNode) this.canvas.parentNode.removeChild(this.canvas);
-            this.canvas = null;
-        },
-
-        scheduleRedraw: function () {
-            if (this.frame) cancelAnimationFrame(this.frame);
-            this.frame = requestAnimationFrame(function () {
-                this.frame = null;
-                this.redraw();
-            }.bind(this));
-        },
-
-        visibleRange: function () {
-            var bounds = this.map.getBounds();
-            var south = bounds.getSouth();
-            var north = bounds.getNorth();
-            var west = bounds.getWest();
-            var east = bounds.getEast();
-            var latitudes = [south, (south + north) / 2, north];
-            var longitudes = [west, (west + east) / 2, east];
-            var nativePoints = [];
-            for (var latIndex = 0; latIndex < latitudes.length; latIndex++) {
-                for (var lonIndex = 0; lonIndex < longitudes.length; lonIndex++) {
-                    try {
-                        nativePoints.push(proj4(
-                            'WGS84',
-                            this.metadata.projection,
-                            [longitudes[lonIndex], latitudes[latIndex]]
-                        ));
-                    } catch (error) {
-                        // Ignore points outside the geostationary projection.
-                    }
-                }
-            }
-            if (!nativePoints.length) return null;
-
-            var xs = nativePoints.map(function (point) { return point[0]; });
-            var ys = nativePoints.map(function (point) { return point[1]; });
-            var colA = Math.floor((Math.min.apply(null, xs) - this.metadata.origin_x) /
-                this.metadata.pixel_x) - 1;
-            var colB = Math.floor((Math.max.apply(null, xs) - this.metadata.origin_x) /
-                this.metadata.pixel_x) + 1;
-            var rowA = Math.floor((Math.max.apply(null, ys) - this.metadata.origin_y) /
-                this.metadata.pixel_y) - 1;
-            var rowB = Math.floor((Math.min.apply(null, ys) - this.metadata.origin_y) /
-                this.metadata.pixel_y) + 1;
-
-            return {
-                rowMin: Math.max(0, Math.min(rowA, rowB)),
-                rowMax: Math.min(this.metadata.height - 1, Math.max(rowA, rowB)),
-                colMin: Math.max(0, Math.min(colA, colB)),
-                colMax: Math.min(this.metadata.width - 1, Math.max(colA, colB))
-            };
-        },
-
-        countVisibleCells: function (range) {
-            var count = 0;
-            for (var row = range.rowMin; row <= range.rowMax; row++) {
-                var runs = this.metadata.runs[row];
-                for (var index = 0; index < runs.length; index++) {
-                    var start = Math.max(range.colMin, runs[index][0]);
-                    var end = Math.min(range.colMax, runs[index][1]);
-                    if (end >= start) count += end - start + 1;
-                }
-            }
-            return count;
-        },
-
-        projectCorner: function (row, column, cache) {
-            var key = row + ':' + column;
-            if (cache[key]) return cache[key];
-            var x = this.metadata.origin_x + column * this.metadata.pixel_x;
-            var y = this.metadata.origin_y + row * this.metadata.pixel_y;
-            var lonLat;
-            try {
-                lonLat = proj4(this.metadata.projection, 'WGS84', [x, y]);
-            } catch (error) {
-                return null;
-            }
-            var point = this.map.latLngToContainerPoint([lonLat[1], lonLat[0]]);
-            cache[key] = point;
-            return point;
-        },
-
-        redraw: function () {
-            if (!this.canvas || !this.map) return;
-            var size = this.map.getSize();
-            var ratio = Math.min(window.devicePixelRatio || 1, 2);
-            this.canvas.width = Math.round(size.x * ratio);
-            this.canvas.height = Math.round(size.y * ratio);
-            this.canvas.style.width = size.x + 'px';
-            this.canvas.style.height = size.y + 'px';
-            L.DomUtil.setPosition(
-                this.canvas,
-                this.map.containerPointToLayerPoint([0, 0])
-            );
-
-            var context = this.canvas.getContext('2d');
-            context.setTransform(ratio, 0, 0, ratio, 0, 0);
-            context.clearRect(0, 0, size.x, size.y);
-
-            if (this.map.getZoom() < this.metadata.min_zoom) {
-                setStatus(
-                    this.definition.name + ': zoom to level ' + this.metadata.min_zoom +
-                    ' to display cells',
-                    true
-                );
-                return;
-            }
-
-            var range = this.visibleRange();
-            if (!range || range.rowMax < range.rowMin || range.colMax < range.colMin) {
-                setStatus(this.definition.name + ': outside coverage', true);
-                return;
-            }
-            var visibleCount = this.countVisibleCells(range);
-            if (!visibleCount) {
-                setStatus(this.definition.name + ': no grid cells in view', true);
-                return;
-            }
-            if (visibleCount > MAX_VISIBLE_CELLS) {
-                setStatus(
-                    this.definition.name + ': zoom in to draw ' +
-                    visibleCount.toLocaleString() + ' cells',
-                    true
-                );
-                return;
-            }
-
-            var cache = Object.create(null);
-            context.beginPath();
-            for (var row = range.rowMin; row <= range.rowMax; row++) {
-                var runs = this.metadata.runs[row];
-                for (var runIndex = 0; runIndex < runs.length; runIndex++) {
-                    var start = Math.max(range.colMin, runs[runIndex][0]);
-                    var end = Math.min(range.colMax, runs[runIndex][1]);
-                    for (var column = start; column <= end; column++) {
-                        var topLeft = this.projectCorner(row, column, cache);
-                        var topRight = this.projectCorner(row, column + 1, cache);
-                        var bottomRight = this.projectCorner(row + 1, column + 1, cache);
-                        var bottomLeft = this.projectCorner(row + 1, column, cache);
-                        if (!topLeft || !topRight || !bottomRight || !bottomLeft) continue;
-                        context.moveTo(topLeft.x, topLeft.y);
-                        context.lineTo(topRight.x, topRight.y);
-                        context.lineTo(bottomRight.x, bottomRight.y);
-                        context.lineTo(bottomLeft.x, bottomLeft.y);
-                        context.closePath();
-                    }
-                }
-            }
-            context.lineJoin = 'round';
-            context.strokeStyle = 'rgba(255,255,255,0.82)';
-            context.lineWidth = 2.4;
-            context.stroke();
-            context.strokeStyle = 'rgba(0,0,0,0.82)';
-            context.lineWidth = 0.8;
-            context.stroke();
-            setStatus(
-                this.definition.name + ' - ' + visibleCount.toLocaleString() +
-                ' cells in view',
-                false
-            );
-        }
-    });
-
-    function disableActiveLayer() {
-        if (activeLayer && mapRef && mapRef.hasLayer(activeLayer)) {
-            mapRef.removeLayer(activeLayer);
-        }
-        if (activeDefinition) setToggleChecked(activeDefinition.id, false);
-        activeLayer = null;
-        activeDefinition = null;
-        setStatus('', false);
-    }
-
-    function enableDefinition(definition) {
-        if (!mapRef) return;
-        if (activeDefinition && activeDefinition.id !== definition.id) disableActiveLayer();
-        setToggleChecked(definition.id, true);
-        if (activeLayer && activeDefinition === definition) return;
-
-        activeDefinition = definition;
-        setStatus('Loading ' + definition.name + '...', true);
-        loadDefinitionMetadata(definition)
-            .then(function (metadata) {
-                if (activeDefinition !== definition) return;
-                activeLayer = new PixelGridCanvas(definition, metadata);
-                activeLayer.addTo(mapRef);
-            })
-            .catch(function (error) {
-                console.error('[PIXEL GRID]', error);
-                if (activeDefinition === definition) {
-                    setStatus('Unable to load ' + definition.name, true);
-                    setToggleChecked(definition.id, false);
-                    activeDefinition = null;
-                }
-            });
-    }
-
-    function layerDefinition(definition) {
-        return {
-            id: definition.id,
-            name: definition.name,
-            defaultVisible: false,
-            setVisible: function (visible) {
-                if (visible) enableDefinition(definition);
-                else if (activeDefinition === definition) disableActiveLayer();
-            }
-        };
-    }
-
     EV.pixelGrids = {
         init: function (map, baseUrl) {
-            mapRef = map;
             dataBase = baseUrl || 'data';
-            ensurePane(map);
-            ensureStatusControl(map);
         },
         preloadHotspotGrids: function () {
             return Promise.all(Object.keys(hotspotGridIds).map(function (satellite) {
@@ -382,11 +150,8 @@
             }));
         },
         hasHotspotGrid: function (satellite) {
-            return !!hotspotGridIds[satellite];
+            return !!hotspotGridIds[satellite] || !!polarFootprintDefaults[satellite];
         },
         getHotspotFootprint: hotspotFootprint
     };
-    EV.pixelGridLayers = Object.keys(definitions).map(function (key) {
-        return layerDefinition(definitions[key]);
-    });
 })();

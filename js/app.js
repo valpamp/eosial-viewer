@@ -953,11 +953,6 @@
     registerLayer(EV.s3Hotspots, 'hotspots');
     registerLayer(EV.mtgFirHotspots, 'hotspots');
     if (EV.adminL0) registerLayer(EV.adminL0, 'additional');
-    if (EV.pixelGridLayers) {
-        EV.pixelGridLayers.forEach(function (layer) {
-            registerLayer(layer, 'additional');
-        });
-    }
     buildLayerToggles();
 
     // Initialise layers
