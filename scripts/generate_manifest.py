@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate the LFMC manifest.json for the EOSIAL Viewer.
+Generate the LFMC manifest.json for the EOSIAL Active Fire Viewer.
 
 Scans the data/lfmc/cogs/ directory and builds a JSON index of all
 available AOIs, polygons, and dates.

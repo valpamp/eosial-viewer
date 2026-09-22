@@ -1065,7 +1065,7 @@ def commit_and_push(repo_root: Path, output_dir: Path, git_exe: str) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Update SFIDE fire hotspot aggregate files for EOSIAL Viewer.")
+    parser = argparse.ArgumentParser(description="Update SFIDE fire hotspot aggregate files for EOSIAL Active Fire Viewer.")
     parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE_DIR, help="Directory containing SFIDE outputs.")
     parser.add_argument(
         "--output-dir",

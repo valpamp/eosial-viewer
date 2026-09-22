@@ -36,28 +36,14 @@
         attribution: '&copy; OpenTopoMap',
         maxZoom: 17,
     });
-    var cartoDark = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CARTO',
-        maxZoom: 20,
-    });
-    var cartoLight = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; CARTO',
-        maxZoom: 20,
-    });
-
     // Default basemap
     osm.addTo(map);
 
     var basemaps = {
-        'Light (CartoDB)': cartoLight,
         'OpenStreetMap': osm,
         'Satellite (Google)': googleHybrid,
-        'Topographic': topoMap,
-        'Dark (CartoDB)': cartoDark,
+        'Topographic': topoMap
     };
-
     // Unified toolbar (replaces separate zoom / layers / geocoder controls)
     var toolbar = L.control({ position: 'topright' });
     toolbar.onAdd = function () {

@@ -278,6 +278,26 @@ body.dark {
 .fire-source-toolbar .toolbar-pill span:last-child {
     overflow-wrap: anywhere;
 }
+.dataset-availability {
+    align-self: center;
+    padding: 5px 8px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.72);
+    color: #0e7490;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.dataset-availability.warning {
+    background: rgba(254,243,199,0.9);
+    color: #92400e;
+}
+.fire-hotspot-pixel {
+    filter: drop-shadow(0 1px 1px rgba(15,23,42,0.45));
+}
+.fire-pixel-symbol {
+    pointer-events: none;
+}
 .firms-title {
     color: #047857;
 }
@@ -899,6 +919,14 @@ body.dark .fire-source-toolbar-mtg-fir {
     background: rgba(131,24,67,0.28);
     border-left-color: #f472b6;
 }
+body.dark .dataset-availability {
+    background: rgba(39,39,42,0.72);
+    color: #67e8f9;
+}
+body.dark .dataset-availability.warning {
+    background: rgba(120,53,15,0.48);
+    color: #fde68a;
+}
 body.dark .firms-title { color: #86efac; }
 body.dark .s3-title { color: #67e8f9; }
 body.dark .mtg-fir-title { color: #f9a8d4; }
@@ -1119,6 +1147,23 @@ body.fire-animation-active #product-toolbar {
     display: flex;
     align-items: center;
 }
+.fire-animation-options .fire-animation-opacity {
+    gap: 6px;
+    min-height: 30px;
+}
+#fire-animation-opacity {
+    width: 88px;
+    margin: 0;
+    accent-color: #dc2626;
+}
+#fire-animation-opacity-value {
+    min-width: 32px;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
 .fire-animation-title-row {
     justify-content: space-between;
     margin-bottom: 8px;
@@ -1183,6 +1228,35 @@ body.fire-animation-active #product-toolbar {
     font-weight: 700;
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+.fire-animation-export-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.fire-animation-export-title input {
+    min-width: 0;
+    min-height: 32px;
+    flex: 1;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #1f2937;
+    font: 600 12px/1.2 'Inter', sans-serif;
+    text-transform: none;
+}
+.fire-animation-export-title input:focus {
+    border-color: #2563eb;
+    outline: 2px solid rgba(37, 99, 235, 0.16);
 }
 .fire-animation-options {
     flex-wrap: wrap;
@@ -1331,6 +1405,11 @@ body.fire-animation-active #product-toolbar {
     .fire-animation-time {
         font-size: 14px;
     }
+    .fire-animation-export-title {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 5px;
+    }
     .fire-animation-options {
         gap: 7px;
     }
@@ -1410,9 +1489,6 @@ body.fire-animation-active #product-toolbar {
 .fire-legend-square::before {
     border-radius: 1px;
 }
-.fire-legend-diamond::before {
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
-}
 .fire-legend-sizes,
 .fire-animation-legend-sizes {
     display: grid;
@@ -1468,9 +1544,36 @@ body.fire-animation-active #product-toolbar {
     white-space: nowrap;
 }
 .fire-animation-legend-satellite {
-    width: 9px !important;
-    height: 9px !important;
-    flex: 0 0 9px !important;
+    display: block;
+    width: 10px !important;
+    height: 10px !important;
+    flex: 0 0 10px !important;
+    border: 2px solid;
+    border-radius: 50%;
+    box-sizing: border-box;
+}
+.fire-animation-frp-colorbar {
+    width: 100%;
+    margin-top: 3px;
+}
+.fire-animation-frp-colorbar > i {
+    display: block;
+    width: 100%;
+    height: 11px;
+    border: 1px solid rgba(71, 85, 105, 0.7);
+    border-radius: 2px;
+    background: linear-gradient(90deg, #ffffcc 0%, #ffeda0 12.5%, #fed976 25%, #feb24c 37.5%, #fd8d3c 50%, #fc4e2a 62.5%, #e31a1c 75%, #bd0026 87.5%, #800026 100%);
+}
+.fire-animation-frp-colorbar > div {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+    color: #475569;
+    font-size: 8px;
+    font-weight: 700;
+}
+.fire-animation-pixel {
+    filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.45));
 }
 .fire-animation-legend-shape {
     width: 10px;

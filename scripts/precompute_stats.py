@@ -6,7 +6,7 @@ For each AOI / polygon / date, loads the COG with rasterio, masks nodata
 pixels, and computes mean, median, Q25, Q75 over all valid pixels. Results
 are written to data/lfmc/stats.json.
 
-The EOSIAL Viewer loads this file at startup and uses it for timeseries
+The EOSIAL Active Fire Viewer loads this file at startup and uses it for timeseries
 charts instead of downloading full COGs — critical for large AOIs like
 Europe where individual files are 14–16 MB.
 

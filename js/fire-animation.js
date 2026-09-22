@@ -15,9 +15,29 @@
     var currentVisiblePoints = [];
     var active = false;
     var exporting = false;
+    var FRP_MIN = 1;
+    var FRP_MAX = 1000;
+    var FRP_COLOR_STOPS = [
+        { t: 0.000, c: [255, 255, 204] },
+        { t: 0.125, c: [255, 237, 160] },
+        { t: 0.250, c: [254, 217, 118] },
+        { t: 0.375, c: [254, 178, 76] },
+        { t: 0.500, c: [253, 141, 60] },
+        { t: 0.625, c: [252, 78, 42] },
+        { t: 0.750, c: [227, 26, 28] },
+        { t: 0.875, c: [189, 0, 38] },
+        { t: 1.000, c: [128, 0, 38] }
+    ];
+    var brandImagesPromise = null;
 
     function init(mapInstance) {
         map = mapInstance;
+        brandImagesPromise = Promise.all([
+            loadImage('images/EOSIAL_banner.png'),
+            loadImage('images/LOGO_DEF.png')
+        ]).then(function (images) {
+            return { eosial: images[0], sia: images[1] };
+        });
         wireControls();
     }
 
@@ -47,6 +67,11 @@
         document.getElementById('fire-animation-labels').addEventListener('change', function () {
             renderFrame(currentFrame);
         });
+        document.getElementById('fire-animation-opacity').addEventListener('input', function () {
+            document.getElementById('fire-animation-opacity-value').textContent = this.value + '%';
+            renderFrame(currentFrame);
+        });
+        document.getElementById('fire-animation-title').addEventListener('input', updateAnimationTitlePreview);
         document.getElementById('fire-animation-frame-delay').addEventListener('change', function () {
             if (timer) {
                 stopPlayback();
@@ -73,6 +98,7 @@
         points = data.points.slice().sort(function (a, b) { return a.time - b.time; });
         document.body.classList.add('fire-animation-active');
         document.getElementById('fire-animation-controls').classList.remove('hidden');
+        document.getElementById('fire-animation-title').value = '';
 
         if (EV.fireHotspots && EV.fireHotspots.setAnimationMode) {
             EV.fireHotspots.setAnimationMode(true);
@@ -121,12 +147,30 @@
         var container = map.getContainer();
         stamp = document.createElement('div');
         stamp.className = 'fire-animation-map-stamp';
-        stamp.innerHTML = '<strong>Selected hotspot animation</strong><span id="fire-animation-map-time"></span><small id="fire-animation-map-window"></small>';
+        stamp.innerHTML = '<strong id="fire-animation-map-title">Selected hotspot animation</strong><span id="fire-animation-map-time"></span><small id="fire-animation-map-window"></small>';
         container.appendChild(stamp);
 
         legend = document.createElement('div');
         legend.className = 'fire-animation-map-legend';
         container.appendChild(legend);
+    }
+    function loadImage(url) {
+        return new Promise(function (resolve) {
+            var image = new Image();
+            image.onload = function () { resolve(image); };
+            image.onerror = function () { resolve(null); };
+            image.src = url;
+        });
+    }
+
+    function getAnimationTitle() {
+        var input = document.getElementById('fire-animation-title');
+        return input ? input.value.trim() : '';
+    }
+
+    function updateAnimationTitlePreview() {
+        var preview = document.getElementById('fire-animation-map-title');
+        if (preview) preview.textContent = getAnimationTitle() || 'Selected hotspot animation';
     }
     function fitLiveAnimationBounds(bounds) {
         var panel = document.getElementById('control-panel');
@@ -164,7 +208,7 @@
 
         var satelliteRows = Object.keys(satellites).sort().map(function (key) {
             var item = satellites[key];
-            return '<span class="fire-animation-legend-item"><i class="fire-animation-legend-satellite" style="background:' +
+            return '<span class="fire-animation-legend-item"><i class="fire-animation-legend-satellite" style="background:#fff;border-color:' +
                 escapeAttribute(item.color) + '"></i>' + escapeHtml(item.label) + '</span>';
         }).join('');
         var typeRows = Object.keys(fireTypes).sort().map(function (key) {
@@ -176,27 +220,57 @@
             '<section><strong>Fire type</strong>' + typeRows + '</section>' : '';
 
         legend.innerHTML =
-            '<section><strong>Satellite</strong>' + satelliteRows + '</section>' +
+            '<section><strong>Satellite outline</strong>' + satelliteRows + '</section>' +
             typeSection +
-            '<section><strong>FRP [MW]</strong><div class="fire-animation-legend-sizes">' +
-            '<span><i style="width:12px;height:12px"></i>&lt;20</span>' +
-            '<span><i style="width:16px;height:16px"></i>20-100</span>' +
-            '<span><i style="width:21px;height:21px"></i>100-500</span>' +
-            '<span><i style="width:28px;height:28px"></i>&ge;500</span>' +
-            '</div></section>';
+            '<section><strong>FRP [MW] - log scale</strong>' + frpColorbarHtml() + '</section>';
     }
     function legendShapeSvg(path) {
         return '<svg class="fire-animation-legend-shape" viewBox="0 0 24 24" aria-hidden="true">' +
             '<path d="' + escapeAttribute(path) + '"/></svg>';
     }
 
-    function getFRPMarkerSize(frp) {
-        if (frp == null || !isFinite(Number(frp))) return 12;
-        frp = Number(frp);
-        if (frp < 20) return 12;
-        if (frp < 100) return 16;
-        if (frp < 500) return 21;
-        return 28;
+    function interpolateColor(a, b, amount) {
+        return [0, 1, 2].map(function (index) {
+            return Math.round(a[index] + (b[index] - a[index]) * amount);
+        });
+    }
+
+    function frpScalePosition(frp) {
+        var value = Number(frp);
+        if (!isFinite(value) || value <= 0) return null;
+        var clamped = Math.max(FRP_MIN, Math.min(FRP_MAX, value));
+        return (Math.log10(clamped) - Math.log10(FRP_MIN)) /
+            (Math.log10(FRP_MAX) - Math.log10(FRP_MIN));
+    }
+
+    function frpColor(frp) {
+        var position = frpScalePosition(frp);
+        if (position === null) return '#6b7280';
+        for (var index = 1; index < FRP_COLOR_STOPS.length; index++) {
+            if (position <= FRP_COLOR_STOPS[index].t) {
+                var low = FRP_COLOR_STOPS[index - 1];
+                var high = FRP_COLOR_STOPS[index];
+                var amount = (position - low.t) / (high.t - low.t);
+                var color = interpolateColor(low.c, high.c, amount);
+                return 'rgb(' + color.join(',') + ')';
+            }
+        }
+        return 'rgb(' + FRP_COLOR_STOPS[FRP_COLOR_STOPS.length - 1].c.join(',') + ')';
+    }
+
+    function frpColorbarHtml() {
+        return '<div class="fire-animation-frp-colorbar">' +
+            '<i aria-hidden="true"></i>' +
+            '<div><span>1</span><span>10</span><span>100</span><span>1000+</span></div>' +
+            '</div>';
+    }
+
+    function nativeFootprint(point) {
+        if (!EV.pixelGrids || !EV.pixelGrids.hasHotspotGrid ||
+                !EV.pixelGrids.hasHotspotGrid(point.satellite)) return null;
+        return EV.pixelGrids.getHotspotFootprint(
+            point.satellite, point.latitude, point.longitude
+        );
     }
     function rebuildFrames() {
         if (!active) return;
@@ -231,6 +305,30 @@
         slider.value = '0';
         renderFrame(0);
     }
+    function strongerAnimationPoint(current, candidate) {
+        if (!current) return candidate;
+        var currentFrp = Number(current.frp);
+        var candidateFrp = Number(candidate.frp);
+        if (isFinite(candidateFrp) && (!isFinite(currentFrp) || candidateFrp > currentFrp)) return candidate;
+        return candidateFrp === currentFrp && candidate.time > current.time ? candidate : current;
+    }
+
+    function animationSymbolIcon(point, size, showLabel, pixelSymbol) {
+        var frpLabel = showLabel && point.frp != null ?
+            '<span class="fire-animation-frp-label">' + Math.round(Number(point.frp)) + ' MW</span>' : '';
+        var symbol = point.hasFireClass || !pixelSymbol ?
+            '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" style="fill:' +
+            escapeAttribute(frpColor(point.frp)) + ';stroke:' + escapeAttribute(point.color) +
+            ';stroke-width:2.5;opacity:' + getHotspotOpacity() + '"><path d="' +
+            escapeAttribute(point.typePath) + '"/></svg>' : '';
+        return L.divIcon({
+            className: 'fire-animation-marker',
+            html: '<div class="fire-animation-symbol">' + symbol + frpLabel + '</div>',
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2]
+        });
+    }
+
     function renderFrame(index) {
         if (!active || !frameTimes.length) return;
         currentFrame = Math.max(0, Math.min(index, frameTimes.length - 1));
@@ -243,24 +341,43 @@
 
         markerLayer.clearLayers();
         var showFRPLabels = document.getElementById('fire-animation-labels').checked;
+        var hotspotOpacity = getHotspotOpacity();
+        var pixelBuckets = Object.create(null);
         visible.forEach(function (point) {
-            var markerSize = getFRPMarkerSize(point.frp);
-            var showLabel = showFRPLabels && point.frp != null;
-            var frpLabel = showLabel ?
-                '<span class="fire-animation-frp-label">' + Math.round(Number(point.frp)) + ' MW</span>' : '';
-            var icon = L.divIcon({
-                className: 'fire-animation-marker',
-                html: '<div class="fire-animation-symbol"><svg width="' + markerSize + '" height="' + markerSize +
-                    '" viewBox="0 0 24 24" style="fill:' + escapeAttribute(point.color) +
-                    '"><path d="' + escapeAttribute(point.typePath) + '"/></svg>' + frpLabel + '</div>',
-                iconSize: [markerSize, markerSize],
-                iconAnchor: [markerSize / 2, markerSize / 2]
-            });
+            var footprint = nativeFootprint(point);
+            if (footprint) {
+                var bucket = pixelBuckets[footprint.key];
+                if (!bucket) bucket = pixelBuckets[footprint.key] = { footprint: footprint, point: point };
+                bucket.point = strongerAnimationPoint(bucket.point, point);
+                return;
+            }
             L.marker([point.latitude, point.longitude], {
-                icon: icon,
+                icon: animationSymbolIcon(point, 16, showFRPLabels, false),
                 interactive: false,
                 keyboard: false
             }).addTo(markerLayer);
+        });
+
+        Object.keys(pixelBuckets).forEach(function (key) {
+            var bucket = pixelBuckets[key];
+            var point = bucket.point;
+            L.polygon(bucket.footprint.corners, {
+                color: point.color,
+                weight: 2,
+                opacity: hotspotOpacity,
+                fillColor: frpColor(point.frp),
+                fillOpacity: hotspotOpacity,
+                lineJoin: 'round',
+                interactive: false,
+                className: 'fire-animation-pixel'
+            }).addTo(markerLayer);
+            if (point.hasFireClass || (showFRPLabels && point.frp != null)) {
+                L.marker([point.latitude, point.longitude], {
+                    icon: animationSymbolIcon(point, 11, showFRPLabels, true),
+                    interactive: false,
+                    keyboard: false
+                }).addTo(markerLayer);
+            }
         });
 
         var formatted = formatUTC(endTime);
@@ -368,6 +485,7 @@
         if (markerLayer && map.hasLayer(markerLayer)) map.removeLayer(markerLayer);
 
         try {
+            var brandImages = await (brandImagesPromise || Promise.resolve({ eosial: null, sia: null }));
             await nextPaint();
             var cssWidth = mapElement.clientWidth;
             var cssHeight = mapElement.clientHeight;
@@ -403,7 +521,7 @@
             recorder.start(1000);
             for (var i = 0; i < frameTimes.length; i++) {
                 renderFrame(i);
-                drawExportFrame(context, snapshot, crop, sourceScale, layout, attribution);
+                drawExportFrame(context, snapshot, crop, sourceScale, layout, attribution, brandImages);
                 setStatus('Rendering ' + format.toUpperCase() + ' frame ' + (i + 1) + ' of ' + frameTimes.length + '...');
                 await delay(getFrameDelay());
             }
@@ -422,7 +540,7 @@
             setStatus('Cropped ' + format.toUpperCase() + ' animation saved.');
         } catch (error) {
             console.error('[ANIMATION] ' + format.toUpperCase() + ' export failed:', error);
-            setStatus('Export failed. The selected basemap may block browser capture; try the OpenStreetMap or Light basemap.');
+            setStatus('Export failed. The selected basemap may block browser capture; try the OpenStreetMap basemap.');
         } finally {
             document.body.classList.remove('fire-animation-exporting');
             if (selectionLayer) {
@@ -457,27 +575,35 @@
     }
 
     function createExportLayout(crop) {
-        var mapScale = Math.min(1920 / crop.width, 820 / crop.height);
+        var axisLeft = 66;
+        var axisRight = 24;
+        var axisTop = 18;
+        var axisBottom = 38;
+        var maxMapWidth = 1920 - axisLeft - axisRight;
+        var mapScale = Math.min(maxMapWidth / crop.width, 780 / crop.height);
         var mapWidth = evenNumber(Math.max(1, Math.round(crop.width * mapScale)));
         var mapHeight = evenNumber(Math.max(1, Math.round(crop.height * mapScale)));
-        var width = evenNumber(Math.max(900, mapWidth));
-        var headerHeight = 86;
-        var footerHeight = 174;
+        var width = evenNumber(Math.max(900, mapWidth + axisLeft + axisRight));
+        var headerHeight = 112;
+        var footerHeight = 260;
+        var mapX = axisLeft + Math.round((width - axisLeft - axisRight - mapWidth) / 2);
+        var mapY = headerHeight + axisTop;
+        var footerY = mapY + mapHeight + axisBottom;
         return {
             width: width,
-            height: evenNumber(headerHeight + mapHeight + footerHeight),
+            height: evenNumber(footerY + footerHeight),
             headerHeight: headerHeight,
             footerHeight: footerHeight,
-            mapX: Math.round((width - mapWidth) / 2),
-            mapY: headerHeight,
+            footerY: footerY,
+            mapX: mapX,
+            mapY: mapY,
             mapWidth: mapWidth,
             mapHeight: mapHeight,
             pointScaleX: mapWidth / crop.width,
             pointScaleY: mapHeight / crop.height
         };
     }
-
-    function drawExportFrame(context, snapshot, crop, sourceScale, layout, attribution) {
+    function drawExportFrame(context, snapshot, crop, sourceScale, layout, attribution, brandImages) {
         context.save();
         context.fillStyle = '#f8fafc';
         context.fillRect(0, 0, layout.width, layout.height);
@@ -499,40 +625,55 @@
         context.beginPath();
         context.rect(layout.mapX, layout.mapY, layout.mapWidth, layout.mapHeight);
         context.clip();
+        var exportPixelBuckets = Object.create(null);
         currentVisiblePoints.forEach(function (point) {
-            drawExportHotspot(context, point, crop, layout);
+            var footprint = nativeFootprint(point);
+            if (footprint) {
+                var bucket = exportPixelBuckets[footprint.key];
+                if (!bucket) bucket = exportPixelBuckets[footprint.key] = { footprint: footprint, point: point };
+                bucket.point = strongerAnimationPoint(bucket.point, point);
+            } else {
+                drawExportHotspot(context, point, crop, layout);
+            }
+        });
+        Object.keys(exportPixelBuckets).forEach(function (key) {
+            var bucket = exportPixelBuckets[key];
+            drawExportPixel(context, bucket.point, bucket.footprint, crop, layout);
         });
         context.restore();
 
-        context.strokeStyle = '#cbd5e1';
-        context.lineWidth = 2;
-        context.strokeRect(layout.mapX, layout.mapY, layout.mapWidth, layout.mapHeight);
-        drawExportLegend(context, layout, attribution);
+        drawExportCoordinateFrame(context, crop, layout);
+        drawExportLegend(context, layout, attribution, brandImages);
         context.restore();
     }
-
     function drawExportHeader(context, layout) {
         var endTime = frameTimes[currentFrame];
         var persistence = Number(document.getElementById('fire-animation-persistence').value);
         var modeText = persistence === 0 ?
             'Exact acquisition timestamp' :
             'Detections acquired in the preceding ' + persistence + ' minutes';
+        var title = getAnimationTitle() || 'Selected hotspot animation';
 
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, layout.width, layout.headerHeight);
         context.fillStyle = '#0f172a';
-        context.font = '700 24px Inter, Arial, sans-serif';
         context.textAlign = 'left';
         context.textBaseline = 'alphabetic';
-        context.fillText('EOSIAL Active Fire Viewer', 28, 34);
-        context.fillStyle = '#64748b';
-        context.font = '600 13px Inter, Arial, sans-serif';
-        context.fillText(modeText + ' | ' + currentVisiblePoints.length + ' detections | Map zoom ' + map.getZoom(), 28, 61);
+        fitCanvasText(context, title, layout.width - 56, 30, 19, '750');
+        context.fillText(ellipsizeCanvasText(context, title, layout.width - 56), 28, 39);
 
+        context.fillStyle = '#475569';
+        context.font = '700 13px Inter, Arial, sans-serif';
+        context.fillText('EOSIAL Active Fire Viewer', 28, 69);
         context.fillStyle = '#0f172a';
-        context.font = '700 19px Inter, Arial, sans-serif';
+        context.font = '700 17px Inter, Arial, sans-serif';
         context.textAlign = 'right';
-        context.fillText(formatUTC(endTime), layout.width - 28, 39);
+        context.fillText(formatUTC(endTime), layout.width - 28, 69);
+
+        context.fillStyle = '#64748b';
+        context.font = '600 12px Inter, Arial, sans-serif';
+        context.textAlign = 'left';
+        context.fillText(modeText + ' | ' + currentVisiblePoints.length + ' detections | Map zoom ' + map.getZoom(), 28, 95);
         context.strokeStyle = '#e2e8f0';
         context.lineWidth = 1;
         context.beginPath();
@@ -541,33 +682,160 @@
         context.stroke();
     }
 
-    function drawExportHotspot(context, point, crop, layout) {
-        var screenPoint = map.latLngToContainerPoint([point.latitude, point.longitude]);
-        var x = layout.mapX + (screenPoint.x - crop.left) * layout.pointScaleX;
-        var y = layout.mapY + (screenPoint.y - crop.top) * layout.pointScaleY;
-        var size = getExportMarkerSize(point.frp);
+    function fitCanvasText(context, text, maxWidth, maximum, minimum, weight) {
+        var size = maximum;
+        do {
+            context.font = weight + ' ' + size + 'px Inter, Arial, sans-serif';
+            if (context.measureText(text).width <= maxWidth) return size;
+            size -= 1;
+        } while (size > minimum);
+        context.font = weight + ' ' + minimum + 'px Inter, Arial, sans-serif';
+        return minimum;
+    }
+
+    function ellipsizeCanvasText(context, text, maxWidth) {
+        if (context.measureText(text).width <= maxWidth) return text;
+        var suffix = '...';
+        var low = 0;
+        var high = text.length;
+        while (low < high) {
+            var middle = Math.ceil((low + high) / 2);
+            if (context.measureText(text.substring(0, middle) + suffix).width <= maxWidth) low = middle;
+            else high = middle - 1;
+        }
+        return text.substring(0, low).trimEnd() + suffix;
+    }
+    function niceCoordinateStep(span, targetCount) {
+        if (!isFinite(span) || span <= 0) return 1;
+        var rough = span / Math.max(1, targetCount);
+        var power = Math.pow(10, Math.floor(Math.log10(rough)));
+        var normalized = rough / power;
+        var factor = normalized <= 1 ? 1 : (normalized <= 2 ? 2 : (normalized <= 5 ? 5 : 10));
+        return factor * power;
+    }
+
+    function coordinateValues(minimum, maximum, step) {
+        var values = [];
+        var first = Math.ceil((minimum - step * 1e-8) / step) * step;
+        for (var value = first; value <= maximum + step * 1e-8; value += step) {
+            values.push(Math.abs(value) < step * 1e-8 ? 0 : value);
+        }
+        return values;
+    }
+
+    function formatCoordinate(value, axis, step) {
+        var precision = step >= 1 ? 0 : (step >= 0.1 ? 1 : (step >= 0.01 ? 2 : 3));
+        var suffix = axis === 'longitude' ? (value < 0 ? ' W' : ' E') : (value < 0 ? ' S' : ' N');
+        return Math.abs(value).toFixed(precision) + '\u00B0' + suffix;
+    }
+
+    function drawExportCoordinateFrame(context, crop, layout) {
+        if (!selectionBounds) return;
+        var west = selectionBounds.getWest();
+        var east = selectionBounds.getEast();
+        var south = selectionBounds.getSouth();
+        var north = selectionBounds.getNorth();
+        var longitudeStep = niceCoordinateStep(east - west, Math.max(3, Math.min(7, Math.round(layout.mapWidth / 260))));
+        var latitudeStep = niceCoordinateStep(north - south, Math.max(3, Math.min(6, Math.round(layout.mapHeight / 190))));
+        var tickLength = 7;
 
         context.save();
+        context.strokeStyle = '#334155';
+        context.fillStyle = '#334155';
+        context.lineWidth = 1.25;
+        context.font = '650 11px Inter, Arial, sans-serif';
+        context.textBaseline = 'middle';
+
+        coordinateValues(west, east, longitudeStep).forEach(function (longitude) {
+            var x = exportCanvasPoint((south + north) / 2, longitude, crop, layout).x;
+            if (x < layout.mapX - 1 || x > layout.mapX + layout.mapWidth + 1) return;
+            context.beginPath();
+            context.moveTo(x, layout.mapY);
+            context.lineTo(x, layout.mapY + tickLength);
+            context.moveTo(x, layout.mapY + layout.mapHeight);
+            context.lineTo(x, layout.mapY + layout.mapHeight - tickLength);
+            context.stroke();
+            context.textAlign = 'center';
+            context.fillText(formatCoordinate(longitude, 'longitude', longitudeStep), x,
+                layout.mapY + layout.mapHeight + 21);
+        });
+
+        coordinateValues(south, north, latitudeStep).forEach(function (latitude) {
+            var y = exportCanvasPoint(latitude, (west + east) / 2, crop, layout).y;
+            if (y < layout.mapY - 1 || y > layout.mapY + layout.mapHeight + 1) return;
+            context.beginPath();
+            context.moveTo(layout.mapX, y);
+            context.lineTo(layout.mapX + tickLength, y);
+            context.moveTo(layout.mapX + layout.mapWidth, y);
+            context.lineTo(layout.mapX + layout.mapWidth - tickLength, y);
+            context.stroke();
+            context.textAlign = 'right';
+            context.fillText(formatCoordinate(latitude, 'latitude', latitudeStep), layout.mapX - 11, y);
+        });
+
+        context.strokeStyle = '#1e293b';
+        context.lineWidth = 1.5;
+        context.strokeRect(layout.mapX, layout.mapY, layout.mapWidth, layout.mapHeight);
+        context.restore();
+    }
+    function exportCanvasPoint(latitude, longitude, crop, layout) {
+        var screenPoint = map.latLngToContainerPoint([latitude, longitude]);
+        return {
+            x: layout.mapX + (screenPoint.x - crop.left) * layout.pointScaleX,
+            y: layout.mapY + (screenPoint.y - crop.top) * layout.pointScaleY
+        };
+    }
+
+    function drawExportHotspot(context, point, crop, layout) {
+        var canvasPoint = exportCanvasPoint(point.latitude, point.longitude, crop, layout);
+        var size = 22;
+        context.save();
+        context.globalAlpha = getHotspotOpacity();
         context.shadowColor = 'rgba(15, 23, 42, 0.65)';
         context.shadowBlur = 5;
         context.shadowOffsetY = 2;
-        drawCanvasFireShape(context, x, y, size,
+        drawCanvasFireShape(context, canvasPoint.x, canvasPoint.y, size,
             point.hasFireClass ? point.fireType : -1,
-            point.color, '#ffffff', 2.5);
+            frpColor(point.frp), point.color, 3);
         context.restore();
 
         if (document.getElementById('fire-animation-labels').checked && point.frp != null) {
-            drawExportFRPLabel(context, x, y - size / 2 - 7, Math.round(Number(point.frp)) + ' MW');
+            drawExportFRPLabel(context, canvasPoint.x, canvasPoint.y - size / 2 - 7,
+                Math.round(Number(point.frp)) + ' MW');
         }
     }
 
-    function getExportMarkerSize(frp) {
-        if (frp == null || !isFinite(Number(frp))) return 16;
-        frp = Number(frp);
-        if (frp < 20) return 16;
-        if (frp < 100) return 22;
-        if (frp < 500) return 30;
-        return 40;
+    function drawExportPixel(context, point, footprint, crop, layout) {
+        var corners = footprint.corners.map(function (corner) {
+            return exportCanvasPoint(corner[0], corner[1], crop, layout);
+        });
+        context.save();
+        context.globalAlpha = getHotspotOpacity();
+        context.beginPath();
+        corners.forEach(function (corner, index) {
+            if (index === 0) context.moveTo(corner.x, corner.y);
+            else context.lineTo(corner.x, corner.y);
+        });
+        context.closePath();
+        context.fillStyle = frpColor(point.frp);
+        context.fill();
+        context.strokeStyle = point.color;
+        context.lineWidth = 3;
+        context.stroke();
+        context.restore();
+
+        var center = exportCanvasPoint(point.latitude, point.longitude, crop, layout);
+        if (point.hasFireClass) {
+            context.save();
+            context.globalAlpha = getHotspotOpacity();
+            drawCanvasFireShape(context, center.x, center.y, 13, point.fireType,
+                frpColor(point.frp), point.color, 2.5);
+            context.restore();
+        }
+        if (document.getElementById('fire-animation-labels').checked && point.frp != null) {
+            var top = Math.min.apply(null, corners.map(function (corner) { return corner.y; }));
+            drawExportFRPLabel(context, center.x, top - 7, Math.round(Number(point.frp)) + ' MW');
+        }
     }
 
     function drawCanvasFireShape(context, x, y, size, fireType, fill, stroke, lineWidth) {
@@ -580,12 +848,6 @@
             context.closePath();
         } else if (fireType === 2) {
             context.rect(x - half, y - half, size, size);
-        } else if (fireType === 3) {
-            context.moveTo(x, y - half);
-            context.lineTo(x + half, y);
-            context.lineTo(x, y + half);
-            context.lineTo(x - half, y);
-            context.closePath();
         } else {
             context.arc(x, y, half, 0, Math.PI * 2);
         }
@@ -614,8 +876,8 @@
         context.restore();
     }
 
-    function drawExportLegend(context, layout, attribution) {
-        var top = layout.mapY + layout.mapHeight;
+    function drawExportLegend(context, layout, attribution, brandImages) {
+        var top = layout.footerY;
         var pointsInRange = animationPointsInRange();
         var satellites = {};
         var fireTypes = {};
@@ -637,14 +899,31 @@
         var satelliteWidth = Math.round(layout.width * 0.42);
         var typeWidth = Math.round(layout.width * 0.24);
         var frpX = margin + satelliteWidth + typeWidth + sectionGap * 2;
-        drawExportSectionTitle(context, 'SATELLITES', margin, top + 27);
+        drawExportSectionTitle(context, 'SATELLITE OUTLINE', margin, top + 27);
         drawSatelliteLegend(context, satellites, margin, top + 48, satelliteWidth);
 
         drawExportSectionTitle(context, 'FIRE TYPE', margin + satelliteWidth + sectionGap, top + 27);
         drawFireTypeLegend(context, fireTypes, margin + satelliteWidth + sectionGap, top + 48, typeWidth);
 
-        drawExportSectionTitle(context, 'FRP [MW] - MARKER SIZE', frpX, top + 27);
+        drawExportSectionTitle(context, 'FRP [MW] - LOG SCALE', frpX, top + 27);
         drawFRPLegend(context, frpX, top + 54, layout.width - frpX - margin);
+
+        context.strokeStyle = '#e2e8f0';
+        context.beginPath();
+        context.moveTo(margin, top + 142);
+        context.lineTo(layout.width - margin, top + 142);
+        context.stroke();
+
+        if (brandImages) {
+            var eosialSize = containedImageSize(brandImages.eosial, 260, 72);
+            var siaSize = containedImageSize(brandImages.sia, 100, 72);
+            var logoGap = eosialSize.width && siaSize.width ? 32 : 0;
+            var logoWidth = eosialSize.width + logoGap + siaSize.width;
+            var logoX = Math.max(margin, (layout.width - logoWidth) / 2);
+            drawContainedImage(context, brandImages.eosial, logoX, top + 155, 260, 72);
+            drawContainedImage(context, brandImages.sia,
+                logoX + eosialSize.width + logoGap, top + 155, 100, 72);
+        }
 
         context.fillStyle = '#94a3b8';
         context.font = '500 10px Inter, Arial, sans-serif';
@@ -653,6 +932,21 @@
             layout.width - margin, layout.height - 13);
     }
 
+    function containedImageSize(image, maximumWidth, maximumHeight) {
+        if (!image || !image.naturalWidth || !image.naturalHeight) return { width: 0, height: 0 };
+        var scale = Math.min(maximumWidth / image.naturalWidth, maximumHeight / image.naturalHeight);
+        return {
+            width: image.naturalWidth * scale,
+            height: image.naturalHeight * scale
+        };
+    }
+
+    function drawContainedImage(context, image, x, y, maximumWidth, maximumHeight) {
+        var size = containedImageSize(image, maximumWidth, maximumHeight);
+        if (!size.width || !size.height) return 0;
+        context.drawImage(image, x, y + (maximumHeight - size.height) / 2, size.width, size.height);
+        return size.width;
+    }
     function drawExportSectionTitle(context, text, x, y) {
         context.fillStyle = '#64748b';
         context.font = '800 10px Inter, Arial, sans-serif';
@@ -672,10 +966,10 @@
             var itemY = y + row * 20;
             context.beginPath();
             context.arc(itemX + 6, itemY - 4, 5, 0, Math.PI * 2);
-            context.fillStyle = satellites[key];
+            context.fillStyle = '#ffffff';
             context.fill();
-            context.strokeStyle = 'rgba(15, 23, 42, 0.3)';
-            context.lineWidth = 1;
+            context.strokeStyle = satellites[key];
+            context.lineWidth = 2.5;
             context.stroke();
             context.fillStyle = '#334155';
             context.font = '650 11px Inter, Arial, sans-serif';
@@ -688,8 +982,7 @@
         var labels = {
             0: 'Vegetation',
             1: 'Volcano',
-            2: 'Static source',
-            3: 'Offshore'
+            2: 'Static source'
         };
         var keys = Object.keys(fireTypes).sort();
         if (!keys.length) {
@@ -710,26 +1003,22 @@
     }
 
     function drawFRPLegend(context, x, y, width) {
-        var entries = [
-            { label: '<20', size: 10 },
-            { label: '20-100', size: 14 },
-            { label: '100-500', size: 18 },
-            { label: '>=500', size: 24 }
-        ];
-        var itemWidth = width / entries.length;
-        entries.forEach(function (entry, index) {
-            var itemX = x + itemWidth * index + itemWidth / 2;
-            context.beginPath();
-            context.arc(itemX, y, entry.size / 2, 0, Math.PI * 2);
-            context.fillStyle = '#475569';
-            context.fill();
-            context.strokeStyle = '#ffffff';
-            context.lineWidth = 1.5;
-            context.stroke();
+        var barWidth = Math.max(120, width);
+        var barHeight = 14;
+        var gradient = context.createLinearGradient(x, y, x + barWidth, y);
+        FRP_COLOR_STOPS.forEach(function (stop) {
+            gradient.addColorStop(stop.t, 'rgb(' + stop.c.join(',') + ')');
+        });
+        context.fillStyle = gradient;
+        context.fillRect(x, y - barHeight / 2, barWidth, barHeight);
+        context.strokeStyle = '#64748b';
+        context.lineWidth = 1;
+        context.strokeRect(x, y - barHeight / 2, barWidth, barHeight);
+        ['1', '10', '100', '1000+'].forEach(function (label, index) {
             context.fillStyle = '#475569';
             context.font = '700 10px Inter, Arial, sans-serif';
-            context.textAlign = 'center';
-            context.fillText(entry.label, itemX, y + 29);
+            context.textAlign = index === 0 ? 'left' : (index === 3 ? 'right' : 'center');
+            context.fillText(label, x + barWidth * index / 3, y + 25);
         });
     }
 
@@ -862,6 +1151,12 @@
     }
     function getSelectMinutes(id) {
         return Math.max(1, parseInt(document.getElementById(id).value, 10) || 1);
+    }
+    function getHotspotOpacity() {
+        var input = document.getElementById('fire-animation-opacity');
+        var percentage = input ? Number(input.value) : 85;
+        if (!isFinite(percentage)) percentage = 85;
+        return Math.max(20, Math.min(100, percentage)) / 100;
     }
     function getFrameDelay() {
         var input = document.getElementById('fire-animation-frame-delay');

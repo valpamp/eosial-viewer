@@ -11,6 +11,8 @@
     var statusControl = null;
     var statusElement = null;
     var MAX_VISIBLE_CELLS = 16000;
+    var metadataCache = Object.create(null);
+    var metadataLoads = Object.create(null);
 
     var definitions = {
         'msg-hrit-grid-3km': {
@@ -34,6 +36,73 @@
             file: 'pixel-grids/mtg_fir_2km.json'
         }
     };
+
+    var hotspotGridIds = {
+        'MET-10': 'msg-hrit-grid-3km',
+        'MET-11': 'msg-rss-grid-3km',
+        'MTG-1': 'mtg-fci-grid-1km',
+        'MTG-FIR': 'mtg-fir-grid-2km'
+    };
+
+    function loadDefinitionMetadata(definition) {
+        if (metadataCache[definition.id]) return Promise.resolve(metadataCache[definition.id]);
+        if (metadataLoads[definition.id]) return metadataLoads[definition.id];
+        metadataLoads[definition.id] = fetch(dataBase.replace(/\/$/, '') + '/' + definition.file)
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function (metadata) {
+                metadataCache[definition.id] = metadata;
+                delete metadataLoads[definition.id];
+                return metadata;
+            })
+            .catch(function (error) {
+                delete metadataLoads[definition.id];
+                throw error;
+            });
+        return metadataLoads[definition.id];
+    }
+
+
+    function nativeCorner(metadata, row, column) {
+        var x = metadata.origin_x + column * metadata.pixel_x;
+        var y = metadata.origin_y + row * metadata.pixel_y;
+        try {
+            var lonLat = proj4(metadata.projection, 'WGS84', [x, y]);
+            return [lonLat[1], lonLat[0]];
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function hotspotFootprint(satellite, latitude, longitude) {
+        var definition = definitions[hotspotGridIds[satellite]];
+        var metadata = definition && metadataCache[definition.id];
+        if (!metadata || !isFinite(latitude) || !isFinite(longitude)) return null;
+        var nativePoint;
+        try {
+            nativePoint = proj4('WGS84', metadata.projection, [longitude, latitude]);
+        } catch (error) {
+            return null;
+        }
+        var column = Math.floor((nativePoint[0] - metadata.origin_x) / metadata.pixel_x);
+        var row = Math.floor((nativePoint[1] - metadata.origin_y) / metadata.pixel_y);
+        if (row < 0 || row >= metadata.height || column < 0 || column >= metadata.width) return null;
+        var corners = [
+            nativeCorner(metadata, row, column),
+            nativeCorner(metadata, row, column + 1),
+            nativeCorner(metadata, row + 1, column + 1),
+            nativeCorner(metadata, row + 1, column)
+        ];
+        if (corners.some(function (corner) { return !corner; })) return null;
+        return {
+            key: definition.id + ':' + row + ':' + column,
+            row: row,
+            column: column,
+            corners: corners
+        };
+    }
 
     function ensurePane(map) {
         if (map.getPane('pixelGridPane')) return;
@@ -272,11 +341,7 @@
 
         activeDefinition = definition;
         setStatus('Loading ' + definition.name + '...', true);
-        fetch(dataBase.replace(/\/$/, '') + '/' + definition.file)
-            .then(function (response) {
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                return response.json();
-            })
+        loadDefinitionMetadata(definition)
             .then(function (metadata) {
                 if (activeDefinition !== definition) return;
                 activeLayer = new PixelGridCanvas(definition, metadata);
@@ -310,7 +375,16 @@
             dataBase = baseUrl || 'data';
             ensurePane(map);
             ensureStatusControl(map);
-        }
+        },
+        preloadHotspotGrids: function () {
+            return Promise.all(Object.keys(hotspotGridIds).map(function (satellite) {
+                return loadDefinitionMetadata(definitions[hotspotGridIds[satellite]]);
+            }));
+        },
+        hasHotspotGrid: function (satellite) {
+            return !!hotspotGridIds[satellite];
+        },
+        getHotspotFootprint: hotspotFootprint
     };
     EV.pixelGridLayers = Object.keys(definitions).map(function (key) {
         return layerDefinition(definitions[key]);

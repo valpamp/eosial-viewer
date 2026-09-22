@@ -1,5 +1,5 @@
 """
-Update all web-facing hotspot databases for EOSIAL Viewer.
+Update all web-facing hotspot databases for EOSIAL Active Fire Viewer.
 
 This is the operational entry point for scheduled updates. It updates the
 native SFIDE database plus the external NASA FIRMS, Sentinel-3 NRT, and
@@ -172,7 +172,7 @@ def run_once(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Update SFIDE, NASA FIRMS, Sentinel-3, and MTG-FIR hotspot databases for EOSIAL Viewer.")
+    parser = argparse.ArgumentParser(description="Update SFIDE, NASA FIRMS, Sentinel-3, and MTG-FIR hotspot databases for EOSIAL Active Fire Viewer.")
     parser.add_argument("--sfide-source-dir", type=Path, default=update_sfide_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--firms-source-dir", type=Path, default=update_firms_database.DEFAULT_SOURCE_DIR)
     parser.add_argument("--firms-archive-source-dir", type=Path, default=Path(r"F:\Valerio\dfdi\data\hotspots\ITA"))

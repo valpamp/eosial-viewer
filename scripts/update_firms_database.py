@@ -260,7 +260,7 @@ def commit_and_push(repo_root: Path, output_dir: Path, git_exe: str) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Update NASA FIRMS NRT hotspot files for EOSIAL Viewer.")
+    parser = argparse.ArgumentParser(description="Update NASA FIRMS NRT hotspot files for EOSIAL Active Fire Viewer.")
     parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE_DIR, help="Directory containing daily FIRMS .fgb files.")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_WEB_ROOT / "data" / "fire", help="Website data/fire directory.")
     parser.add_argument("--recent-days", type=int, default=4, help="Number of recent UTC days to publish.")

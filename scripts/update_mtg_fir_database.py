@@ -299,7 +299,7 @@ def commit_and_push(repo_root: Path, output_dir: Path, git_exe: str) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Update official EUMETSAT MTG-FIR NRT hotspot files for EOSIAL Viewer.")
+    parser = argparse.ArgumentParser(description="Update official EUMETSAT MTG-FIR NRT hotspot files for EOSIAL Active Fire Viewer.")
     parser.add_argument("--source-dir", type=Path, default=DEFAULT_SOURCE_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_WEB_ROOT / "data" / "fire")
     parser.add_argument("--recent-days", type=int, default=4)

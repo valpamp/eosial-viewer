@@ -1,5 +1,5 @@
 /**
- * EOSIAL Viewer — LFMC raster layer
+ * EOSIAL Active Fire Viewer — LFMC raster layer
  *
  * Loads Cloud Optimized GeoTIFFs via georaster-layer-for-leaflet.
  * Reads a manifest.json that lists available AOIs, polygons, and dates with COG URLs.

@@ -12,8 +12,7 @@
     var FIRE_TYPE_CONFIG = {
         0: { label: 'Vegetation Fire', path: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z' },
         1: { label: 'Active Volcano',  path: 'M12 2L2 22h20L12 2z' },
-        2: { label: 'Static Land Source', path: 'M3 3h18v18H3V3z' },
-        3: { label: 'Offshore',        path: 'M12 2L22 12 12 22 2 12 12 2z' }
+        2: { label: 'Static Land Source', path: 'M3 3h18v18H3V3z' }
     };
 
     var DEFAULT_MIN_FRP = {
@@ -145,6 +144,10 @@
     /* ── State ─────────────────────────────────────────────────── */
 
     var clusterGroup  = null;
+    var pixelFootprintGroup = null;
+    var displayedFeatures = [];
+    var animationModeActive = false;
+    var PIXEL_FOOTPRINT_MIN_ZOOM = 9;
     var sfideVisible  = true;
     var firmsVisible  = false;
     var s3Visible     = false;
@@ -161,6 +164,7 @@
     var loadedExternalArchiveChunks = {};
     var externalArchiveLoads = {};
     var externalArchiveReady = {};
+    var s3RecentManifest = null;
     var mapRef        = null;
     var dataBaseUrl   = '';
     var legendControl = null;
@@ -191,7 +195,7 @@
 
     function getDatasetLabel(dataset) {
         if (dataset === 'FIRMS') return 'NASA FIRMS NRT (external)';
-        if (dataset === 'S3') return 'Sentinel-3 NRT (external)';
+        if (dataset === 'S3') return 'Sentinel-3 SLSTR (external)';
         if (dataset === 'MTG_FIR') return 'EUMETSAT MTG-FIR (external)';
         return 'SFIDE';
     }
@@ -243,8 +247,6 @@
                 return 'clip-path:polygon(50% 4%,96% 96%,4% 96%);';
             case 2:
                 return 'border-radius:5px;';
-            case 3:
-                return 'clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);';
             case 0:
             default:
                 return 'border-radius:50%;';
@@ -721,6 +723,7 @@
             p.LATITUDE = Number(coords[1]);
         }
         if (p.TYPE != null) p.TYPE = Number(p.TYPE);
+        if (p.DATASET === 'SFIDE' && p.TYPE === 3) return null;
         ['LATITUDE', 'LONGITUDE', 'FRP_WOOSTER', 'FRP_MODIS', 'BRIGHT_MIR', 'BRIGHT_TIR'].forEach(function (key) {
             if (p[key] != null && p[key] !== '') p[key] = Number(p[key]);
         });
@@ -829,6 +832,48 @@
             });
     }
 
+    function latestArchiveDate(manifest) {
+        var chunks = manifest && manifest.chunks ? manifest.chunks : [];
+        if (!chunks.length) return null;
+        return chunks.reduce(function (latest, chunk) {
+            var value = new Date(chunk.end || chunk.start);
+            return isFinite(value.getTime()) && (!latest || value > latest) ? value : latest;
+        }, null);
+    }
+
+    function updateS3AvailabilityStatus() {
+        var element = document.getElementById('fire-s3-availability');
+        if (!element) return;
+        var recentLatest = s3RecentManifest && s3RecentManifest.latest_hotspot
+            ? new Date(s3RecentManifest.latest_hotspot)
+            : null;
+        var archiveLatest = latestArchiveDate(externalArchiveManifests.s3);
+        if (recentLatest && isFinite(recentLatest.getTime())) {
+            element.textContent = 'NRT data through ' + formatEuropeanDateTime(recentLatest) + ' UTC';
+            element.classList.remove('warning');
+        } else if (archiveLatest) {
+            element.textContent = 'No recent products - archive through ' + formatEuropeanDateTime(archiveLatest) + ' UTC';
+            element.classList.add('warning');
+        } else {
+            element.textContent = 'No recent Sentinel-3 products available';
+            element.classList.add('warning');
+        }
+    }
+
+    function loadExternalArchiveManifest(name) {
+        if (externalArchiveManifests[name]) return Promise.resolve(externalArchiveManifests[name]);
+        return fetch(dataBaseUrl + '/fire/' + name + '_archive_manifest.json?v=' + Date.now())
+            .then(function (response) {
+                if (!response.ok) throw new Error(response.status);
+                return response.json();
+            })
+            .then(function (manifest) {
+                externalArchiveManifests[name] = manifest;
+                if (name === 's3') updateS3AvailabilityStatus();
+                return manifest;
+            });
+    }
+
     function loadS3Nrt() {
         function loadListed(files) {
             if (!files || !files.length) return Promise.resolve([]);
@@ -859,12 +904,20 @@
                 return r.json();
             })
             .then(function (manifest) {
+                s3RecentManifest = manifest;
+                updateS3AvailabilityStatus();
                 var files = (manifest.files || []).map(function (item) {
                     var path = typeof item === 'string' ? item : item.path;
                     var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
                     return { url: dataBaseUrl + '/fire/' + path, ext: ext, label: item.label || path };
                 }).filter(function (item) { return !!item.url; });
-                return loadListed(files);
+                return loadListed(files).then(function (features) {
+                    if (files.length) return features;
+                    return loadExternalArchiveManifest('s3').catch(function () { return null; }).then(function () {
+                        updateS3AvailabilityStatus();
+                        return features;
+                    });
+                });
             })
             .catch(function () {
                 return [];
@@ -918,7 +971,7 @@
         var name = dataset === 'FIRMS' ? 'firms' : 's3';
         var key = name + ':' + range.start.toISOString() + '|' + range.end.toISOString();
         if (externalArchiveLoads[key]) return externalArchiveLoads[key];
-        externalArchiveLoads[key] = (externalArchiveManifests[name] ? Promise.resolve(externalArchiveManifests[name]) : fetch(dataBaseUrl + '/fire/' + name + '_archive_manifest.json?v=' + Date.now()).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (manifest) { externalArchiveManifests[name] = manifest; return manifest; })).then(function (manifest) {
+        externalArchiveLoads[key] = loadExternalArchiveManifest(name).then(function (manifest) {
             var chunks = (manifest.chunks || []).filter(function (chunk) { return new Date(chunk.end) >= range.start && new Date(chunk.start) <= range.end && !loadedExternalArchiveChunks[name + ':' + chunk.key]; });
             if (!chunks.length) return [];
             return Promise.all(chunks.map(function (chunk) {
@@ -948,7 +1001,11 @@
                 return [];
             }));
         });
-        return Promise.all(loads);
+        return Promise.all(loads).then(function (groups) {
+            var loadedFeatures = groups.some(function (features) { return features && features.length; });
+            if (loadedFeatures) populateSatelliteFilters();
+            return groups;
+        });
     }
     function loadArchiveManifest() {
         if (archiveManifest) return Promise.resolve(archiveManifest);
@@ -1192,45 +1249,125 @@
 
     /* ── Display ───────────────────────────────────────────────── */
 
-    function displayFeatures(features) {
+    function hotspotIcon(p, markerSize, pixelSymbol) {
+        var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
+        var color = pixelSymbol ? '#ffffff' : paletteSample(p.SATELLITE);
+        var stroke = pixelSymbol ? 'rgba(15,23,42,0.92)' : '#ffffff';
+        var iconHtml =
+            '<svg width="' + markerSize + '" height="' + markerSize + '" viewBox="0 0 24 24" style="opacity:0.94;stroke:' + stroke + ';stroke-width:' + (pixelSymbol ? '2.6' : '1.7') + ';fill:' + color + ';filter:drop-shadow(0 1px 2px rgba(15,23,42,0.72));">' +
+            '<path d="' + typeConf.path + '"/></svg>';
+        return L.divIcon({
+            html: iconHtml,
+            className: pixelSymbol ? 'fire-pixel-symbol' : 'fire-marker-icon',
+            iconSize: [markerSize, markerSize],
+            iconAnchor: [markerSize / 2, markerSize / 2]
+        });
+    }
+
+    function pointMarker(p) {
+        var markerSize = getFRPMarkerSize(p.FRP_WOOSTER);
+        var marker = L.marker([p.LATITUDE, p.LONGITUDE], {
+            icon: hotspotIcon(p, markerSize, false),
+            satellite: p.SATELLITE,
+            fireType: p.TYPE
+        });
+        marker.bindPopup(buildPopup(p));
+        return marker;
+    }
+
+    function pixelFillOpacity(frp) {
+        var value = Number(frp);
+        if (!isFinite(value) || value <= 0) return 0.38;
+        return Math.min(0.78, 0.38 + Math.log10(1 + value) * 0.16);
+    }
+
+    function strongerPixelRepresentative(current, candidate) {
+        if (!current) return candidate;
+        var currentFrp = Number(current.properties.FRP_WOOSTER);
+        var candidateFrp = Number(candidate.properties.FRP_WOOSTER);
+        if (isFinite(candidateFrp) && (!isFinite(currentFrp) || candidateFrp > currentFrp)) return candidate;
+        if (candidateFrp === currentFrp && parseFeatureDate(candidate.properties) > parseFeatureDate(current.properties)) return candidate;
+        return current;
+    }
+
+    function renderDisplayedFeatures() {
+        if (!clusterGroup || !pixelFootprintGroup) return;
         clusterGroup.clearLayers();
-        if (!features.length) return;
+        pixelFootprintGroup.clearLayers();
+        if (!displayedFeatures.length || animationModeActive) return;
 
+        var useFootprints = mapRef.getZoom() >= PIXEL_FOOTPRINT_MIN_ZOOM &&
+            EV.pixelGrids && EV.pixelGrids.getHotspotFootprint;
+        var paddedBounds = useFootprints ? mapRef.getBounds().pad(0.2) : null;
         var markers = [];
-        for (var i = 0; i < features.length; i++) {
-            var p = features[i].properties;
-            var latlng = [p.LATITUDE, p.LONGITUDE];
+        var footprintBuckets = Object.create(null);
 
-            var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
+        displayedFeatures.forEach(function (feature) {
+            var p = feature.properties;
+            var latlng = L.latLng(p.LATITUDE, p.LONGITUDE);
+            if (useFootprints && EV.pixelGrids.hasHotspotGrid(p.SATELLITE)) {
+                if (!paddedBounds.contains(latlng)) return;
+                var footprint = EV.pixelGrids.getHotspotFootprint(p.SATELLITE, p.LATITUDE, p.LONGITUDE);
+                if (footprint) {
+                    var bucket = footprintBuckets[footprint.key];
+                    if (!bucket) {
+                        bucket = footprintBuckets[footprint.key] = {
+                            footprint: footprint,
+                            feature: feature,
+                            count: 0
+                        };
+                    }
+                    bucket.count += 1;
+                    bucket.feature = strongerPixelRepresentative(bucket.feature, feature);
+                    return;
+                }
+            }
+            markers.push(pointMarker(p));
+        });
+
+        Object.keys(footprintBuckets).forEach(function (key) {
+            var bucket = footprintBuckets[key];
+            var p = bucket.feature.properties;
             var color = paletteSample(p.SATELLITE);
-            var markerSize = getFRPMarkerSize(p.FRP_WOOSTER);
-
-            var iconHtml =
-                '<svg width="' + markerSize + '" height="' + markerSize + '" viewBox="0 0 24 24" style="opacity:0.92;stroke:#fff;stroke-width:1.7;fill:' + color + ';filter:drop-shadow(0 0 2px rgba(255,255,255,0.95)) drop-shadow(0 2px 2px rgba(15,23,42,0.8));">' +
-                '<path d="' + typeConf.path + '"/></svg>';
-
-            var icon = L.divIcon({
-                html: iconHtml,
-                className: 'fire-marker-icon',
-                iconSize: [markerSize, markerSize],
-                iconAnchor: [markerSize / 2, markerSize / 2]
+            var polygon = L.polygon(bucket.footprint.corners, {
+                pane: 'firePixelPane',
+                color: color,
+                weight: 2,
+                opacity: 0.96,
+                fillColor: color,
+                fillOpacity: pixelFillOpacity(p.FRP_WOOSTER),
+                lineJoin: 'round',
+                className: 'fire-hotspot-pixel'
             });
+            polygon.bindPopup(buildPopup(p, bucket.count));
+            pixelFootprintGroup.addLayer(polygon);
 
-            var marker = L.marker(latlng, { icon: icon, satellite: p.SATELLITE, fireType: p.TYPE });
-            marker.bindPopup(buildPopup(p));
-            markers.push(marker);
-        }
+            if (mapRef.getZoom() >= 10 && !isMtgFirFeature(p)) {
+                pixelFootprintGroup.addLayer(L.marker([p.LATITUDE, p.LONGITUDE], {
+                    pane: 'markerPane',
+                    icon: hotspotIcon(p, 10, true),
+                    interactive: false,
+                    keyboard: false
+                }));
+            }
+        });
 
         clusterGroup.addLayers(markers);
     }
 
-    function buildPopup(p) {
+    function displayFeatures(features) {
+        displayedFeatures = features || [];
+        renderDisplayedFeatures();
+    }
+
+    function buildPopup(p, detectionCount) {
         var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
         var date = parseFeatureDate(p);
         var frp = p.FRP_WOOSTER;
         var html = '<h3>' + (p.SATELLITE ? getSatelliteLabel(p.SATELLITE) : 'Fire') + ' Hotspot</h3><table>';
         html += '<tr><th>Source</th><td>' + (p.DATASET_LABEL || getDatasetLabel(p.DATASET || 'SFIDE')) + '</td></tr>';
         html += '<tr><th>Time (UTC)</th><td>' + formatUTC(date) + '</td></tr>';
+        if (detectionCount > 1) html += '<tr><th>Detections in pixel</th><td>' + detectionCount + '</td></tr>';
         if (!isFirmsFeature(p) && !isS3Feature(p) && !isMtgFirFeature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
         if (!isMtgFirFeature(p)) html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
         var confidenceText = p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE + '%' : 'N/A');
@@ -1297,6 +1434,10 @@
         var mtgFirContainer = document.getElementById('fire-mtg-fir-sat-list');
         var fallbackContainer = document.getElementById('fire-sat-list');
         if (!sfideContainer && !firmsContainer && !s3Container && !mtgFirContainer && !fallbackContainer) return;
+        var previousSelections = {};
+        document.querySelectorAll('.fire-sat-filter').forEach(function (checkbox) {
+            previousSelections[checkbox.value] = checkbox.checked;
+        });
         if (sfideContainer) sfideContainer.innerHTML = '';
         if (firmsContainer) firmsContainer.innerHTML = '';
         if (s3Container) s3Container.innerHTML = '';
@@ -1318,7 +1459,9 @@
             var div = document.createElement('label');
             div.className = 'toolbar-pill';
             var selected = pendingSharedSatellites !== null ?
-                pendingSharedSatellites.indexOf(sat) !== -1 : isDefaultSatelliteSelected(sat, sorted);
+                pendingSharedSatellites.indexOf(sat) !== -1 :
+                (Object.prototype.hasOwnProperty.call(previousSelections, sat) ?
+                    previousSelections[sat] : isDefaultSatelliteSelected(sat, sorted));
             var checked = selected ? ' checked' : '';
             var swatchColor = paletteSample(sat);
             div.innerHTML =
@@ -1471,7 +1614,8 @@
             '<div class="product-toolbar-group">' +
             '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-s3-min-conf" min="0" max="100" value="0" title="Minimum Sentinel-3 confidence, when available"></span>' +
             '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-s3-min-frp" min="0" step="0.1" value="0" title="Minimum Sentinel-3 FRP (MW)"></span>' +
-            '</div>';
+            '</div>' +
+            '<div id="fire-s3-availability" class="dataset-availability">Checking data availability...</div>';
         panelWrap.appendChild(s3Section);
 
         var mtgFirSection = document.createElement('div');
@@ -1668,8 +1812,7 @@
             '<div class="fire-legend-section"><h4>Fire type</h4>' +
             '<span class="fire-legend-shape fire-legend-circle">Vegetation</span>' +
             '<span class="fire-legend-shape fire-legend-triangle">Volcano</span>' +
-            '<span class="fire-legend-shape fire-legend-square">Static source</span>' +
-            '<span class="fire-legend-shape fire-legend-diamond">Offshore</span></div>' : '';
+            '<span class="fire-legend-shape fire-legend-square">Static source</span></div>' : '';
 
         div.innerHTML =
             '<button type="button" class="fire-legend-toggle" aria-expanded="' +
@@ -2041,6 +2184,18 @@
             });
             clusterGroup.addTo(map);
 
+            if (!map.getPane('firePixelPane')) {
+                var pixelPane = map.createPane('firePixelPane');
+                pixelPane.style.zIndex = 590;
+            }
+            pixelFootprintGroup = L.layerGroup().addTo(map);
+            map.on('zoomend moveend', renderDisplayedFeatures);
+            if (EV.pixelGrids && EV.pixelGrids.preloadHotspotGrids) {
+                EV.pixelGrids.preloadHotspotGrids()
+                    .then(renderDisplayedFeatures)
+                    .catch(function (error) { console.warn('[FIRE PIXELS]', error); });
+            }
+
             // Delegate clicks on FRP timeseries links inside popups
             document.addEventListener('click', function (e) {
                 var link = e.target.closest('.fire-ts-link');
@@ -2090,11 +2245,14 @@
         getShareParams: getShareParams,
         applyShareParams: applyShareParams,
         setAnimationMode: function (active) {
-            if (!clusterGroup || !mapRef) return;
+            if (!clusterGroup || !pixelFootprintGroup || !mapRef) return;
+            animationModeActive = active;
             if (active) {
                 if (mapRef.hasLayer(clusterGroup)) mapRef.removeLayer(clusterGroup);
+                if (mapRef.hasLayer(pixelFootprintGroup)) mapRef.removeLayer(pixelFootprintGroup);
             } else {
                 if (anySourceVisible() && !mapRef.hasLayer(clusterGroup)) clusterGroup.addTo(mapRef);
+                if (!mapRef.hasLayer(pixelFootprintGroup)) pixelFootprintGroup.addTo(mapRef);
                 applyFilters();
             }
         },

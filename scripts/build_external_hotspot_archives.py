@@ -1,4 +1,4 @@
-"""Build compact daily external hotspot archives for the EOSIAL Viewer."""
+"""Build compact daily external hotspot archives for the EOSIAL Active Fire Viewer."""
 from __future__ import annotations
 import argparse, json, shutil
 from datetime import date, datetime, timedelta, timezone

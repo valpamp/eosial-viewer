@@ -10,7 +10,7 @@ Interactive web viewer for active fire detections and satellite wildfire managem
 - **Timeseries queries** - Draw a rectangle to chart active fire FRP over time, with table, CSV, and PNG export
 - **Distance measurement** - Multi-segment ruler tool with metric readout
 - **Location search** - Geocoding via OpenStreetMap Nominatim
-- **Multiple basemaps** - CartoDB Light/Dark, OpenStreetMap, Google Satellite, OpenTopoMap
+- **Multiple basemaps** - OpenStreetMap, Google Satellite, and OpenTopoMap
 - **Dark mode** - Full UI dark theme toggle
 - **Shareable permalinks** - URLs preserve the map view, time interval, visible hotspot sources, selected satellites, and filter values
 
@@ -60,7 +60,8 @@ eosial-viewer/
 |   |-- app.js                  # Map init, toolbar, sidebar, query tools
 |   |-- timeseries.js           # Chart.js timeseries modal
 |   `-- layers/
-|       `-- fire-hotspots.js    # Fire detection markers
+|       |-- fire-hotspots.js    # Fire filtering, markers, and native pixel footprints
+|       `-- pixel-grids.js      # MSG/MTG native-grid projection and overlays
 |-- data/
 |   `-- fire/
 |       |-- sfide_aggregate_72h.fgb       # Recent fire hotspot detections
@@ -116,7 +117,7 @@ Hotspot features should contain Point geometry and these properties where availa
 | `CONFIDENCE` | Detection confidence (%) |
 | `FRP_WOOSTER` or `FRP_MODIS` | Fire Radiative Power (MW) |
 
-The layer loads this file on init and renders points as clustered markers. To update the data, replace the GeoJSON and redeploy.
+The viewer loads recent and archived FlatGeobuf chunks through their manifests. At broad map scales detections use clustered markers; at detailed zoom levels MSG/MTG detections use vector footprints computed from the compact native-grid metadata in `data/pixel-grids/`. FIRMS and Sentinel-3 remain point detections.
 
 ## Dependencies
 
