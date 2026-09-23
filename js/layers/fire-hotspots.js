@@ -125,11 +125,11 @@
             { t: 1.0,  c: [113,  63,  18] }
         ],
         'MTG-FIR': [
-            { t: 0.0,  c: [253, 242, 248] },
-            { t: 0.25, c: [249, 168, 212] },
-            { t: 0.5,  c: [236,  72, 153] },
-            { t: 0.75, c: [190,  24,  93] },
-            { t: 1.0,  c: [131,  24,  67] }
+            { t: 0.0,  c: [226, 232, 240] },
+            { t: 0.25, c: [148, 163, 184] },
+            { t: 0.5,  c: [ 71,  85, 105] },
+            { t: 0.75, c: [ 39,  49,  58] },
+            { t: 1.0,  c: [ 17,  24,  39] }
         ]
     };
 
@@ -169,6 +169,7 @@
     var dataBaseUrl   = '';
     var legendControl = null;
     var pendingSharedSatellites = null;
+    var pendingSharedS3Streams = null;
 
     /* ── FRP color ─────────────────────────────────────────────── */
 
@@ -210,6 +211,12 @@
 
     function isMtgFirFeature(props) {
         return props && props.DATASET === 'MTG_FIR';
+    }
+
+    function getS3RetrievalLabel(retrieval) {
+        if (retrieval === 'alternative') return 'Alternative';
+        if (retrieval === 'swir') return 'SWIR 500 m';
+        return 'Standard';
     }
 
     function isPolarTimeseriesSource(dataset) {
@@ -461,6 +468,9 @@
         p.BRIGHT_MIR = numberOrNull(firstProp(p, ['BRIGHT_MIR', 'bright_mir', 'BT_MIR', 'bt_mir', 'mwir_bt_k', 'MWIR_BT_K', 'S7_BT']));
         p.BRIGHT_TIR = numberOrNull(firstProp(p, ['BRIGHT_TIR', 'bright_tir', 'BT_TIR', 'bt_tir', 'S8_BT']));
         p.FRP_SOURCE = firstProp(p, ['FRP_SOURCE', 'frp_source']) || '';
+        var s3Source = String(p.FRP_SOURCE).toLowerCase();
+        p.S3_RETRIEVAL = !s3Source || s3Source.indexOf('standard') === 0 ? 'standard' :
+            (s3Source.indexOf('alternative') === 0 ? 'alternative' : 'swir');
         p.USED_CHANNEL = firstProp(p, ['USED_CHANNEL', 'used_channel']) || '';
         p.IFOV_AREA_M2 = numberOrNull(firstProp(p, ['IFOV_AREA_M2', 'ifov_area_m2']));
         p.EFF_ACROSS_KM = numberOrNull(firstProp(p, ['EFF_ACROSS_KM', 'eff_across_km']));
@@ -750,29 +760,20 @@
             Number(p.LONGITUDE || 0).toFixed(6),
             p.DATASET === 'S3' ? (p.ACQUISITION_KEY || p.DATETIME || '') : (p.DATETIME || '')
         ];
-        if (p.DATASET !== 'S3') {
+        if (p.DATASET === 'S3') {
+            parts.push(p.S3_RETRIEVAL || 'standard', p.FRP_SOURCE || '');
+        } else {
             parts.push(p.FRP_WOOSTER || p.FRP_MODIS || '', p.TYPE || '');
         }
         return parts.join('|');
-    }
-
-    function preferS3Feature(candidate, existing) {
-        var candidateSource = String(candidate.properties.FRP_SOURCE || '').toLowerCase();
-        var existingSource = String(existing.properties.FRP_SOURCE || '').toLowerCase();
-        return candidateSource.indexOf('standard') === 0 && existingSource.indexOf('standard') !== 0;
     }
 
     function mergeFeatures(features) {
         for (var i = 0; i < features.length; i++) {
             var candidate = features[i];
             var key = featureKey(candidate);
-            var existing = featureIds[key];
-            if (!existing) {
+            if (!featureIds[key]) {
                 allFeatures.push(candidate);
-                featureIds[key] = candidate;
-            } else if (candidate.properties.DATASET === 'S3' && preferS3Feature(candidate, existing)) {
-                var existingIndex = allFeatures.indexOf(existing);
-                if (existingIndex !== -1) allFeatures[existingIndex] = candidate;
                 featureIds[key] = candidate;
             }
         }
@@ -1154,6 +1155,7 @@
         return {
             range: range,
             activeSats: getCheckedValues('.fire-sat-filter'),
+            activeS3Streams: getCheckedValues('.fire-s3-stream-filter'),
             activeTypes: getCheckedValues('.fire-type-filter').map(Number),
             activeViirsConf: getCheckedValues('.fire-viirs-conf-filter'),
             activeMtgFirResults: getCheckedValues('.fire-mtg-fir-result-filter'),
@@ -1180,7 +1182,12 @@
         var d = parseFeatureDate(p);
         if (!d || d < state.range.start || d > state.range.end) return false;
 
-        if (state.activeSats.length > 0 && state.activeSats.indexOf(p.SATELLITE) === -1) return false;
+        if (isS3) {
+            var streamKey = (p.S3_RETRIEVAL || 'standard') + '|' + p.SATELLITE;
+            if (state.activeS3Streams.indexOf(streamKey) === -1) return false;
+        } else if (state.activeSats.indexOf(p.SATELLITE) === -1) {
+            return false;
+        }
 
         if (!isFirms && !isS3 && !isMtgFir && (state.activeTypes.length === 0 || state.activeTypes.indexOf(p.TYPE) === -1)) return false;
 
@@ -1272,8 +1279,11 @@
 
     function hotspotIcon(p, markerSize, pixelSymbol) {
         var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
-        var color = pixelSymbol ? '#ffffff' : paletteSample(p.SATELLITE);
-        var stroke = pixelSymbol ? 'rgba(15,23,42,0.92)' : '#ffffff';
+        var alternative = p.DATASET === 'S3' && p.S3_RETRIEVAL === 'alternative';
+        var color = pixelSymbol || alternative ? '#ffffff' : paletteSample(p.SATELLITE);
+        var stroke = pixelSymbol ? 'rgba(15,23,42,0.92)' :
+            (alternative ? paletteSample(p.SATELLITE) :
+                (p.DATASET === 'S3' && p.S3_RETRIEVAL === 'swir' ? '#27313a' : '#ffffff'));
         var iconHtml =
             '<svg width="' + markerSize + '" height="' + markerSize + '" viewBox="0 0 24 24" style="opacity:0.94;stroke:' + stroke + ';stroke-width:' + (pixelSymbol ? '2.6' : '1.7') + ';fill:' + color + ';filter:drop-shadow(0 1px 2px rgba(15,23,42,0.72));">' +
             '<path d="' + typeConf.path + '"/></svg>';
@@ -1330,9 +1340,10 @@
                 if (!paddedBounds.contains(latlng)) return;
                 var footprint = EV.pixelGrids.getHotspotFootprint(p.SATELLITE, p.LATITUDE, p.LONGITUDE, p);
                 if (footprint) {
-                    var bucket = footprintBuckets[footprint.key];
+                    var footprintKey = footprint.key + (p.DATASET === 'S3' ? ':' + (p.S3_RETRIEVAL || 'standard') : '');
+                    var bucket = footprintBuckets[footprintKey];
                     if (!bucket) {
-                        bucket = footprintBuckets[footprint.key] = {
+                        bucket = footprintBuckets[footprintKey] = {
                             footprint: footprint,
                             feature: feature,
                             count: 0
@@ -1358,7 +1369,9 @@
                 fillColor: color,
                 fillOpacity: pixelFillOpacity(p.FRP_WOOSTER),
                 lineJoin: 'round',
-                className: 'fire-hotspot-pixel'
+                dashArray: p.DATASET === 'S3' ? (p.S3_RETRIEVAL === 'alternative' ? '7 4' :
+                    (p.S3_RETRIEVAL === 'swir' ? '2 5' : null)) : null,
+                className: 'fire-hotspot-pixel' + (p.DATASET === 'S3' ? ' ' + p.S3_RETRIEVAL : '')
             });
             polygon.bindPopup(buildPopup(p, bucket.count));
             pixelFootprintGroup.addLayer(polygon);
@@ -1388,6 +1401,7 @@
         var html = '<h3>' + (p.SATELLITE ? getSatelliteLabel(p.SATELLITE) : 'Fire') + ' Hotspot</h3><table>';
         html += '<tr><th>Source</th><td>' + (p.DATASET_LABEL || getDatasetLabel(p.DATASET || 'SFIDE')) + '</td></tr>';
         html += '<tr><th>Time (UTC)</th><td>' + formatUTC(date) + '</td></tr>';
+        if (isS3Feature(p)) html += '<tr><th>Retrieval</th><td>' + getS3RetrievalLabel(p.S3_RETRIEVAL) + '</td></tr>';
         if (detectionCount > 1) html += '<tr><th>Detections in pixel</th><td>' + detectionCount + '</td></tr>';
         if (!isFirmsFeature(p) && !isS3Feature(p) && !isMtgFirFeature(p)) html += '<tr><th>Fire Type</th><td>' + typeConf.label + '</td></tr>';
         if (!isMtgFirFeature(p)) html += '<tr><th>FRP</th><td>' + (frp != null ? frp.toFixed(1) + ' MW' : 'N/A') + '</td></tr>';
@@ -1448,56 +1462,123 @@
 
     /* ── Dynamic satellite filter population ───────────────────── */
 
-    function populateSatelliteFilters() {
-        var sfideContainer = document.getElementById('fire-sfide-sat-list');
-        var firmsContainer = document.getElementById('fire-firms-sat-list');
-        var s3Container = document.getElementById('fire-s3-sat-list');
-        var mtgFirContainer = document.getElementById('fire-mtg-fir-sat-list');
-        var fallbackContainer = document.getElementById('fire-sat-list');
-        if (!sfideContainer && !firmsContainer && !s3Container && !mtgFirContainer && !fallbackContainer) return;
-        var previousSelections = {};
-        document.querySelectorAll('.fire-sat-filter').forEach(function (checkbox) {
-            previousSelections[checkbox.value] = checkbox.checked;
-        });
-        if (sfideContainer) sfideContainer.innerHTML = '';
-        if (firmsContainer) firmsContainer.innerHTML = '';
-        if (s3Container) s3Container.innerHTML = '';
-        if (mtgFirContainer) mtgFirContainer.innerHTML = '';
-        if (fallbackContainer) fallbackContainer.innerHTML = '';
-
-        var sats = {};
-        for (var i = 0; i < allFeatures.length; i++) {
-            sats[allFeatures[i].properties.SATELLITE] = true;
-        }
-        var sorted = Object.keys(sats).sort();
-
-        sorted.forEach(function (sat) {
-            var target = sat.indexOf('FIRMS-') === 0 ? firmsContainer :
-                         (sat === 'S3A' || sat === 'S3B' ? s3Container :
-                         (sat === 'MTG-FIR' ? mtgFirContainer : sfideContainer));
-            if (!target) target = fallbackContainer;
-            if (!target) return;
-            var div = document.createElement('label');
-            div.className = 'toolbar-pill';
-            var selected = pendingSharedSatellites !== null ?
-                pendingSharedSatellites.indexOf(sat) !== -1 :
-                (Object.prototype.hasOwnProperty.call(previousSelections, sat) ?
-                    previousSelections[sat] : isDefaultSatelliteSelected(sat, sorted));
-            var checked = selected ? ' checked' : '';
-            var swatchColor = paletteSample(sat);
-            div.innerHTML =
-                '<input type="checkbox" value="' + sat + '" class="fire-sat-filter"' + checked + '>' +
-                '<span class="toolbar-sat-swatch" style="background-color:' + swatchColor + ';"></span>' +
-                '<span>' + getSatelliteLabel(sat) + '</span>';
-            target.appendChild(div);
-        });
-
-        document.querySelectorAll('.fire-sat-filter').forEach(function (cb) {
-            cb.addEventListener('change', applyFilters);
-        });
+    function getFilterSatelliteLabel(satellite) {
+        var labels = {
+            'MET-10': 'MET-10 (MSG-HRIT)',
+            'MET-11': 'MET-11 (MSG-RSS)',
+            'MTG-1': 'MTG-I1 (MTG-FCI)',
+            'FIRMS-MODIS-AQUA': 'Aqua',
+            'FIRMS-MODIS-TERRA': 'Terra',
+            'FIRMS-NPP': 'Suomi-NPP',
+            'FIRMS-NOAA20': 'NOAA-20',
+            'FIRMS-NOAA21': 'NOAA-21',
+            'S3A': 'Sentinel-3A',
+            'S3B': 'Sentinel-3B',
+            'MTG-FIR': 'MTG-I1 / FCI'
+        };
+        return labels[satellite] || getSatelliteLabel(satellite);
     }
 
-    /* ── Sidebar controls ──────────────────────────────────────── */
+    function updateProductGroupState(group) {
+        if (!group) return;
+        var parent = group.querySelector('.fire-product-toggle');
+        var children = Array.prototype.slice.call(group.querySelectorAll('.fire-filter-child'));
+        if (!parent) return;
+        var checked = children.filter(function (child) { return child.checked; }).length;
+        parent.disabled = children.length === 0;
+        parent.checked = children.length > 0 && checked === children.length;
+        parent.indeterminate = checked > 0 && checked < children.length;
+        group.classList.toggle('empty', children.length === 0);
+    }
+
+    function updateAllProductGroups() {
+        document.querySelectorAll('.fire-product-group').forEach(updateProductGroupState);
+    }
+
+    function createSatelliteToggle(satellite, selected, stream) {
+        var label = document.createElement('label');
+        label.className = 'toolbar-pill fire-satellite-option' +
+            (stream === 'alternative' ? ' alternative' : (stream === 'swir' ? ' swir' : ''));
+        var value = stream ? stream + '|' + satellite : satellite;
+        var className = stream ? 'fire-s3-stream-filter' : 'fire-sat-filter';
+        label.innerHTML =
+            '<input type="checkbox" value="' + value + '" class="' + className +
+            ' fire-filter-child"' + (selected ? ' checked' : '') + '>' +
+            '<span class="toolbar-sat-swatch" style="background-color:' + paletteSample(satellite) + ';border-color:' + paletteSample(satellite) + ';"></span>' +
+            '<span>' + getFilterSatelliteLabel(satellite) + '</span>';
+        var checkbox = label.querySelector('input');
+        checkbox.addEventListener('change', function () {
+            updateProductGroupState(label.closest('.fire-product-group'));
+            applyFilters();
+        });
+        return label;
+    }
+
+    function populateSatelliteFilters() {
+        var containers = {
+            sfideMsg: document.getElementById('fire-sfide-msg-list'),
+            sfideMtg: document.getElementById('fire-sfide-mtg-list'),
+            firmsModis: document.getElementById('fire-firms-modis-list'),
+            firmsViirs: document.getElementById('fire-firms-viirs-list'),
+            s3Standard: document.getElementById('fire-s3-standard-list'),
+            s3Alternative: document.getElementById('fire-s3-alternative-list'),
+            s3Swir: document.getElementById('fire-s3-swir-list'),
+            mtgFir: document.getElementById('fire-mtg-fir-sat-list')
+        };
+        if (!containers.sfideMsg) return;
+
+        var previousSatellites = {};
+        document.querySelectorAll('.fire-sat-filter').forEach(function (checkbox) {
+            previousSatellites[checkbox.value] = checkbox.checked;
+        });
+        var previousStreams = {};
+        document.querySelectorAll('.fire-s3-stream-filter').forEach(function (checkbox) {
+            previousStreams[checkbox.value] = checkbox.checked;
+        });
+        Object.keys(containers).forEach(function (key) {
+            if (containers[key]) containers[key].innerHTML = '';
+        });
+
+        var satellites = {};
+        allFeatures.forEach(function (feature) {
+            var satellite = feature.properties && feature.properties.SATELLITE;
+            if (satellite) satellites[satellite] = true;
+        });
+        var sorted = Object.keys(satellites).sort();
+
+        sorted.forEach(function (satellite) {
+            if (satellite === 'S3A' || satellite === 'S3B') {
+                ['standard', 'alternative', 'swir'].forEach(function (stream) {
+                    var key = stream + '|' + satellite;
+                    var selected = pendingSharedS3Streams !== null ?
+                        pendingSharedS3Streams.indexOf(key) !== -1 :
+                        (Object.prototype.hasOwnProperty.call(previousStreams, key) ?
+                            previousStreams[key] : stream === 'standard');
+                    var target = stream === 'standard' ? containers.s3Standard :
+                        (stream === 'alternative' ? containers.s3Alternative : containers.s3Swir);
+                    if (target) target.appendChild(createSatelliteToggle(satellite, selected, stream));
+                });
+                return;
+            }
+
+            var target;
+            if (satellite.indexOf('FIRMS-MODIS') === 0) target = containers.firmsModis;
+            else if (satellite.indexOf('FIRMS-') === 0) target = containers.firmsViirs;
+            else if (satellite === 'MTG-FIR') target = containers.mtgFir;
+            else if (satellite.indexOf('MTG') === 0) target = containers.sfideMtg;
+            else target = containers.sfideMsg;
+            if (!target) return;
+
+            var selected = pendingSharedSatellites !== null ?
+                pendingSharedSatellites.indexOf(satellite) !== -1 :
+                (Object.prototype.hasOwnProperty.call(previousSatellites, satellite) ?
+                    previousSatellites[satellite] : isDefaultSatelliteSelected(satellite, sorted));
+            target.appendChild(createSatelliteToggle(satellite, selected, null));
+        });
+        updateAllProductGroups();
+    }
+
+    /* Sidebar controls ──────────────────────────────────────── */
 
     function getSourceVisible(source) {
         if (source === 'FIRMS') return firmsVisible;
@@ -1545,8 +1626,16 @@
         });
     }
 
-    function buildControls(map) {
-        var container = document.getElementById('product-toolbar-content') || document.getElementById('layer-controls');
+    function productGroupHtml(id, title, subtitle, listId) {
+        return '<fieldset class="fire-product-group" data-product-group="' + id + '">' +
+            '<label class="fire-product-heading">' +
+            '<input type="checkbox" class="fire-product-toggle" checked>' +
+            '<span><strong>' + title + '</strong><small>' + subtitle + '</small></span></label>' +
+            '<div id="' + listId + '" class="fire-product-children"><span class="toolbar-status">Loading...</span></div>' +
+            '</fieldset>';
+    }
+
+    function buildControls(map) {        var container = document.getElementById('product-toolbar-content') || document.getElementById('layer-controls');
         var section = document.createElement('div');
         section.id = 'fire-controls';
         section.className = 'product-toolbar-section fire-toolbar-window fire-toolbar-unified';
@@ -1588,76 +1677,66 @@
         sfideSection.id = 'fire-sfide-controls';
         sfideSection.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-sfide';
         sfideSection.innerHTML =
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Satellites</span>' +
-            '  <div id="fire-sfide-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '<div class="fire-product-groups">' +
+            productGroupHtml('sfide-msg', 'Meteosat Second Generation', 'MSG products', 'fire-sfide-msg-list') +
+            productGroupHtml('sfide-mtg', 'Meteosat Third Generation', 'MTG products', 'fire-sfide-mtg-list') +
             '</div>' +
+            '<div class="fire-filter-row"><div class="product-toolbar-group">' +
+            '<span class="product-toolbar-label">Fire type</span><div id="fire-type-list" class="toolbar-pill-list"></div></div>' +
             '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Fire type</span>' +
-            '  <div id="fire-type-list" class="toolbar-pill-list"></div>' +
-            '</div>' +
-            '<div class="product-toolbar-group">' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-sfide-min-conf" min="0" max="100" value="40" title="Minimum SFIDE confidence (%)"></span>' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-sfide-min-frp" min="0" step="0.1" value="20" title="Minimum SFIDE FRP (MW)"></span>' +
-            '</div>';
+            '<span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-sfide-min-conf" min="0" max="100" value="40" title="Minimum SFIDE confidence (%)"></span>' +
+            '<span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-sfide-min-frp" min="0" step="0.1" value="20" title="Minimum SFIDE FRP (MW)"></span></div></div>';
         panelWrap.appendChild(sfideSection);
 
         var firmsSection = document.createElement('div');
         firmsSection.id = 'fire-firms-controls';
         firmsSection.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-firms hidden';
         firmsSection.innerHTML =
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Satellites</span>' +
-            '  <div id="fire-firms-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '<div class="fire-product-groups">' +
+            productGroupHtml('firms-modis', 'MODIS', 'Terra and Aqua', 'fire-firms-modis-list') +
+            productGroupHtml('firms-viirs', 'VIIRS', 'Suomi-NPP and NOAA', 'fire-firms-viirs-list') +
             '</div>' +
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">VIIRS conf</span>' +
-            '  <div class="toolbar-pill-list">' +
-            '    <label class="toolbar-pill"><input type="checkbox" value="low" class="fire-viirs-conf-filter" checked><span>Low</span></label>' +
-            '    <label class="toolbar-pill"><input type="checkbox" value="nominal" class="fire-viirs-conf-filter" checked><span>Nominal</span></label>' +
-            '    <label class="toolbar-pill"><input type="checkbox" value="high" class="fire-viirs-conf-filter" checked><span>High</span></label>' +
-            '  </div>' +
-            '</div>' +
-            '<div class="product-toolbar-group">' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">MODIS conf</span><input type="number" id="fire-firms-modis-min-conf" min="0" max="100" value="0" title="Minimum NASA FIRMS MODIS confidence (%)"></span>' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-firms-min-frp" min="0" step="0.1" value="0" title="Minimum NASA FIRMS FRP (MW)"></span>' +
-            '</div>';
+            '<div class="fire-filter-row"><div class="product-toolbar-group">' +
+            '<span class="product-toolbar-label">VIIRS confidence</span><div class="toolbar-pill-list">' +
+            '<label class="toolbar-pill"><input type="checkbox" value="low" class="fire-viirs-conf-filter" checked><span>Low</span></label>' +
+            '<label class="toolbar-pill"><input type="checkbox" value="nominal" class="fire-viirs-conf-filter" checked><span>Nominal</span></label>' +
+            '<label class="toolbar-pill"><input type="checkbox" value="high" class="fire-viirs-conf-filter" checked><span>High</span></label>' +
+            '</div></div><div class="product-toolbar-group">' +
+            '<span class="toolbar-field"><span class="product-toolbar-label">MODIS conf</span><input type="number" id="fire-firms-modis-min-conf" min="0" max="100" value="0" title="Minimum NASA FIRMS MODIS confidence (%)"></span>' +
+            '<span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-firms-min-frp" min="0" step="0.1" value="0" title="Minimum NASA FIRMS FRP (MW)"></span>' +
+            '</div></div>';
         panelWrap.appendChild(firmsSection);
 
         var s3Section = document.createElement('div');
         s3Section.id = 'fire-s3-controls';
         s3Section.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-s3 hidden';
         s3Section.innerHTML =
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Satellites</span>' +
-            '  <div id="fire-s3-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '<div class="fire-product-groups s3">' +
+            productGroupHtml('s3-standard', 'Standard detections', '1 km thermal retrieval', 'fire-s3-standard-list') +
+            productGroupHtml('s3-alternative', 'Alternative detections', '1 km alternative retrieval', 'fire-s3-alternative-list') +
+            productGroupHtml('s3-swir', 'SWIR detections', '500 m SWIR retrieval', 'fire-s3-swir-list') +
             '</div>' +
-            '<div class="product-toolbar-group">' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-s3-min-conf" min="0" max="100" value="0" title="Minimum Sentinel-3 confidence, when available"></span>' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-s3-min-frp" min="0" step="0.1" value="0" title="Minimum Sentinel-3 FRP (MW)"></span>' +
-            '</div>' +
-            '<div id="fire-s3-availability" class="dataset-availability">Checking data availability...</div>';
+            '<div class="fire-filter-row"><div class="product-toolbar-group">' +
+            '<span class="toolbar-field"><span class="product-toolbar-label">Min conf</span><input type="number" id="fire-s3-min-conf" min="0" max="100" value="0" title="Minimum Sentinel-3 confidence, when available"></span>' +
+            '<span class="toolbar-field"><span class="product-toolbar-label">FRP</span><input type="number" id="fire-s3-min-frp" min="0" step="0.1" value="0" title="Minimum Sentinel-3 FRP (MW)"></span>' +
+            '</div><div id="fire-s3-availability" class="dataset-availability">Checking data availability...</div></div>';
         panelWrap.appendChild(s3Section);
 
         var mtgFirSection = document.createElement('div');
         mtgFirSection.id = 'fire-mtg-fir-controls';
         mtgFirSection.className = 'fire-source-panel fire-source-toolbar fire-source-toolbar-mtg-fir hidden';
         mtgFirSection.innerHTML =
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Satellites</span>' +
-            '  <div id="fire-mtg-fir-sat-list" class="toolbar-pill-list"><span class="toolbar-status">Loading...</span></div>' +
+            '<div class="fire-product-groups single">' +
+            productGroupHtml('mtg-fir', 'MTG-FIR', 'Official EUMETSAT product', 'fire-mtg-fir-sat-list') +
             '</div>' +
-            '<div class="product-toolbar-group">' +
-            '  <span class="product-toolbar-label">Result</span>' +
-            '  <div class="toolbar-pill-list">' +
-            '    <label class="toolbar-pill"><input type="checkbox" value="1" class="fire-mtg-fir-result-filter" checked><span>1</span></label>' +
-            '    <label class="toolbar-pill"><input type="checkbox" value="2" class="fire-mtg-fir-result-filter" checked><span>2</span></label>' +
-            '    <label class="toolbar-pill"><input type="checkbox" value="3" class="fire-mtg-fir-result-filter" checked><span>3</span></label>' +
-            '  </div>' +
-            '</div>' +
-            '<div class="product-toolbar-group">' +
-            '  <span class="toolbar-field"><span class="product-toolbar-label">Min prob</span><input type="number" id="fire-mtg-fir-min-prob" min="0" max="100" value="0" title="Minimum MTG-FIR fire probability (%)"></span>' +
-            '</div>';
+            '<div class="fire-filter-row"><div class="product-toolbar-group">' +
+            '<span class="product-toolbar-label">Result</span><div class="toolbar-pill-list">' +
+            '<label class="toolbar-pill"><input type="checkbox" value="1" class="fire-mtg-fir-result-filter" checked><span>1</span></label>' +
+            '<label class="toolbar-pill"><input type="checkbox" value="2" class="fire-mtg-fir-result-filter" checked><span>2</span></label>' +
+            '<label class="toolbar-pill"><input type="checkbox" value="3" class="fire-mtg-fir-result-filter" checked><span>3</span></label>' +
+            '</div></div><div class="product-toolbar-group">' +
+            '<span class="toolbar-field"><span class="product-toolbar-label">Min probability</span><input type="number" id="fire-mtg-fir-min-prob" min="0" max="100" value="0" title="Minimum MTG-FIR fire probability (%)"></span>' +
+            '</div></div>';
         panelWrap.appendChild(mtgFirSection);
 
         EV.updateProductToolbarVisibility();
@@ -1681,6 +1760,17 @@
             cb.addEventListener('change', function () {
                 var source = cb.getAttribute('data-source');
                 setSourceVisible(source, cb.checked, map);
+            });
+        });
+
+        section.querySelectorAll('.fire-product-toggle').forEach(function (parent) {
+            parent.addEventListener('change', function () {
+                var group = parent.closest('.fire-product-group');
+                group.querySelectorAll('.fire-filter-child').forEach(function (child) {
+                    child.checked = parent.checked;
+                });
+                updateProductGroupState(group);
+                applyFilters();
             });
         });
 
@@ -1810,6 +1900,10 @@
 
     function updateLegendContent(div) {
         var activeSats = getCheckedValues('.fire-sat-filter');
+        getCheckedValues('.fire-s3-stream-filter').forEach(function (stream) {
+            var satellite = stream.split('|')[1];
+            if (satellite && activeSats.indexOf(satellite) === -1) activeSats.push(satellite);
+        });
         activeSats = activeSats.filter(function (sat) {
             if (sat.indexOf('FIRMS-') === 0) return firmsVisible;
             if (sat === 'S3A' || sat === 'S3B') return s3Visible;
@@ -1829,6 +1923,16 @@
             return '<span class="fire-legend-item"><i class="fire-legend-satellite" style="background:' +
                    paletteSample(sat) + '"></i>' + sat + '</span>';
         }).join('');
+        var selectedS3Streams = getCheckedValues('.fire-s3-stream-filter');
+        var s3RetrievalSection = s3Visible && selectedS3Streams.length ?
+            '<div class="fire-legend-section"><h4>Sentinel-3 retrieval</h4>' +
+            (selectedS3Streams.some(function (value) { return value.indexOf('standard|') === 0; }) ?
+                '<span class="fire-legend-retrieval"><i class="standard"></i>Standard</span>' : '') +
+            (selectedS3Streams.some(function (value) { return value.indexOf('alternative|') === 0; }) ?
+                '<span class="fire-legend-retrieval"><i class="alternative"></i>Alternative</span>' : '') +
+            (selectedS3Streams.some(function (value) { return value.indexOf('swir|') === 0; }) ?
+                '<span class="fire-legend-retrieval"><i class="swir"></i>SWIR 500 m</span>' : '') +
+            '</div>' : '';
         var fireTypeSection = sfideVisible ?
             '<div class="fire-legend-section"><h4>Fire type</h4>' +
             '<span class="fire-legend-shape fire-legend-circle">Vegetation</span>' +
@@ -1839,7 +1943,7 @@
             '<button type="button" class="fire-legend-toggle" aria-expanded="' +
             (div.classList.contains('mobile-expanded') ? 'true' : 'false') + '">Legend</button>' +
             '<div class="fire-legend-section"><h4>Satellite</h4>' + satelliteRows + '</div>' +
-            fireTypeSection +
+            s3RetrievalSection + fireTypeSection +
             '<div class="fire-legend-section"><h4>FRP [MW]</h4>' +
             '<div class="fire-legend-sizes">' +
             '<span><i style="width:12px;height:12px"></i>&lt;20</span>' +
@@ -1935,6 +2039,8 @@
                 typePath: typeConf.path,
                 fireType: Number(p.TYPE) || 0,
                 fireTypeLabel: typeConf.label,
+                dataset: p.DATASET || 'SFIDE',
+                retrieval: p.DATASET === 'S3' ? (p.S3_RETRIEVAL || 'standard') : '',
                 hasFireClass: !isFirmsFeature(p) && !isS3Feature(p) && !isMtgFirFeature(p),
                 frp: p.FRP_WOOSTER != null ? p.FRP_WOOSTER : null,
                 pixelScanKm: p.PIXEL_SCAN_KM,
@@ -1948,7 +2054,7 @@
 
         var byTime = {};
         var bySatellite = {};
-        var satelliteDatasets = {};
+        var seriesMeta = {};
         var satelliteTotals = {};
         var tableRows = filtered.map(function (f) {
             var p = f.properties || {};
@@ -1961,6 +2067,7 @@
                 satellite: p.SATELLITE || '',
                 sensor: p.INSTRUMENT || SATELLITE_PRODUCTS[p.SATELLITE] || p.PRODUCT || '',
                 product: p.PRODUCT || SATELLITE_PRODUCTS[p.SATELLITE] || '',
+                retrieval: p.DATASET === 'S3' ? getS3RetrievalLabel(p.S3_RETRIEVAL) : '',
                 fireType: (isFirmsFeature(p) || isS3Feature(p) || isMtgFirFeature(p)) ? '' : typeConf.label,
                 frp: p.FRP_WOOSTER != null ? Math.round(p.FRP_WOOSTER * 10) / 10 : '',
                 confidence: p.CONFIDENCE_RAW != null ? p.CONFIDENCE_RAW : (p.CONFIDENCE != null ? p.CONFIDENCE : ''),
@@ -1978,21 +2085,29 @@
         filtered.forEach(function (f) {
             var p = f.properties;
             var date = parseFeatureDate(p);
-            if (!date) return;
-            if (p.FRP_WOOSTER == null) return;
+            if (!date || p.FRP_WOOSTER == null) return;
             var key = date.toISOString().substring(0, 16);
             var sat = p.SATELLITE || 'Unknown';
             var dataset = p.DATASET || 'SFIDE';
+            var retrieval = dataset === 'S3' ? (p.S3_RETRIEVAL || 'standard') : '';
+            var seriesKey = retrieval ? sat + '|' + retrieval : sat;
+            var seriesLabel = getSatelliteLabel(sat) +
+                (retrieval ? ' - ' + getS3RetrievalLabel(retrieval) : '');
             var frp = p.FRP_WOOSTER || 0;
             if (!byTime[key]) byTime[key] = { date: date, value: 0, detections: 0 };
             byTime[key].value += frp;
             byTime[key].detections += 1;
-            if (!bySatellite[sat]) bySatellite[sat] = {};
-            if (!bySatellite[sat][key]) bySatellite[sat][key] = { value: 0, detections: 0 };
-            bySatellite[sat][key].value += frp;
-            bySatellite[sat][key].detections += 1;
-            satelliteDatasets[sat] = dataset;
-            satelliteTotals[sat] = (satelliteTotals[sat] || 0) + 1;
+            if (!bySatellite[seriesKey]) bySatellite[seriesKey] = {};
+            if (!bySatellite[seriesKey][key]) bySatellite[seriesKey][key] = { value: 0, detections: 0 };
+            bySatellite[seriesKey][key].value += frp;
+            bySatellite[seriesKey][key].detections += 1;
+            seriesMeta[seriesKey] = {
+                satellite: sat,
+                dataset: dataset,
+                retrieval: retrieval,
+                label: seriesLabel
+            };
+            satelliteTotals[seriesLabel] = (satelliteTotals[seriesLabel] || 0) + 1;
         });
 
         var series = Object.keys(byTime).map(function (key) {
@@ -2005,49 +2120,32 @@
         }).sort(function (a, b) { return a.date - b.date; });
 
         var satellites = Object.keys(bySatellite).sort();
-        series.datasets = satellites.map(function (sat) {
-            var color = paletteSample(sat);
-            var satKeys = Object.keys(bySatellite[sat]).sort();
-            var isPolar = isPolarTimeseriesSource(satelliteDatasets[sat]);
+        series.datasets = satellites.map(function (seriesKey) {
+            var meta = seriesMeta[seriesKey];
+            var color = paletteSample(meta.satellite);
+            var satKeys = Object.keys(bySatellite[seriesKey]).sort();
+            var isPolar = isPolarTimeseriesSource(meta.dataset);
+            var isAlternative = meta.retrieval === 'alternative';
+            var isSwir = meta.retrieval === 'swir';
             var points = satKeys.map(function (key) {
-                var item = bySatellite[sat][key];
-                return {
-                    x: new Date(key + ':00Z'),
-                    y: Math.round(item.value * 10) / 10
-                };
+                var item = bySatellite[seriesKey][key];
+                return { x: new Date(key + ':00Z'), y: Math.round(item.value * 10) / 10 };
             });
             if (isPolar) {
                 return {
-                    type: 'scatter',
-                    label: getSatelliteLabel(sat),
-                    data: points,
-                    borderColor: color,
-                    backgroundColor: color,
-                    fill: false,
-                    showLine: false,
-                    pointStyle: 'circle',
-                    pointRadius: 6,
-                    pointHoverRadius: 9,
-                    pointBackgroundColor: color,
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    borderWidth: 0
+                    type: 'scatter', label: meta.label, data: points,
+                    borderColor: color, backgroundColor: color, fill: false, showLine: false,
+                    pointStyle: isSwir ? 'rectRot' : 'circle', pointRadius: isAlternative || isSwir ? 7 : 6, pointHoverRadius: 9,
+                    pointBackgroundColor: isAlternative ? '#ffffff' : color,
+                    pointBorderColor: color, pointBorderWidth: isAlternative ? 3 : 2, borderWidth: 0
                 };
             }
             return {
-                label: getSatelliteLabel(sat),
-                data: points,
-                borderColor: color,
+                label: meta.label, data: points, borderColor: color,
                 backgroundColor: color.replace('rgb', 'rgba').replace(')', ',0.16)'),
-                fill: false,
-                tension: 0.24,
-                pointRadius: 3.5,
-                pointHoverRadius: 7,
-                pointBackgroundColor: '#ffffff',
-                pointBorderColor: color,
-                pointBorderWidth: 2,
-                borderWidth: 2.75,
-                spanGaps: true
+                fill: false, tension: 0.24, pointRadius: 3.5, pointHoverRadius: 7,
+                pointBackgroundColor: '#ffffff', pointBorderColor: color,
+                pointBorderWidth: 2, borderWidth: 2.75, spanGaps: true
             };
         });
         series.satelliteDetections = satelliteTotals;
@@ -2059,6 +2157,7 @@
             { key: 'frp', label: 'FRP [MW]', defaultVisible: true },
             { key: 'source', label: 'Source', defaultVisible: false },
             { key: 'product', label: 'Product', defaultVisible: false },
+            { key: 'retrieval', label: 'Retrieval', defaultVisible: false },
             { key: 'fireType', label: 'Fire Type', defaultVisible: false },
             { key: 'confidence', label: 'Confidence', defaultVisible: false },
             { key: 'fireResult', label: 'MTG-FIR Result', defaultVisible: false },
@@ -2116,6 +2215,7 @@
         result.src = ['SFIDE', 'FIRMS', 'S3', 'MTG_FIR'].filter(getSourceVisible).join(',');
         result.ftab = activeFireSourceTab;
         result.sat = csvValues('.fire-sat-filter');
+        result.s3stream = csvValues('.fire-s3-stream-filter');
         result.type = csvValues('.fire-type-filter');
         result.viirs = csvValues('.fire-viirs-conf-filter');
         result.mtgr = csvValues('.fire-mtg-fir-result-filter');
@@ -2182,6 +2282,11 @@
             pendingSharedSatellites = String(params.get('sat') || '').split(',').filter(Boolean);
             setCheckedValues('.fire-sat-filter', params.get('sat'));
         }
+        if (params.has('s3stream')) {
+            pendingSharedS3Streams = String(params.get('s3stream') || '').split(',').filter(Boolean);
+            setCheckedValues('.fire-s3-stream-filter', params.get('s3stream'));
+        }
+        updateAllProductGroups();
 
         var targetMap = mapRef;
         if (clusterGroup && targetMap) {

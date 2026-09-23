@@ -55,7 +55,7 @@
         activeMode = mode;
         moveForMode(mode);
         ui.sheet.className = 'mobile-control-sheet mode-' + mode;
-        ui.title.textContent = mode === 'layers' ? 'Hotspot layers' :
+        ui.title.textContent = mode === 'layers' ? 'Additional layers' :
             (mode === 'time' ? 'Observation window' : 'Dataset filters');
         ui.sheet.setAttribute('aria-hidden', 'false');
         ui.backdrop.classList.remove('hidden');

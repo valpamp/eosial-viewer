@@ -947,16 +947,17 @@
 
     var urlParams = applyUrlParams();
 
-    // Register layers
-    registerLayer(EV.sfideHotspots, 'hotspots');
-    registerLayer(EV.firmsHotspots, 'hotspots');
-    registerLayer(EV.s3Hotspots, 'hotspots');
-    registerLayer(EV.mtgFirHotspots, 'hotspots');
-    if (EV.adminL0) registerLayer(EV.adminL0, 'additional');
+    // Dataset visibility is controlled by the source tabs. The sidebar is
+    // reserved for optional cartographic overlays.
+    [EV.adminL0, EV.adminL1, EV.adminL2].forEach(function (layer) {
+        if (layer) registerLayer(layer, 'additional');
+    });
     buildLayerToggles();
 
     // Initialise layers
-    if (EV.adminL0) EV.adminL0.init(map, DATA_BASE);
+    [EV.adminL0, EV.adminL1, EV.adminL2].forEach(function (layer) {
+        if (layer) layer.init(map, DATA_BASE);
+    });
     if (EV.pixelGrids) EV.pixelGrids.init(map, DATA_BASE);
     var fireInit = EV.fireHotspots.init(map, DATA_BASE);
     if (EV.mobileUI) EV.mobileUI.init(map);

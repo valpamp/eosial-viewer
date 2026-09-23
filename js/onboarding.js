@@ -20,9 +20,8 @@
         },
         {
             title: 'Show the datasets you need',
-            text: 'Use these checkboxes to show or hide SFIDE, NASA FIRMS, Sentinel-3, and MTG-FIR detections. External comparison datasets are off by default.',
-            target: '#layer-toggles',
-            prepare: openSidebar
+            text: 'Each source tab has its own visibility checkbox. Open a tab to choose product families and individual satellites without changing which datasets are shown.',
+            target: '.fire-source-tabs'
         },
         {
             title: 'Choose the observation window',

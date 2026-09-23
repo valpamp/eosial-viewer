@@ -2352,3 +2352,142 @@ body.dark .mobile-sheet-body .layer-toggle { border-color: #3f3f46; background: 
 body.dark .mobile-control-sheet.mode-time .toolbar-status { background: #27272a; }
 body.dark .fire-legend-toggle { background: #27272a; color: #e4e4e7; }
 body.dark .fire-legend.mobile-expanded .fire-legend-toggle { background: #3f3f46; }
+
+
+/* Sapienza operational theme */
+:root {
+ --sapienza-bg:#f7f6f5; --sapienza-surface:#fff; --sapienza-line:#ded6d8;
+ --sapienza-text:#171517; --sapienza-muted:#6f6669; --sapienza-accent:#822433;
+ --sapienza-accent-dark:#5f1724; --sapienza-accent-soft:#f5eaec; --sapienza-gold:#a67c32;
+}
+body { color:var(--sapienza-text); background:var(--sapienza-bg)!important; }
+#control-panel {
+ border-right:1px solid var(--sapienza-line); background:rgba(255,255,255,.98)!important;
+ box-shadow:4px 0 20px rgba(45,26,31,.10)!important;
+}
+#control-panel h1 { color:var(--sapienza-accent-dark)!important; letter-spacing:0; }
+#control-panel h2,.sidebar-layer-group-title { color:var(--sapienza-accent-dark)!important; letter-spacing:.04em; }
+#control-panel p,.toolbar-status,.dataset-availability { color:var(--sapienza-muted)!important; }
+#control-panel a { color:var(--sapienza-accent)!important; }
+.layer-toggle {
+ min-height:38px; border:1px solid var(--sapienza-line); border-radius:4px;
+ background:var(--sapienza-surface); color:var(--sapienza-text);
+}
+.layer-toggle:hover { border-color:#b999a0; background:var(--sapienza-accent-soft); }
+input[type="checkbox"] { accent-color:var(--sapienza-accent); }
+#control-panel button { border-radius:4px!important; }
+#control-panel #btn-copy-link,#control-panel #btn-about,#control-panel #btn-start-tour {
+ border:1px solid transparent; background:#f2eff0!important; color:#443b3e!important;
+}
+#control-panel #btn-copy-link:hover,#control-panel #btn-about:hover,#control-panel #btn-start-tour:hover {
+ border-color:#cfb8bd; background:var(--sapienza-accent-soft)!important; color:var(--sapienza-accent-dark)!important;
+}
+#toggle-panel-btn { color:var(--sapienza-accent)!important; border:1px solid var(--sapienza-line); border-left:0; }
+.product-toolbar-section {
+ border:1px solid var(--sapienza-line); border-radius:6px; background:rgba(255,255,255,.97);
+ box-shadow:0 5px 18px rgba(45,26,31,.12);
+}
+.fire-toolbar-topline { border-bottom-color:var(--sapienza-line); background:#fbfaf9; }
+.product-toolbar-title,.product-toolbar-label { color:var(--sapienza-accent-dark); }
+.toolbar-btn-compact { border-color:#d5ccce; border-radius:4px; color:#4a4144; background:#fff; }
+.toolbar-btn-compact:hover { border-color:#b88f98; background:var(--sapienza-accent-soft); }
+.fire-time-btn.active,#fire-apply-custom {
+ border-color:var(--sapienza-accent)!important; background:var(--sapienza-accent)!important; color:#fff!important;
+}
+.fire-source-tabs {
+ gap:2px; padding:4px 4px 0; border-color:var(--sapienza-line);
+ border-radius:5px 5px 0 0; background:#eee9ea;
+}
+.fire-source-tab {
+ position:relative; min-height:39px; border:1px solid transparent; border-bottom:0;
+ border-radius:4px 4px 0 0; color:#4b4245;
+}
+.fire-source-tab:hover { background:rgba(255,255,255,.62); }
+.fire-source-tab.active {
+ border-color:var(--sapienza-line); background:#fff; color:var(--sapienza-accent-dark); box-shadow:none;
+}
+.fire-source-tab.active::after {
+ position:absolute; right:9px; bottom:-1px; left:9px; height:3px;
+ background:var(--sapienza-accent); content:"";
+}
+.fire-source-tab.off { opacity:.58; }
+.fire-source-dot.mtg-fir { background:#27313a; }
+.fire-source-panel {
+ border:0; border-left:4px solid var(--sapienza-accent);
+ border-radius:0 0 5px 5px; background:rgba(255,255,255,.98);
+}
+.fire-source-toolbar-firms { border-left-color:#16816b; background:rgba(250,253,252,.98); }
+.fire-source-toolbar-s3 { border-left-color:#1385a1; background:rgba(249,252,253,.98); }
+.fire-source-toolbar-mtg-fir { border-left-color:#27313a; background:rgba(250,251,252,.98); }
+.mtg-fir-title { color:#27313a; }
+.fire-product-groups {
+ display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:0;
+ border-bottom:1px solid var(--sapienza-line);
+}
+.fire-product-groups.single { grid-template-columns:minmax(220px,1fr); }
+.fire-product-group { min-width:0; margin:0; padding:10px 14px 12px; border:0; }
+.fire-product-group+.fire-product-group { border-left:1px solid var(--sapienza-line); }
+.fire-product-heading { display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; color:#30292b; }
+.fire-product-heading input { width:16px; height:16px; margin-top:2px; flex:0 0 auto; }
+.fire-product-heading strong { display:block; font-size:12px; line-height:1.25; }
+.fire-product-heading small {
+ display:block; margin-top:2px; color:var(--sapienza-muted); font-size:9px;
+ font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+}
+.fire-product-children { display:flex; flex-wrap:wrap; gap:6px; }
+.fire-product-group.empty { display:none; }
+.fire-filter-row { display:flex; align-items:flex-end; flex-wrap:wrap; gap:12px 18px; padding:10px 14px; }
+.fire-satellite-option { max-width:100%; min-height:30px; border-radius:4px; background:#fff; }
+.fire-satellite-option span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fire-satellite-option.alternative { border-style:dashed; }
+.fire-satellite-option.alternative .toolbar-sat-swatch { background:#fff!important; border-width:3px; }
+.toolbar-pill { border-color:#d7ced0; border-radius:4px; }
+.toolbar-pill:has(input:checked) {
+ border-color:#ae7b86; background:var(--sapienza-accent-soft); color:var(--sapienza-accent-dark);
+}
+.toolbar-sat-swatch {
+ width:12px; height:12px; flex:0 0 12px; border:1px solid rgba(0,0,0,.18); border-radius:50%;
+}
+.fire-legend-retrieval { display:inline-flex; align-items:center; gap:5px; margin:0 9px 4px 0; }
+.fire-legend-retrieval i {
+ width:17px; height:12px; border:2px solid #1385a1; background:rgba(19,133,161,.45);
+}
+.fire-legend-retrieval i.alternative { border-style:dashed; background:rgba(255,255,255,.65); }
+.ts-view-tab.active,.fire-animation-controls button.active,.tour-primary {
+ border-color:var(--sapienza-accent)!important; background:var(--sapienza-accent)!important; color:#fff!important;
+}
+#ts-modal>div,.fire-animation-controls,.tour-card { border-color:var(--sapienza-line)!important; }
+@media (max-width:760px) {
+ .fire-product-groups { grid-template-columns:minmax(0,1fr); }
+ .fire-product-group+.fire-product-group { border-top:1px solid var(--sapienza-line); border-left:0; }
+ .fire-product-children { display:grid; grid-template-columns:minmax(0,1fr); }
+ .fire-satellite-option { width:100%; }
+ .mobile-map-dock button.active { background:var(--sapienza-accent-soft); color:var(--sapienza-accent-dark); }
+}
+body.dark {
+ --sapienza-bg:#171415; --sapienza-surface:#242022; --sapienza-line:#4a4043;
+ --sapienza-text:#f5f1f2; --sapienza-muted:#b9acb0; --sapienza-accent:#c65c70;
+ --sapienza-accent-dark:#f1b3bf; --sapienza-accent-soft:#3c252b;
+}
+body.dark #control-panel,body.dark .product-toolbar-section,body.dark .fire-source-tab.active,
+body.dark .fire-source-panel,body.dark .fire-satellite-option { background:rgba(36,32,34,.98)!important; }
+body.dark .fire-toolbar-topline,body.dark .fire-source-tabs { background:#1d191b; }
+body.dark .toolbar-btn-compact,body.dark .toolbar-pill { background:#2a2527; color:#eee7e9; }
+body.dark .fire-source-toolbar-mtg-fir { border-left-color:#94a3b8; }
+body.dark .mtg-fir-title { color:#cbd5e1; }
+.fire-product-groups.s3 { grid-template-columns:repeat(3,minmax(180px,1fr)); }
+.fire-satellite-option.swir { border-style:dotted; }
+.fire-satellite-option.swir .toolbar-sat-swatch {
+    box-shadow:inset 0 0 0 2px #fff;
+}
+.fire-legend-retrieval i.swir {
+    border-style:dotted;
+    background:rgba(19,133,161,.72);
+}
+@media (max-width:900px) {
+    .fire-product-groups.s3 { grid-template-columns:minmax(0,1fr); }
+    .fire-product-groups.s3 .fire-product-group+.fire-product-group {
+        border-top:1px solid var(--sapienza-line);
+        border-left:0;
+    }
+}

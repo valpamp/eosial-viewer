@@ -265,10 +265,16 @@
             '</div>';
     }
 
+    function retrievalLabel(retrieval) {
+        if (retrieval === 'alternative') return 'Alternative';
+        if (retrieval === 'swir') return 'SWIR 500 m';
+        return 'Standard';
+    }
+
     function nativeFootprint(point) {
         if (!EV.pixelGrids || !EV.pixelGrids.hasHotspotGrid ||
                 !EV.pixelGrids.hasHotspotGrid(point.satellite)) return null;
-        return EV.pixelGrids.getHotspotFootprint(
+        var footprint = EV.pixelGrids.getHotspotFootprint(
             point.satellite, point.latitude, point.longitude, {
                 PIXEL_SCAN_KM: point.pixelScanKm,
                 PIXEL_TRACK_KM: point.pixelTrackKm,
@@ -277,6 +283,13 @@
                 EFF_ALONG_KM: point.effAlongKm
             }
         );
+        if (footprint && point.dataset === 'S3') {
+            return {
+                key: footprint.key + ':' + (point.retrieval || 'standard'),
+                corners: footprint.corners
+            };
+        }
+        return footprint;
     }
     function rebuildFrames() {
         if (!active) return;
@@ -322,9 +335,13 @@
     function animationSymbolIcon(point, size, showLabel, pixelSymbol) {
         var frpLabel = showLabel && point.frp != null ?
             '<span class="fire-animation-frp-label">' + Math.round(Number(point.frp)) + ' MW</span>' : '';
+        var alternative = point.dataset === 'S3' && point.retrieval === 'alternative';
+        var swir = point.dataset === 'S3' && point.retrieval === 'swir';
+        var fillColor = alternative ? '#ffffff' : frpColor(point.frp);
+        var outlineColor = swir ? '#27313a' : point.color;
         var symbol = point.hasFireClass || !pixelSymbol ?
             '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" style="fill:' +
-            escapeAttribute(frpColor(point.frp)) + ';stroke:' + escapeAttribute(point.color) +
+            escapeAttribute(fillColor) + ';stroke:' + escapeAttribute(outlineColor) +
             ';stroke-width:2.5;opacity:' + getHotspotOpacity() + '"><path d="' +
             escapeAttribute(point.typePath) + '"/></svg>' : '';
         return L.divIcon({
@@ -372,7 +389,9 @@
                 weight: 2,
                 opacity: hotspotOpacity,
                 fillColor: frpColor(point.frp),
-                fillOpacity: hotspotOpacity,
+                fillOpacity: point.dataset === 'S3' && point.retrieval === 'alternative' ? Math.min(0.42, hotspotOpacity) : hotspotOpacity,
+                dashArray: point.dataset === 'S3' ? (point.retrieval === 'alternative' ? '7 5' :
+                    (point.retrieval === 'swir' ? '2 6' : null)) : null,
                 lineJoin: 'round',
                 interactive: false,
                 className: 'fire-animation-pixel'
@@ -797,12 +816,14 @@
         var size = 22;
         context.save();
         context.globalAlpha = getHotspotOpacity();
+        if (point.dataset === 'S3' && point.retrieval === 'alternative') context.setLineDash([7, 5]);
+        else if (point.dataset === 'S3' && point.retrieval === 'swir') context.setLineDash([2, 6]);
         context.shadowColor = 'rgba(15, 23, 42, 0.65)';
         context.shadowBlur = 5;
         context.shadowOffsetY = 2;
         drawCanvasFireShape(context, canvasPoint.x, canvasPoint.y, size,
             point.hasFireClass ? point.fireType : -1,
-            frpColor(point.frp), point.color, 3);
+            point.dataset === 'S3' && point.retrieval === 'alternative' ? '#ffffff' : frpColor(point.frp), point.color, 3);
         context.restore();
 
         if (document.getElementById('fire-animation-labels').checked && point.frp != null) {
@@ -824,9 +845,12 @@
         });
         context.closePath();
         context.fillStyle = frpColor(point.frp);
+        if (point.dataset === 'S3' && point.retrieval === 'alternative') context.globalAlpha = Math.min(0.42, getHotspotOpacity());
         context.fill();
         context.strokeStyle = point.color;
         context.lineWidth = 3;
+        if (point.dataset === 'S3' && point.retrieval === 'alternative') context.setLineDash([8, 5]);
+        else if (point.dataset === 'S3' && point.retrieval === 'swir') context.setLineDash([2, 6]);
         context.stroke();
         context.restore();
 
@@ -888,7 +912,8 @@
         var satellites = {};
         var fireTypes = {};
         pointsInRange.forEach(function (point) {
-            satellites[point.satellite] = point.color;
+            var satelliteKey = point.satellite + (point.retrieval ? ' - ' + retrievalLabel(point.retrieval) : '');
+            satellites[satelliteKey] = point.color;
             if (point.hasFireClass) fireTypes[point.fireType] = point.fireTypeLabel;
         });
 

@@ -1,77 +1,116 @@
 /**
- * EOSIAL Active Fire Viewer — Administrative Boundaries (L0)
+ * EOSIAL Active Fire Viewer - administrative boundary overlays.
  *
- * EV.adminL0 — country outlines (world-atlas 50m TopoJSON via jsDelivr)
- *
- * Renders in a custom 'adminPane' (z-index 450) below fire hotspot markers (~600).
- * Data is lazy-loaded on first toggle.
- *
- * For higher-resolution borders, download ne_10m_admin_0_countries.shp
- * from naturalearthdata.com, convert to GeoJSON, place in data/boundaries/,
- * and change COUNTRIES_URL to 'data/boundaries/countries-10m.geojson'.
+ * Natural Earth 1:10m supplies worldwide level-0 boundaries. ISTAT 2026
+ * supplies Italian regions (level 1) and provinces (level 2). Each layer is
+ * fetched only when selected; detailed layers render only at useful zooms.
  */
 (function () {
-
-    var COUNTRIES_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json';
-
     var PANE = 'adminPane';
-
-    var L0_STYLE = { color: '#555', weight: 1.2, fill: false, opacity: 0.75 };
-
-    /* ── Shared pane ───────────────────────────────────────────── */
+    var mapRef = null;
 
     function ensurePane(map) {
         if (!map.getPane(PANE)) {
-            var p = map.createPane(PANE);
-            p.style.zIndex = 450;
-            p.style.pointerEvents = 'none';
+            var pane = map.createPane(PANE);
+            pane.style.zIndex = 450;
+            pane.style.pointerEvents = 'none';
         }
     }
 
-    /* ── L0 — Countries ────────────────────────────────────────── */
-
-    var l0Layer   = null;
-    var l0Loaded  = false;
-    var l0Visible = false;
-
-    function loadL0(map) {
-        EV.showLoading('Loading country boundaries...');
-        fetch(COUNTRIES_URL)
-            .then(function (r) {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-            .then(function (world) {
-                var fc = topojson.feature(world, world.objects.countries);
-                l0Layer  = L.geoJSON(fc, { style: L0_STYLE, pane: PANE });
-                l0Loaded = true;
-                EV.hideLoading();
-                if (l0Visible) l0Layer.addTo(map);
-            })
-            .catch(function (err) {
-                console.error('[ADMIN L0]', err);
-                EV.hideLoading();
-            });
+    function loadFlatGeobuf(url) {
+        return fetch(url).then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status + ' for ' + url);
+            return response.arrayBuffer();
+        }).then(function (buffer) {
+            var iterator = flatgeobuf.deserialize(new Uint8Array(buffer));
+            if (iterator && iterator[Symbol.asyncIterator]) {
+                return (async function () {
+                    var features = [];
+                    for await (var feature of iterator) features.push(feature);
+                    return features;
+                })();
+            }
+            return Array.from(iterator || []);
+        });
     }
 
-    /* ── Public API ────────────────────────────────────────────── */
+    function createBoundaryLayer(config) {
+        var leafletLayer = null;
+        var loaded = false;
+        var loading = null;
+        var visible = false;
 
-    EV.adminL0 = {
-        id: 'admin-l0',
-        name: 'Country Borders',
-        defaultVisible: false,
-        init: function (map) {
-            ensurePane(map);
-            return Promise.resolve();
-        },
-        setVisible: function (v, map) {
-            l0Visible = v;
-            if (v && !l0Loaded) { loadL0(map); return; }
-            if (l0Loaded && l0Layer) {
-                if (v) l0Layer.addTo(map);
-                else    map.removeLayer(l0Layer);
+        function shouldRender() {
+            return visible && mapRef && mapRef.getZoom() >= config.minZoom;
+        }
+
+        function sync() {
+            if (!leafletLayer || !mapRef) return;
+            if (shouldRender()) {
+                if (!mapRef.hasLayer(leafletLayer)) leafletLayer.addTo(mapRef);
+            } else if (mapRef.hasLayer(leafletLayer)) {
+                mapRef.removeLayer(leafletLayer);
             }
         }
-    };
 
+        function load() {
+            if (loaded) {
+                sync();
+                return Promise.resolve();
+            }
+            if (loading) return loading;
+            EV.showLoading('Loading ' + config.loadingLabel + '...');
+            loading = loadFlatGeobuf(config.url).then(function (features) {
+                leafletLayer = L.geoJSON({ type: 'FeatureCollection', features: features }, {
+                    pane: PANE,
+                    interactive: false,
+                    style: config.style
+                });
+                loaded = true;
+                loading = null;
+                EV.hideLoading();
+                sync();
+            }).catch(function (error) {
+                loading = null;
+                EV.hideLoading();
+                console.error('[ADMIN ' + config.level + ']', error);
+            });
+            return loading;
+        }
+
+        return {
+            id: config.id,
+            name: config.name,
+            type: 'line',
+            defaultVisible: false,
+            init: function (map, dataBase) {
+                mapRef = map;
+                ensurePane(map);
+                config.url = dataBase + '/boundaries/' + config.file;
+                map.on('zoomend', sync);
+                return Promise.resolve();
+            },
+            setVisible: function (value) {
+                visible = value;
+                if (visible && !loaded) load();
+                else sync();
+            }
+        };
+    }
+
+    EV.adminL0 = createBoundaryLayer({
+        id: 'admin-l0', name: 'Countries (Level 0)', level: 0,
+        file: 'admin0_countries_10m.fgb', loadingLabel: 'country boundaries', minZoom: 3,
+        style: { color: '#5f1724', weight: 1.35, fill: false, opacity: 0.82 }
+    });
+    EV.adminL1 = createBoundaryLayer({
+        id: 'admin-l1', name: 'Italian Regions (Level 1)', level: 1,
+        file: 'admin1_italy_regions_2026.fgb', loadingLabel: 'Italian regional boundaries', minZoom: 5,
+        style: { color: '#822433', weight: 1.25, fill: false, opacity: 0.82 }
+    });
+    EV.adminL2 = createBoundaryLayer({
+        id: 'admin-l2', name: 'Italian Provinces (Level 2)', level: 2,
+        file: 'admin2_italy_provinces_2026.fgb', loadingLabel: 'Italian provincial boundaries', minZoom: 7,
+        style: { color: '#a67c32', weight: 0.9, fill: false, opacity: 0.72, dashArray: '4 3' }
+    });
 })();

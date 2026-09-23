@@ -27,7 +27,6 @@
     <!-- Vector format loaders: FlatGeobuf, Shapefile, GeoPackage -->
     <script src="https://unpkg.com/flatgeobuf@4.4.0/dist/flatgeobuf-geojson.min.js"></script>
     <script src="https://unpkg.com/shpjs@6.2.0/dist/shp.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/proj4@2.20.9/dist/proj4.js"></script>
     <!-- sql.js (for GeoPackage) is lazy-loaded only when a .gpkg file is detected -->
 <!-- Tailwind CSS -->
@@ -44,7 +43,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
     <!-- App styles -->
-    <link rel="stylesheet" href="css/style.css?v=20260922.4">
+    <link rel="stylesheet" href="css/style.css?v=20260923.1">
 </head>
 <body class="font-sans overflow-hidden bg-gray-100">
 
@@ -135,7 +134,7 @@
     <nav id="mobile-map-dock" class="mobile-map-dock" aria-label="Map controls">
         <button type="button" data-mobile-panel="layers" aria-controls="mobile-control-sheet" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5ZM2 12l10 5 10-5M2 17l10 5 10-5"/></svg>
-            <span>Layers</span><small id="mobile-layers-summary">1 active</small>
+            <span>Overlays</span><small id="mobile-layers-summary">0 active</small>
         </button>
         <button type="button" data-mobile-panel="time" aria-controls="mobile-control-sheet" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
@@ -292,6 +291,7 @@
                     <li><b>Sentinel-3 Hotspots</b> &mdash; External Sentinel-3 SLSTR near-real-time FRP detections for comparison with geostationary products.</li>
                     <li><b>MTG-FIR Hotspots</b> &mdash; External official EUMETSAT MTG-FIR detections for comparison with SFIDE products.</li>
                 </ul>
+                <p><b>Optional overlays:</b> Natural Earth 1:10m country boundaries and ISTAT 2026 Italian regional and provincial boundaries.</p>
                 <p class="text-xs text-gray-500 mt-4">
                     &copy; EOSIAL Laboratory, Sapienza University of Rome.
                     Data provided for research and informational purposes only.
@@ -333,14 +333,14 @@
     <!-- App scripts (standard scripts, not ES modules, for compatibility with UMD libs) -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
-    <script src="js/fire-animation.js?v=20260922.8"></script>
+    <script src="js/fire-animation.js?v=20260923.1"></script>
     <script src="js/timeseries.js"></script>
-    <script src="js/onboarding.js"></script>
-    <script src="js/mobile-ui.js?v=20260722.2"></script>
-    <script src="js/layers/admin-boundaries.js"></script>
+    <script src="js/onboarding.js?v=20260923.1"></script>
+    <script src="js/mobile-ui.js?v=20260923.1"></script>
+    <script src="js/layers/admin-boundaries.js?v=20260923.1"></script>
     <script src="js/layers/pixel-grids.js?v=20260922.2"></script>
-    <script src="js/layers/fire-hotspots.js?v=20260922.4"></script>
-    <script src="js/app.js?v=20260922.3"></script>
+    <script src="js/layers/fire-hotspots.js?v=20260923.1"></script>
+    <script src="js/app.js?v=20260923.3"></script>
 
 </body>
 </html>

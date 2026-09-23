@@ -6,8 +6,9 @@ Interactive web viewer for active fire detections and satellite wildfire managem
 
 ## Features
 
-- **Fire hotspots** - Near-real-time active fire detections from MSG/MTG satellites (SFIDE algorithm), plus external FIRMS, Sentinel-3, and official EUMETSAT MTG-FIR comparison layers
+- **Fire hotspots** - Hierarchical controls for SFIDE MSG/MTG, NASA FIRMS MODIS/VIIRS, Sentinel-3 Standard/Alternative/SWIR, and official EUMETSAT MTG-FIR detections
 - **Timeseries queries** - Draw a rectangle to chart active fire FRP over time, with table, CSV, and PNG export
+- **Administrative overlays** - Optional Natural Earth 1:10m country borders and ISTAT 2026 Italian region/province boundaries
 - **Distance measurement** - Multi-segment ruler tool with metric readout
 - **Location search** - Geocoding via OpenStreetMap Nominatim
 - **Multiple basemaps** - OpenStreetMap, Google Satellite, and OpenTopoMap
@@ -60,6 +61,7 @@ eosial-viewer/
 |   |-- app.js                  # Map init, toolbar, sidebar, query tools
 |   |-- timeseries.js           # Chart.js timeseries modal
 |   `-- layers/
+|       |-- admin-boundaries.js # Lazy high-resolution administrative overlays
 |       |-- fire-hotspots.js    # Fire filtering, markers, and native pixel footprints
 |       `-- pixel-grids.js      # Native geostationary grids and polar pixel footprints
 |-- data/
@@ -118,6 +120,8 @@ Hotspot features should contain Point geometry and these properties where availa
 | `FRP_WOOSTER` or `FRP_MODIS` | Fire Radiative Power (MW) |
 
 The viewer loads recent and archived FlatGeobuf chunks through their manifests. At broad map scales detections use clustered markers. At detailed zoom levels MSG/MTG detections use vector footprints computed from compact native-grid metadata in `data/pixel-grids/`; FIRMS footprints use each detection's `scan` and `track` dimensions, and Sentinel-3 footprints use the projected IFOV area. Polar-orbiter footprints are per-detection approximations because these satellites do not use a fixed Earth grid.
+
+Administrative overlays are stored under data/boundaries as FlatGeobuf. Level 0 uses Natural Earth 1:10m data; Italian levels 1 and 2 use the official ISTAT 2026 administrative boundaries. All are off by default and loaded only when selected.
 
 ## Dependencies
 
