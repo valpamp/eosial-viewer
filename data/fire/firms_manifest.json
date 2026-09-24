@@ -1,33 +1,11 @@
 {
-  "generated": "2026-09-23T09:30:05.686197+00:00",
+  "generated": "2026-09-24T08:30:12.156020+00:00",
   "source": "NASA FIRMS NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-09-23T03:08:00+00:00",
-  "feature_count": 737,
+  "latest_hotspot": "2026-09-24T02:47:00+00:00",
+  "feature_count": 1037,
   "files": [
-    {
-      "path": "firms/FIRMS_ITA_2026263.fgb",
-      "format": "fgb",
-      "label": "FIRMS_ITA_2026263",
-      "date": "2026-09-20",
-      "start": "2026-09-20T00:03:00+00:00",
-      "end": "2026-09-20T23:48:00+00:00",
-      "count": 179,
-      "products": {
-        "suomi-npp-viirs-c2": 80,
-        "noaa-21-viirs-c2": 48,
-        "noaa-20-viirs-c2": 38,
-        "modis-c6.1": 13
-      },
-      "satellites": {
-        "N": 80,
-        "N21": 48,
-        "N20": 38,
-        "A": 7,
-        "T": 6
-      }
-    },
     {
       "path": "firms/FIRMS_ITA_2026264.fgb",
       "format": "fgb",
@@ -78,19 +56,39 @@
       "label": "FIRMS_ITA_2026266",
       "date": "2026-09-23",
       "start": "2026-09-23T00:05:00+00:00",
-      "end": "2026-09-23T03:08:00+00:00",
-      "count": 160,
+      "end": "2026-09-23T23:46:00+00:00",
+      "count": 476,
       "products": {
-        "noaa-20-viirs-c2": 61,
-        "noaa-21-viirs-c2": 56,
-        "suomi-npp-viirs-c2": 41,
-        "modis-c6.1": 2
+        "noaa-21-viirs-c2": 145,
+        "noaa-20-viirs-c2": 138,
+        "suomi-npp-viirs-c2": 127,
+        "modis-c6.1": 66
       },
       "satellites": {
-        "N20": 61,
-        "N21": 56,
-        "N": 41,
-        "A": 2
+        "N21": 145,
+        "N20": 138,
+        "N": 127,
+        "A": 59,
+        "T": 7
+      }
+    },
+    {
+      "path": "firms/FIRMS_ITA_2026267.fgb",
+      "format": "fgb",
+      "label": "FIRMS_ITA_2026267",
+      "date": "2026-09-24",
+      "start": "2026-09-24T00:30:00+00:00",
+      "end": "2026-09-24T02:47:00+00:00",
+      "count": 163,
+      "products": {
+        "noaa-21-viirs-c2": 69,
+        "suomi-npp-viirs-c2": 55,
+        "noaa-20-viirs-c2": 39
+      },
+      "satellites": {
+        "N21": 69,
+        "N": 55,
+        "N20": 39
       }
     }
   ]
