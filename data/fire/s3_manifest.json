@@ -1,10 +1,10 @@
 {
-  "generated": "2026-09-24T21:00:18.948745+00:00",
+  "generated": "2026-09-24T21:30:19.338384+00:00",
   "source": "Sentinel-3 SLSTR NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-09-24T09:47:21+00:00",
-  "feature_count": 239,
+  "latest_hotspot": "2026-09-24T20:27:34+00:00",
+  "feature_count": 250,
   "files": [
     {
       "path": "s3/S3_FRP_S3A_ITA_20260921092402.fgb",
@@ -244,6 +244,21 @@
       },
       "products": {
         "S3B_SL_2_FRP____20260924T090746_20260924T091046_20260924T110515_0179_125_050______MAR_O_NR_003.SEN3": 16
+      }
+    },
+    {
+      "path": "s3/S3_FRP_S3B_ITA_20260924202440.fgb",
+      "format": "fgb",
+      "label": "S3_FRP_S3B_ITA_20260924202440",
+      "date": "2026-09-24",
+      "start": "2026-09-24T20:26:50+00:00",
+      "end": "2026-09-24T20:27:34+00:00",
+      "count": 11,
+      "satellites": {
+        "S3B": 11
+      },
+      "products": {
+        "S3B_SL_2_FRP____20260924T202440_20260924T202740_20260924T211221_0179_125_057______MAR_O_NR_003.SEN3": 11
       }
     }
   ]
