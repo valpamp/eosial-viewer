@@ -1,71 +1,11 @@
 {
-  "generated": "2026-09-24T23:30:19.531806+00:00",
+  "generated": "2026-09-25T00:00:20.115871+00:00",
   "source": "Sentinel-3 SLSTR NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
   "latest_hotspot": "2026-09-24T21:07:29+00:00",
-  "feature_count": 258,
+  "feature_count": 236,
   "files": [
-    {
-      "path": "s3/S3_FRP_S3A_ITA_20260921092402.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3A_ITA_20260921092402",
-      "date": "2026-09-21",
-      "start": "2026-09-21T09:25:01+00:00",
-      "end": "2026-09-21T09:25:01+00:00",
-      "count": 2,
-      "satellites": {
-        "S3A": 2
-      },
-      "products": {
-        "S3A_SL_2_FRP____20260921T092402_20260921T092702_20260921T112045_0179_144_150______MAR_O_NR_003.SEN3": 2
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3A_ITA_20260921204057.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3A_ITA_20260921204057",
-      "date": "2026-09-21",
-      "start": "2026-09-21T20:42:30+00:00",
-      "end": "2026-09-21T20:44:02+00:00",
-      "count": 16,
-      "satellites": {
-        "S3A": 16
-      },
-      "products": {
-        "S3A_SL_2_FRP____20260921T204057_20260921T204357_20260921T212749_0179_144_157______MAR_O_NR_003.SEN3.zip": 16
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3A_ITA_20260921204357.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3A_ITA_20260921204357",
-      "date": "2026-09-21",
-      "start": "2026-09-21T20:44:56+00:00",
-      "end": "2026-09-21T20:44:58+00:00",
-      "count": 2,
-      "satellites": {
-        "S3A": 2
-      },
-      "products": {
-        "S3A_SL_2_FRP____20260921T204357_20260921T204657_20260921T225752_0179_144_157______MAR_O_NR_003.SEN3.zip": 2
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20260921200514.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20260921200514",
-      "date": "2026-09-21",
-      "start": "2026-09-21T20:05:51+00:00",
-      "end": "2026-09-21T20:05:52+00:00",
-      "count": 2,
-      "satellites": {
-        "S3B": 2
-      },
-      "products": {
-        "S3B_SL_2_FRP____20260921T200514_20260921T200814_20260921T205225_0179_125_014______MAR_O_NR_003.SEN3.zip": 2
-      }
-    },
     {
       "path": "s3/S3_FRP_S3A_ITA_20260922201446.fgb",
       "format": "fgb",
