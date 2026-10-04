@@ -32,13 +32,21 @@ def run_git(command: list[str], timeout_seconds: float, **kwargs: object) -> sub
     env.setdefault("GIT_TERMINAL_PROMPT", "0")
     env.setdefault("GCM_INTERACTIVE", "0")
     env.setdefault("GCM_GUI_PROMPT", "0")
+
+    # Scheduled commits must stay quick. This repository contains multi-gigabyte
+    # hotspot archives, so automatic maintenance is handled separately rather
+    # than allowing every 30-minute commit to start a full repack.
+    config_index = int(env.get("GIT_CONFIG_COUNT", "0"))
+    env[f"GIT_CONFIG_KEY_{config_index}"] = "maintenance.auto"
+    env[f"GIT_CONFIG_VALUE_{config_index}"] = "false"
+    env["GIT_CONFIG_COUNT"] = str(config_index + 1)
     try:
         return subprocess.run(command, env=env, timeout=timeout_seconds, **kwargs)
     except subprocess.TimeoutExpired as exc:
         rendered_command = " ".join(command)
         raise RuntimeError(
             f"Git command timed out after {timeout_seconds:g} seconds: {rendered_command}. "
-            "Check network access and the repository credentials."
+            "See the preceding Git output for the cause."
         ) from exc
 
 
