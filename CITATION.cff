@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "EOSIAL Active Fire Viewer: Interactive Satellite-Derived Environmental Maps"
+title: "EOSIAL Active Fire Viewer"
 message: "If you use this software or data, please cite it as below."
 type: software
 authors:
@@ -13,22 +13,13 @@ url: "https://valpamp.github.io/eosial-viewer"
 license: MIT
 license-url: "https://opensource.org/licenses/MIT"
 keywords:
-  - live fuel moisture content
-  - LFMC
-  - remote sensing
+  - active fire
+  - fire radiative power
+  - wildfire detection
+  - Meteosat
+  - NASA FIRMS
+  - Sentinel-3
   - wildfire
   - earth observation
   - web GIS
-  - cloud optimized geotiff
 date-released: "2026-03-21"
-preferred-citation:
-  type: conference-paper
-  title: "Using PROSAIL Look-Up Tables to Train Random Forests Regressors for Fast Live Fuel Moisture Retrieval"
-  authors:
-    - family-names: Pampanoni
-      given-names: Valerio
-  collection-title: "IGARSS 2024 — 2024 IEEE International Geoscience and Remote Sensing Symposium"
-  pages: "4526-4530"
-  year: 2024
-  publisher:
-    name: IEEE
