@@ -1,12 +1,12 @@
 {
-  "generated": "2026-10-07T03:30:06.351668+00:00",
-  "latest_hotspot": "2026-10-07T03:08:00+00:00",
+  "generated": "2026-10-07T04:00:06.945215+00:00",
+  "latest_hotspot": "2026-10-07T03:48:00+00:00",
   "latest_by_satellite": {
     "MET-10": "2026-10-06T19:00:00+00:00",
     "MET-11": "2026-10-06T08:45:00+00:00",
-    "MTG-1": "2026-10-07T03:08:00+00:00"
+    "MTG-1": "2026-10-07T03:48:00+00:00"
   },
-  "feature_count": 1654284,
+  "feature_count": 1654285,
   "format": "fgb",
   "archive_period": "week",
   "archive_manifest": "sfide_archive_manifest.json"
