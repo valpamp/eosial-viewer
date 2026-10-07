@@ -2164,23 +2164,35 @@ body.dark .viewer-tour-actions button { border-color: #475569; background: #2727
         white-space: normal;
     }
 
+    .mobile-control-sheet.mode-filters { max-height: 92vh; max-height: 92dvh; }
+    .mobile-control-sheet.mode-filters .fire-source-help { display: block; margin: 0; font-size: 12px; line-height: 1.5; color: var(--sapienza-muted); }
     .mobile-control-sheet.mode-filters .fire-source-tabs {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        padding: 4px;
-        scrollbar-width: none;
-        scroll-snap-type: x proximity;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        padding: 0;
+        border: 0;
+        background: transparent;
     }
-    .mobile-control-sheet.mode-filters .fire-source-tabs::-webkit-scrollbar { display: none; }
     .mobile-control-sheet.mode-filters .fire-source-tab {
-        min-height: 42px;
-        flex: 0 0 auto;
-        scroll-snap-align: start;
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
+        min-width: 0;
+        min-height: 58px;
+        padding: 4px 8px 4px 2px;
+        border: 1px solid var(--sapienza-line);
+        border-radius: 6px;
+        white-space: normal;
+        opacity: 1;
     }
-    .mobile-control-sheet.mode-filters .fire-source-tab input {
-        width: 18px;
-        height: 18px;
-    }
+    .mobile-control-sheet.mode-filters .fire-source-tab.active { border-color: var(--sapienza-accent); }
+    .mobile-control-sheet.mode-filters .fire-source-tab.active::after { display: none; }
+    .mobile-control-sheet.mode-filters .fire-source-visibility { width: 44px; min-height: 44px; }
+    .mobile-control-sheet.mode-filters .fire-source-toggle { width: 22px; height: 22px; }
+    .mobile-control-sheet.mode-filters .fire-source-select { min-height: 44px; gap: 10px; font-size: 13px; }
+    .mobile-control-sheet.mode-filters .fire-source-label { flex-direction: column; align-items: flex-start; gap: 2px; overflow-wrap: anywhere; }
+    .mobile-control-sheet.mode-filters .fire-source-action { display: inline; margin-left: auto; font-size: 11px; font-weight: 600; color: var(--sapienza-muted); }
+    .mobile-control-sheet.mode-filters .fire-source-tab.active .fire-source-action { color: var(--sapienza-accent); }
     .mobile-sheet-body .fire-source-panel {
         width: 100%;
         padding: 11px;
@@ -2671,3 +2683,20 @@ body.dark .terrain3d-toolbar > *, body.dark .terrain3d-info { background: #27272
 .terrain-3d-active #layer-toggles > * { display: none; }
 .terrain-3d-active #btn-copy-link { display: none; }
 .terrain-3d-active [data-mobile-panel="layers"] { display: none; }
+
+/* Shared source rows keep map visibility separate from filter selection. */
+.fire-source-help, .fire-source-action { display: none; }
+.fire-source-visibility { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; cursor: pointer; }
+.fire-source-select { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.fire-source-select:focus-visible, .fire-source-visibility:has(:focus-visible) { outline: 2px solid var(--sapienza-accent); outline-offset: 3px; border-radius: 3px; }
+.fire-source-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.fire-source-dot { flex: 0 0 auto; }
+@media (max-width: 760px) {
+    .mobile-sheet-body, .mobile-sheet-body #fire-controls, .mobile-sheet-body .fire-source-panel { min-width: 0; }
+    .mobile-sheet-body .fire-product-groups, .mobile-sheet-body .fire-product-groups.single, .mobile-sheet-body .fire-product-groups.s3 { width: 100%; grid-template-columns: minmax(0, 1fr); }
+    .mobile-sheet-body .fire-product-group { padding: 10px 4px; }
+    .mobile-sheet-body .fire-product-heading label { min-width: 0; }
+    .mobile-sheet-body .fire-product-heading label > span { min-width: 0; overflow-wrap: anywhere; }
+    .mobile-sheet-body .fire-filter-row { width: 100%; min-width: 0; padding: 10px 4px; }
+    .mobile-sheet-body .fire-product-children .toolbar-pill { width: 100%; max-width: 100%; box-sizing: border-box; }
+}

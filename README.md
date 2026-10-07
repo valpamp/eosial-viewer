@@ -206,6 +206,10 @@ Runtime libraries are loaded from CDNs; no `npm install` is required.
 
 MP4 export depends on browser MediaRecorder support for H.264 and is normally available in current Microsoft Edge or Google Chrome. WebM remains the fallback.
 
+## Phone controls
+
+On screens up to 760px wide, use the bottom dock to open observation times, dataset filters or additional layers. Dataset filters appear in a vertical list: the checkbox controls map visibility, while the dataset name opens its filters without changing visibility. The active row says "Editing". Visibility changes leave the current filter panel in place. Source controls have at least 44px touch targets, and the filter sheet scrolls vertically to fit smaller phones. Wider screens retain the compact horizontal dataset bar.
+
 ## Optional 3D terrain
 
 Click **3D** in the map toolbar to drape the selected fire footprints over terrain. Dataset, satellite, time, confidence and FRP filters are shared with 2D. Click a footprint for details. Repeated observations of the same pixel share one footprint; its popup shows the strongest FRP representative and observation count. Missing pixel geometry appears as a point, and approximate sensor footprints remain approximate.

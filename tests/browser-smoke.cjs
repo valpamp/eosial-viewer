@@ -133,6 +133,50 @@ async function until(fn, label) {
     await evaluate("document.querySelector('[data-mobile-panel=time]').click(); document.getElementById('fire-apply-custom').click()");
     assert.equal(await evaluate("getComputedStyle(document.getElementById('fire-range-error')).display !== 'none'"), true);
     assert.equal(await evaluate("document.getElementById('mobile-control-sheet').contains(document.getElementById('fire-range-error'))"), true);
+    await evaluate("document.querySelector('[data-mobile-panel=filters]').click()");
+    await delay(250);
+    for (const [width,height] of [[320,568],[360,800],[390,844],[430,932],[667,375],[760,844]]) {
+        await cdp('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: true });
+        for (const source of ['SFIDE', 'FIRMS', 'S3', 'MTG_FIR']) {
+            await evaluate("document.querySelector('.fire-source-tab[data-source=" + source + "] .fire-source-select').click()");
+            const layout = await evaluate("(()=>{const body=document.getElementById('mobile-sheet-body'); const tabs=[...document.querySelectorAll('.fire-source-tab')].map(t=>t.getBoundingClientRect());return {viewport:document.documentElement.scrollWidth,bodyWidth:body.clientWidth,contentWidth:body.scrollWidth,rows:tabs.map(r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom})),target:[...document.querySelectorAll('.fire-source-visibility, .fire-source-select')].every(e=>{const r=e.getBoundingClientRect();return r.height>=44 && r.width>=44;})};})()");
+            assert.ok(layout.viewport <= width, JSON.stringify({width,source,layout}));
+            assert.ok(layout.contentWidth <= layout.bodyWidth + 1, JSON.stringify({width,source,layout}));
+            assert.ok(layout.rows.every(r=>r.left>=0 && r.right<=width), JSON.stringify({width,source,layout}));
+            assert.ok(layout.rows.every((r,i)=>i===0 || r.top>=layout.rows[i-1].bottom), 'Datasets must stack vertically');
+            assert.ok(layout.target, 'Source selection and visibility targets must be at least 44px');
+        }
+    }
+    await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await evaluate("document.querySelector('.fire-source-tab[data-source=SFIDE] .fire-source-select').click()");
+    assert.equal(await evaluate("document.querySelector('.fire-source-tab.active').dataset.source"), 'SFIDE');
+    assert.equal(await evaluate("document.querySelector('.fire-source-toggle[data-source=SFIDE]').checked"), false);
+    const activeBefore = await evaluate("document.querySelector('.fire-source-tab.active').dataset.source");
+    // Click the checkbox label padding to exercise the full touch target.
+    await evaluate("document.querySelector('.fire-source-tab[data-source=FIRMS]').scrollIntoView({block:'center'})");
+    await delay(100);
+    const target = await evaluate("(()=>{const r=document.querySelector('.fire-source-tab[data-source=FIRMS] .fire-source-visibility').getBoundingClientRect();return {x:r.left+3,y:r.top+r.height/2};})()");
+    await cdp('Input.dispatchMouseEvent', { type:'mousePressed', ...target, button:'left', clickCount:1 });
+    await cdp('Input.dispatchMouseEvent', { type:'mouseReleased', ...target, button:'left', clickCount:1 });
+    assert.equal(await evaluate("document.querySelector('.fire-source-toggle[data-source=FIRMS]').checked"), true);
+    assert.equal(await evaluate("document.querySelector('.fire-source-tab.active').dataset.source"), activeBefore);
+    await until(() => evaluate("!EV.fireHotspots.isLoading()"), 'mobile dataset toggle');
+    await evaluate("document.querySelector('.fire-source-toggle[data-source=FIRMS]').focus()");
+    await cdp('Input.dispatchKeyEvent', { type:'keyDown', key:' ', code:'Space', windowsVirtualKeyCode:32 });
+    await cdp('Input.dispatchKeyEvent', { type:'keyUp', key:' ', code:'Space', windowsVirtualKeyCode:32 });
+    assert.equal(await evaluate("document.querySelector('.fire-source-toggle[data-source=FIRMS]').checked"), false);
+    assert.equal(await evaluate("document.querySelector('.fire-source-tab.active').dataset.source"), activeBefore);
+    await evaluate("document.querySelector('.fire-source-tab[data-source=S3] .fire-source-select').focus()");
+    await cdp('Input.dispatchKeyEvent', { type:'keyDown', key:'Enter', code:'Enter', text:'\r', windowsVirtualKeyCode:13 });
+    await cdp('Input.dispatchKeyEvent', { type:'keyUp', key:'Enter', code:'Enter', windowsVirtualKeyCode:13 });
+    assert.equal(await evaluate("document.querySelector('.fire-source-tab.active').dataset.source"), 'S3');
+    assert.equal(await evaluate("document.querySelector('.fire-source-toggle[data-source=S3]').checked"), false);
+    await evaluate("document.querySelector('.fire-source-tab[data-source=SFIDE] .fire-source-select').click(); document.activeElement.blur()");
+    if (process.env.EOSIAL_TEST_SCREENSHOT) {
+        await evaluate("document.getElementById('mobile-sheet-body').scrollTop=0");
+        const shot = await cdp('Page.captureScreenshot', { format:'png' });
+        fs.writeFileSync(path.join(root,'tmp/mobile-dataset-filters.png'), Buffer.from(shot.data,'base64'));
+    }
     await evaluate("document.getElementById('mobile-sheet-close').click(); EV.fire3D.open(); EV.fire3D.close(); EV.fire3D.open(); void 0");
     await until(() => evaluate("!!(__smoke3DMap.getTerrain() && __smoke3DMap.areTilesLoaded())"), 'mobile terrain view');
     assert.ok(await evaluate("(()=>{const r=document.getElementById('terrain3d-close').getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && r.bottom<innerHeight;})()"));
@@ -141,8 +185,14 @@ async function until(fn, label) {
         fs.writeFileSync(path.join(root,'tmp/terrain-3d-mobile.png'), Buffer.from(shot.data,'base64'));
     }
     await evaluate("EV.fire3D.close()");
+    await cdp('Emulation.setDeviceMetricsOverride', { width:1280, height:900, deviceScaleFactor:1, mobile:false });
+    await delay(100);
+    assert.equal(await evaluate("document.body.classList.contains('mobile-sheet-open')"), false);
+    assert.equal(await evaluate("document.getElementById('mobile-control-sheet').contains(document.getElementById('fire-controls'))"), false);
+    assert.equal(await evaluate("document.querySelector('.fire-source-tabs').getAttribute('aria-orientation')"), 'horizontal');
+    assert.ok(await evaluate("(()=>{const r=[...document.querySelectorAll('.fire-source-tab')].map(e=>e.getBoundingClientRect()); return r.every(e=>Math.abs(e.top-r[0].top)<1) && r.every(e=>e.right<=innerWidth);})()"));
     assert.equal(errors.length, 0, JSON.stringify(errors));
-    console.log('Browser smoke passed: startup, invalid dates, MTG-FIR table/animation, incomplete coverage, retry, real GLO-90 relief, 3D filtering, mode return and mobile controls.');
+    console.log('Browser smoke passed: startup, invalid dates, MTG-FIR table/animation, incomplete coverage, retry, real GLO-90 relief, 3D filtering, mode return, mobile dataset touch/keyboard controls and overflow at 320-760px.');
     await cdp('Browser.close');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
     if (socket) socket.close();

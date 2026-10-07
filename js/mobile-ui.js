@@ -104,6 +104,8 @@
         } else {
             document.body.classList.add('mobile-ui');
         }
+        var tabs = document.querySelector('.fire-source-tabs');
+        if (tabs) tabs.setAttribute('aria-orientation', media.matches ? 'vertical' : 'horizontal');
         updateSummaries();
     }
 

@@ -1670,11 +1670,20 @@
             var active = source === activeFireSourceTab;
             tab.classList.toggle('active', active);
             tab.classList.toggle('off', !visible);
-            tab.setAttribute('aria-selected', active ? 'true' : 'false');
-            tab.setAttribute('aria-pressed', visible ? 'true' : 'false');
+            tab.querySelector('.fire-source-select').setAttribute('aria-selected', active ? 'true' : 'false');
+            tab.querySelector('.fire-source-action').textContent = active ? 'Editing' : 'Filters';
             var cb = tab.querySelector('.fire-source-toggle');
             if (cb) cb.checked = visible;
         });
+    }
+
+    function sourceTabHtml(source, name, provider, color, selected) {
+        return '<div class="fire-source-tab' + (selected ? ' active' : '') + '" data-source="' + source + '">' +
+            '<label class="fire-source-visibility" title="Show ' + name + ' on the map">' +
+            '<input type="checkbox" class="fire-source-toggle" data-source="' + source + '" aria-label="Show ' + name + ' on the map"' + (selected ? ' checked' : '') + '></label>' +
+            '<button type="button" class="fire-source-select" role="tab" aria-label="Edit ' + name + ' filters">' +
+            '<span class="fire-source-dot ' + color + '"></span><span class="fire-source-label"><span class="fire-source-name">' + name + '</span>' +
+            (provider ? '<small>' + provider + '</small>' : '') + '</span><span class="fire-source-action">Filters</span></button></div>';
     }
 
     function productGroupHtml(id, title, subtitle, listId) {
@@ -1756,11 +1765,12 @@
             '  </div>' +
             '  <div class="toolbar-status"><span id="fire-count">-</span><br><span id="fire-last-update">Loading...</span></div>' +
             '</div>' +
+            '<p class="fire-source-help">Check a dataset to show it on the map. Tap its name to edit filters.</p>' +
             '<div class="fire-source-tabs" role="tablist" aria-label="Hotspot source filters">' +
-            '  <div class="fire-source-tab active" data-source="SFIDE" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="SFIDE" checked><span class="fire-source-dot sfide"></span><span>SFIDE</span></div>' +
-            '  <div class="fire-source-tab" data-source="FIRMS" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="FIRMS"><span class="fire-source-dot firms"></span><span>NASA FIRMS</span><small>external</small></div>' +
-            '  <div class="fire-source-tab" data-source="S3" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="S3"><span class="fire-source-dot s3"></span><span>Sentinel-3</span><small>external</small></div>' +
-            '  <div class="fire-source-tab" data-source="MTG_FIR" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="MTG_FIR"><span class="fire-source-dot mtg-fir"></span><span>MTG-FIR</span><small>EUMETSAT</small></div>' +
+            sourceTabHtml('SFIDE', 'SFIDE', '', 'sfide', true) +
+            sourceTabHtml('FIRMS', 'NASA FIRMS', 'external', 'firms', false) +
+            sourceTabHtml('S3', 'Sentinel-3', 'external', 's3', false) +
+            sourceTabHtml('MTG_FIR', 'MTG-FIR', 'EUMETSAT', 'mtg-fir', false) +
             '</div>' +
             '<div id="fire-range-error" role="alert"></div>' +
             '<div id="fire-load-status" class="hidden" role="status"><span id="fire-load-message"></span> <button id="fire-retry-loads" type="button" class="toolbar-btn-compact">Retry failed loads</button></div>' +
@@ -1842,15 +1852,10 @@
         section.querySelectorAll('.fire-source-tab').forEach(function (tab) {
             tab.addEventListener('click', function (e) {
                 var source = tab.getAttribute('data-source');
-                if (e.target && e.target.classList.contains('fire-source-toggle')) return;
+                if (e.target && e.target.closest('.fire-source-visibility')) return;
                 selectFireSourceTab(source);
             });
-            tab.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    selectFireSourceTab(tab.getAttribute('data-source'));
-                }
-            });
+
         });
         section.querySelectorAll('.fire-source-toggle').forEach(function (cb) {
             cb.addEventListener('click', function (e) { e.stopPropagation(); });
@@ -2098,7 +2103,6 @@
             sfideVisible = v;
         }
 
-        if (v) activeFireSourceTab = source;
         syncSidebarLayerToggle(source, v);
 
         var targetMap = map || mapRef;
