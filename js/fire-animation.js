@@ -1154,20 +1154,8 @@
     }
 
     function parseInputUTC(value) {
-        if (!value) return NaN;
-        var match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
-        if (!match) return NaN;
-        var day = Number(match[1]);
-        var month = Number(match[2]);
-        var year = Number(match[3]);
-        var hour = Number(match[4]);
-        var minute = Number(match[5]);
-        var time = Date.UTC(year, month - 1, day, hour, minute);
-        var date = new Date(time);
-        if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 ||
-                date.getUTCDate() !== day || date.getUTCHours() !== hour ||
-                date.getUTCMinutes() !== minute) return NaN;
-        return time;
+        var date = EV.parseUTCInput(value);
+        return date ? date.getTime() : NaN;
     }
 
     function formatInputUTC(value) {

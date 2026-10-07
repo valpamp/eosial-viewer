@@ -120,45 +120,47 @@
         resultsDiv.className = 'geocoder-results';
         geocoderWrap.appendChild(resultsDiv);
 
-        var searchTimeout = null;
-
+        searchInput.placeholder = 'Search location, then press Enter';
+        var locationSearch = EV.createLocationSearch();
         searchInput.addEventListener('input', function () {
-            var q = this.value.trim();
-            clearTimeout(searchTimeout);
-            resultsDiv.innerHTML = '';
-            if (q.length < 3) return;
-            searchTimeout = setTimeout(function () {
-                fetch('https://nominatim.openstreetmap.org/search?format=json&limit=5&q=' + encodeURIComponent(q))
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        resultsDiv.innerHTML = '';
-                        (data || []).forEach(function (r) {
-                            var item = document.createElement('div');
-                            item.className = 'geocoder-result';
-                            item.textContent = r.display_name;
-                            item.addEventListener('click', function () {
-                                var bbox = [
-                                    [parseFloat(r.boundingbox[0]), parseFloat(r.boundingbox[2])],
-                                    [parseFloat(r.boundingbox[1]), parseFloat(r.boundingbox[3])]
-                                ];
-                                map.fitBounds(bbox);
-                                geocoderWrap.classList.remove('open');
-                                searchInput.value = '';
-                                resultsDiv.innerHTML = '';
-                            });
-                            resultsDiv.appendChild(item);
-                        });
-                    })
-                    .catch(function (err) { console.warn('[Search]', err); });
-            }, 400);
+            locationSearch.cancel();
+            resultsDiv.textContent = '';
         });
-
         searchInput.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
+                locationSearch.cancel();
                 geocoderWrap.classList.remove('open');
                 searchInput.value = '';
-                resultsDiv.innerHTML = '';
+                resultsDiv.textContent = '';
+                return;
             }
+            if (e.key !== 'Enter' || e.isComposing || searchInput.value.trim().length < 3) return;
+            e.preventDefault();
+            resultsDiv.textContent = 'Searching...';
+            locationSearch.search(searchInput.value).then(function (data) {
+                if (data === null) return;
+                resultsDiv.textContent = data.length ? '' : 'No locations found.';
+                data.forEach(function (result) {
+                    if (!result.boundingbox || result.boundingbox.length !== 4) return;
+                    var values = result.boundingbox.map(Number);
+                    if (!values.every(Number.isFinite)) return;
+                    var item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'geocoder-result';
+                    item.textContent = result.display_name;
+                    item.addEventListener('click', function () {
+                        locationSearch.cancel();
+                        map.fitBounds([[values[0], values[2]], [values[1], values[3]]]);
+                        geocoderWrap.classList.remove('open');
+                        searchInput.value = '';
+                        resultsDiv.textContent = '';
+                    });
+                    resultsDiv.appendChild(item);
+                });
+            }).catch(function (error) {
+                console.warn('[Search]', error);
+                resultsDiv.textContent = 'Search unavailable. Please try again.';
+            });
         });
 
         btnSearch.addEventListener('click', function () {
@@ -789,20 +791,25 @@
                          !document.getElementById('fire-controls').classList.contains('hidden');
 
         if (fireActive) {
-            var fireSeries = EV.fireHotspots.queryPolygon(bounds);
-            if (fireSeries.length) {
+            if (EV.fireHotspots.isLoading()) {
                 drawnItems.removeLayer(e.layer);
-                var fireDetections = fireSeries.reduce(function (sum, item) {
-                    return sum + (item.detections || 1);
-                }, 0);
+                alert('Fire data are still loading. Please retry the query when loading finishes.');
+                return;
+            }
+            var fireSeries = EV.fireHotspots.queryPolygon(bounds);
+            if (fireSeries.tableRows && fireSeries.tableRows.length) {
+                drawnItems.removeLayer(e.layer);
+                var fireDetections = fireSeries.tableRows.length;
                 var infoHtml = 'Detections in query area: ' + fireDetections +
                                '<br>Acquisition times plotted: ' + fireSeries.length;
                 if (fireSeries.satelliteDetections) {
                     var satelliteInfo = Object.keys(fireSeries.satelliteDetections).sort().map(function (sat) {
-                        return sat + ': ' + fireSeries.satelliteDetections[sat];
+                        return EV.escapeHtml(sat) + ': ' + fireSeries.satelliteDetections[sat];
                     }).join(', ');
                     if (satelliteInfo) infoHtml += '<br>Satellites: ' + satelliteInfo;
                 }
+                if (!fireSeries.length) infoHtml += '<br>FRP is unavailable for these detections. Animation and Table remain available.';
+                if (fireSeries.loadWarnings.length) infoHtml += '<br>' + EV.escapeHtml(fireSeries.loadWarnings.join(' ')) + ' Counts and exports may be incomplete.';
                 EV.showTimeseries(
                     'FRP — Polygon',
                     fireSeries,
@@ -821,12 +828,16 @@
                         tableRows: fireSeries.tableRows,
                         tableColumns: fireSeries.tableColumns,
                         tableFilename: 'polygon_hotspot_detections.csv',
-                        animation: fireSeries.animation
+                        animation: fireSeries.animation,
+                        loadWarnings: fireSeries.loadWarnings
                     }
                 );
                 EV.openTimeseriesAnimation();
                 return;
             }
+            drawnItems.removeLayer(e.layer);
+            alert('No detections match this area and the current filters.');
+            return;
         }
 
 

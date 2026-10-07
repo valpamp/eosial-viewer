@@ -233,3 +233,21 @@ External NASA, Copernicus, and EUMETSAT products retain their provider attributi
 **Valerio Pampanoni, PhD**<br>
 EOSIAL Laboratory, School of Aerospace Engineering, Sapienza University of Rome<br>
 [valerio.pampanoni@uniroma1.it](mailto:valerio.pampanoni@uniroma1.it) | [LinkedIn](https://it.linkedin.com/in/valerio-pampanoni)
+
+## Regression checks
+
+Run the focused loading, query, validation, escaping and search checks with Node:
+
+~~~text
+node --test tests/viewer-regressions.cjs
+~~~
+
+An optional real-browser smoke check uses synthetic fire data and the normal CDN libraries:
+
+~~~text
+node tests/browser-smoke.cjs
+~~~
+
+It defaults to the local Windows Chromium installation. Set EOSIAL_TEST_BROWSER to another Chromium executable if needed. The check starts a loopback HTTP server and a hidden browser with a temporary profile; it does not change the fire databases.
+
+Failed data loads now show an incomplete-coverage warning and a retry button. Polygon CSV exports include a coverage-warning row when the selected data are incomplete. Location searches run when Enter is pressed.

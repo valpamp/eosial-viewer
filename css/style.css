@@ -2633,3 +2633,9 @@ body.dark .fire-product-info-description { color:#ded4d7; }
     .fire-product-info-links { display:grid; grid-template-columns:minmax(0,1fr); }
     .fire-product-info-links a { width:100%; }
 }
+#fire-range-error { color: #b91c1c; font-size: 12px; }
+#fire-range-error:empty { display: none; }
+#fire-load-status { padding: 6px 10px; font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; }
+.dark #fire-range-error { color: #fca5a5; }
+.dark #fire-load-status { color: #fde68a; background: #451a03; }
+.geocoder-result { display: block; width: 100%; text-align: left; }

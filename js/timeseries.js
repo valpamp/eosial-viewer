@@ -604,6 +604,9 @@
     }
 
     function triggerCSV(csv, filename) {
+        if (lastTimeseries && lastTimeseries.opts.loadWarnings && lastTimeseries.opts.loadWarnings.length) {
+            csv = 'Coverage warning,' + csvEscape(lastTimeseries.opts.loadWarnings.join(' ') + ' Results may be incomplete.') + '\r\n' + csv;
+        }
         var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         var url  = URL.createObjectURL(blob);
         var a    = document.createElement('a');

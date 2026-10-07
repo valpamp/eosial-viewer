@@ -229,12 +229,17 @@
     var yearLoaded    = false;
     var archiveManifest = null;
     var loadedArchiveMonths = {};
-    var archiveLoadInProgressKey = null;
-    var archiveLoadFailedKey = null;
     var externalArchiveManifests = {};
     var loadedExternalArchiveChunks = {};
     var externalArchiveLoads = {};
     var externalArchiveReady = {};
+    var archiveChunkLoads = {};
+    var selectionRange = null;
+    var filterGeneration = 0;
+    var filtersLoading = false;
+    var initialLoading = false;
+    var loadIssues = {};
+    var recentLoads = {};
     var s3RecentManifest = null;
     var mapRef        = null;
     var dataBaseUrl   = '';
@@ -262,7 +267,7 @@
         if (satellite === 'S3A' || satellite === 'S3B') return true;
         if (satellite && satellite.indexOf('FIRMS-') === 0) return true;
         if (satellite && satellite.indexOf('MTG') === 0) return true;
-        return !availableSatellites.some(function (sat) { return sat && sat.indexOf('MTG') === 0; });
+        return !availableSatellites.some(function (sat) { return sat && sat !== 'MTG-FIR' && sat.indexOf('MTG') === 0; });
     }
 
     function getDatasetLabel(dataset) {
@@ -875,55 +880,82 @@
     function load72h() {
         return detectAndLoad('sfide_aggregate_72h', 'fire hotspots (72h)')
             .then(function (features) {
-                allFeatures = [];
-                featureIds = {};
                 mergeFeatures(features);
+                setLoadIssue('SFIDE', 'recent', null);
                 return features;
             })
             .catch(function () {
                 console.info('[FIRE] 72h file not available, trying archive...');
-                return loadArchive(getTimeRange());
-            });
-    }
-
-    function loadFirmsNrt() {
-        function loadListed(files) {
-            if (!files || !files.length) return Promise.resolve([]);
-            EV.showLoading('Loading NASA FIRMS NRT hotspots...');
-            return Promise.all(files.map(function (file) {
-                return loadByFormat(file.url, file.ext || '.fgb').catch(function (err) {
-                    console.warn('[FIRMS] External hotspot load error:', file.url, err);
+                setLoadIssue('SFIDE', 'recent', 'SFIDE: recent data could not be loaded.');
+                return loadArchive(getTimeRange()).then(function (features) {
+                    setLoadIssue('SFIDE', 'archive', null);
+                    return features;
+                }).catch(function (error) {
+                    setLoadIssue('SFIDE', 'archive', 'SFIDE: archive data could not be loaded.');
                     return [];
                 });
-            })).then(function (groups) {
-                EV.hideLoading();
-                var merged = [];
-                groups.forEach(function (features) { merged = merged.concat(features || []); });
-                mergeFeatures(merged);
-                return merged;
-            }).catch(function (err) {
-                EV.hideLoading();
-                throw err;
-            });
-        }
-
-        return fetch(dataBaseUrl + '/fire/firms_manifest.json?v=' + Date.now())
-            .then(function (r) {
-                if (!r.ok) throw new Error('No FIRMS manifest');
-                return r.json();
-            })
-            .then(function (manifest) {
-                var files = (manifest.files || []).map(function (item) {
-                    var path = typeof item === 'string' ? item : item.path;
-                    var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
-                    return { url: dataBaseUrl + '/fire/' + path, ext: ext };
-                }).filter(function (item) { return !!item.url; });
-                return loadListed(files);
-            })
-            .catch(function () {
-                return loadListed([{ url: 'FIRMS_ITA_2026147.fgb?v=' + Date.now(), ext: '.fgb' }]);
             });
     }
+
+    function setLoadIssue(source, phase, message, range) {
+        var rangeKey = range ? externalArchiveRangeKey(source, range) : null;
+        if (rangeKey && selectionRange && rangeKey !== externalArchiveRangeKey(source, selectionRange)) return;
+        var key = source + ':' + phase;
+        if (message) loadIssues[key] = { source: source, message: message, rangeKey: rangeKey };
+        else delete loadIssues[key];
+        updateLoadStatus();
+    }
+
+    function getLoadWarnings() {
+        return Object.keys(loadIssues).filter(function (key) {
+            var issue = loadIssues[key];
+            return getSourceVisible(issue.source) && (!issue.rangeKey || !selectionRange ||
+                issue.rangeKey === externalArchiveRangeKey(issue.source, selectionRange));
+        }).map(function (key) { return loadIssues[key].message; });
+    }
+
+    function updateLoadStatus() {
+        var box = document.getElementById('fire-load-status');
+        var message = document.getElementById('fire-load-message');
+        var warnings = getLoadWarnings();
+        if (box) box.classList.toggle('hidden', !warnings.length);
+        if (message) message.textContent = warnings.join(' ') + (warnings.length ? ' Counts and exports may be incomplete.' : '');
+    }
+
+    function loadRecent(source, name, normalizer) {
+        if (recentLoads[source]) return recentLoads[source];
+        recentLoads[source] = fetch(dataBaseUrl + '/fire/' + name + '_manifest.json?v=' + Date.now())
+            .then(function (response) {
+                if (!response.ok) throw new Error('Manifest HTTP ' + response.status);
+                return response.json();
+            }).then(function (manifest) {
+                if (source === 'S3') { s3RecentManifest = manifest; updateS3AvailabilityStatus(); }
+                return EV.mapSettledLimit(manifest.files || [], 4, function (item) {
+                    var path = typeof item === 'string' ? item : item.path;
+                    if (!path) throw new Error('Invalid manifest file path');
+                    var ext = path.match(/\.[^.]+$/);
+                    return loadByFormat(dataBaseUrl + '/fire/' + path, ext ? ext[0].toLowerCase() : '.fgb',
+                        normalizer ? function (feature) { return normalizeFeature(normalizer(feature, item.label || path)); } : normalizeFeature);
+                }).then(function (results) {
+                    var merged = [];
+                    var failed = 0;
+                    results.forEach(function (result) {
+                        if (result.status === 'fulfilled') merged = merged.concat(result.value);
+                        else { failed++; console.warn('[FIRE] ' + source + ' recent file failed:', result.reason); }
+                    });
+                    mergeFeatures(merged);
+                    setLoadIssue(source, 'recent', failed ? getDatasetLabel(source) + ': ' + failed + ' recent file(s) failed to load.' : null);
+                    return merged;
+                });
+            }).catch(function (error) {
+                console.warn('[FIRE] ' + source + ' recent load failed:', error);
+                setLoadIssue(source, 'recent', getDatasetLabel(source) + ': recent data could not be loaded.');
+                return [];
+            }).finally(function () { delete recentLoads[source]; });
+        return recentLoads[source];
+    }
+
+    function loadFirmsNrt() { return loadRecent('FIRMS', 'firms'); }
 
     function latestArchiveDate(manifest) {
         var chunks = manifest && manifest.chunks ? manifest.chunks : [];
@@ -968,95 +1000,27 @@
     }
 
     function loadS3Nrt() {
-        function loadListed(files) {
-            if (!files || !files.length) return Promise.resolve([]);
-            EV.showLoading('Loading Sentinel-3 NRT hotspots...');
-            return Promise.all(files.map(function (file) {
-                return loadByFormat(file.url, file.ext || '.fgb', function (feature) {
-                    return normalizeFeature(normalizeS3Feature(feature, file.label || file.url));
-                })
-                    .catch(function (err) {
-                        console.warn('[S3] External hotspot load error:', file.url, err);
-                        return [];
-                    });
-            })).then(function (groups) {
-                EV.hideLoading();
-                var merged = [];
-                groups.forEach(function (features) { merged = merged.concat(features || []); });
-                mergeFeatures(merged);
-                return merged;
-            }).catch(function (err) {
-                EV.hideLoading();
-                throw err;
-            });
-        }
-
-        return fetch(dataBaseUrl + '/fire/s3_manifest.json?v=' + Date.now())
-            .then(function (r) {
-                if (!r.ok) throw new Error('No Sentinel-3 manifest');
-                return r.json();
-            })
-            .then(function (manifest) {
-                s3RecentManifest = manifest;
+        return loadRecent('S3', 's3', normalizeS3Feature).then(function (features) {
+            return loadExternalArchiveManifest('s3').catch(function () { return null; }).then(function () {
                 updateS3AvailabilityStatus();
-                var files = (manifest.files || []).map(function (item) {
-                    var path = typeof item === 'string' ? item : item.path;
-                    var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
-                    return { url: dataBaseUrl + '/fire/' + path, ext: ext, label: item.label || path };
-                }).filter(function (item) { return !!item.url; });
-                return loadListed(files).then(function (features) {
-                    if (files.length) return features;
-                    return loadExternalArchiveManifest('s3').catch(function () { return null; }).then(function () {
-                        updateS3AvailabilityStatus();
-                        return features;
-                    });
-                });
-            })
-            .catch(function () {
-                return [];
+                return features;
             });
+        });
     }
 
-    function loadMtgFirNrt() {
-        function loadListed(files) {
-            if (!files || !files.length) return Promise.resolve([]);
-            EV.showLoading('Loading EUMETSAT MTG-FIR hotspots...');
-            return Promise.all(files.map(function (file) {
-                return loadByFormat(file.url, file.ext || '.fgb', function (feature) {
-                    return normalizeFeature(normalizeMtgFirFeature(feature, file.label || file.url));
-                })
-                    .catch(function (err) {
-                        console.warn('[MTG-FIR] External hotspot load error:', file.url, err);
-                        return [];
-                    });
-            })).then(function (groups) {
-                EV.hideLoading();
-                var merged = [];
-                groups.forEach(function (features) { merged = merged.concat(features || []); });
-                mergeFeatures(merged);
-                return merged;
-            }).catch(function (err) {
-                EV.hideLoading();
-                throw err;
-            });
-        }
+    function loadMtgFirNrt() { return loadRecent('MTG_FIR', 'mtg_fir', normalizeMtgFirFeature); }
 
-        return fetch(dataBaseUrl + '/fire/mtg_fir_manifest.json?v=' + Date.now())
-            .then(function (r) {
-                if (!r.ok) throw new Error('No MTG-FIR manifest');
-                return r.json();
-            })
-            .then(function (manifest) {
-                var files = (manifest.files || []).map(function (item) {
-                    var path = typeof item === 'string' ? item : item.path;
-                    var ext = path && path.match(/\.[^.]+$/) ? path.match(/\.[^.]+$/)[0].toLowerCase() : '.fgb';
-                    return { url: dataBaseUrl + '/fire/' + path, ext: ext, label: item.label || path };
-                }).filter(function (item) { return !!item.url; });
-                return loadListed(files);
-            })
-            .catch(function () {
-                return [];
-            });
+    function loadArchiveChunk(key, task) {
+        if (!archiveChunkLoads[key]) {
+            archiveChunkLoads[key] = Promise.resolve().then(task).finally(function () { delete archiveChunkLoads[key]; });
+        }
+        return archiveChunkLoads[key];
+    }
+
+    function requireComplete(results) {
+        var failed = results.filter(function (result) { return result.status === 'rejected'; });
+        if (failed.length) throw new Error(failed.length + ' archive chunk(s) failed: ' + failed[0].reason.message);
+        return results.map(function (result) { return result.value; });
     }
 
     function loadExternalArchive(dataset, range) {
@@ -1067,10 +1031,16 @@
         externalArchiveLoads[key] = loadExternalArchiveManifest(name).then(function (manifest) {
             var chunks = (manifest.chunks || []).filter(function (chunk) { return new Date(chunk.end) >= range.start && new Date(chunk.start) <= range.end && !loadedExternalArchiveChunks[name + ':' + chunk.key]; });
             if (!chunks.length) return [];
-            return Promise.all(chunks.map(function (chunk) {
+            return EV.mapSettledLimit(chunks, 4, function (chunk) {
                 var normalizer = dataset === 'S3' ? function (feature) { return normalizeFeature(normalizeS3Feature(feature, chunk.path)); } : normalizeFeature;
-                return loadByFormat(dataBaseUrl + '/fire/' + chunk.path, '.fgb', normalizer).then(function (features) { loadedExternalArchiveChunks[name + ':' + chunk.key] = true; mergeFeatures(features); return features; });
-            }));
+                return loadArchiveChunk(name + ':' + chunk.key, function () {
+                    return loadByFormat(dataBaseUrl + '/fire/' + chunk.path, '.fgb', normalizer).then(function (features) {
+                        loadedExternalArchiveChunks[name + ':' + chunk.key] = true;
+                        mergeFeatures(features);
+                        return features;
+                    });
+                });
+            }).then(requireComplete);
         }).finally(function () { delete externalArchiveLoads[key]; });
         return externalArchiveLoads[key];
     }
@@ -1087,10 +1057,11 @@
             if (!visible || externalArchiveReady[readyKey]) return;
             loads.push(loadExternalArchive(dataset, range).then(function (features) {
                 externalArchiveReady[readyKey] = true;
+                setLoadIssue(dataset, 'archive', null, range);
                 return features;
             }).catch(function (err) {
                 console.warn('[FIRE] ' + dataset + ' archive load failed:', err);
-                externalArchiveReady[readyKey] = true;
+                setLoadIssue(dataset, 'archive', getDatasetLabel(dataset) + ': archive data could not be fully loaded.', range);
                 return [];
             }));
         });
@@ -1142,7 +1113,7 @@
         if (!sfideVisible || !range || yearLoaded) return null;
 
         var key = archiveRangeKey(range);
-        if (archiveLoadInProgressKey === key || archiveLoadFailedKey === key) return null;
+        // Chunk-level promises deduplicate overlapping selections while each action awaits completion.
 
         var activeBtn = document.querySelector('.fire-time-btn.active');
         if (activeBtn) {
@@ -1151,7 +1122,7 @@
         }
 
         var latestSfide = getLatestHotspotDateForDataset('SFIDE');
-        if (!latestSfide) return null;
+        if (!latestSfide) return archiveRangeLoaded(range) ? null : key;
 
         var sfideRecentStart = new Date(latestSfide.getTime() - 72 * 3600000);
         if (range.start >= sfideRecentStart) return null;
@@ -1166,13 +1137,15 @@
                   files.gpkg ? '.gpkg' :
                   files.geojson ? '.geojson' :
                   files.json ? '.json' : null;
-        if (!ext) return Promise.resolve([]);
+        if (!ext) return Promise.reject(new Error('No supported file for archive chunk ' + month.key));
         var rel = files[ext.substring(1)];
         var url = dataBaseUrl + '/fire/' + rel;
-        return loadByFormat(url, ext).then(function (features) {
-            loadedArchiveMonths[month.key] = true;
-            mergeFeatures(features);
-            return features;
+        return loadArchiveChunk('sfide:' + month.key, function () {
+            return loadByFormat(url, ext).then(function (features) {
+                loadedArchiveMonths[month.key] = true;
+                mergeFeatures(features);
+                return features;
+            });
         });
     }
 
@@ -1183,7 +1156,7 @@
                 var pending = months.filter(function (m) { return !loadedArchiveMonths[m.key]; });
                 if (!pending.length) return allFeatures;
                 EV.showLoading('Loading fire archive (' + pending.length + ' chunk' + (pending.length !== 1 ? 's' : '') + ')...');
-                return Promise.all(pending.map(loadArchiveMonth)).then(function () {
+                return EV.mapSettledLimit(pending, 4, loadArchiveMonth).then(requireComplete).then(function () {
                     EV.hideLoading();
                     yearLoaded = (Object.keys(loadedArchiveMonths).length >= (manifest.months || []).length);
                     return allFeatures;
@@ -1203,7 +1176,7 @@
                     })
                     .catch(function (legacyErr) {
                         console.warn('[FIRE] Archive load error:', legacyErr);
-                        return [];
+                        throw legacyErr;
                     });
             });
     }
@@ -1291,35 +1264,37 @@
     }
 
     function applyFilters() {
-        if (!clusterGroup) return;
-
-        var range = getTimeRange();
-
-        // External polar-orbiting archives are fetched only for the requested interval.
-        var firmsArchivePending = firmsVisible && !externalArchiveReady[externalArchiveRangeKey('FIRMS', range)];
-        var s3ArchivePending = s3Visible && !externalArchiveReady[externalArchiveRangeKey('S3', range)];
-        if (firmsArchivePending || s3ArchivePending) {
-            loadNeededExternalArchives(range).then(function () { applyFilters(); });
-            return;
-        }
-        // SFIDE archive data is separate from the recent FIRMS/S3 files.
+        if (!clusterGroup) return Promise.resolve();
+        var range = resolveTimeRange();
+        var validation = document.getElementById('fire-range-error');
+        if (validation) validation.textContent = range ? '' : 'Enter valid UTC dates with the start at or before the end.';
+        if (!range) return Promise.resolve();
+        selectionRange = range;
+        var generation = ++filterGeneration;
+        filtersLoading = true;
+        updateLoadStatus();
+        displayFeatures([]);
+        var count = document.getElementById('fire-count');
+        if (count) count.textContent = 'Loading...';
+        var loads = [loadNeededExternalArchives(range)];
         var archiveKey = getSfideArchiveLoadKey(range);
         if (archiveKey) {
-            archiveLoadInProgressKey = archiveKey;
-            loadArchive(range).then(function () {
-                archiveLoadInProgressKey = null;
-                if (!yearLoaded && !archiveRangeLoaded(range)) archiveLoadFailedKey = archiveKey;
-                populateSatelliteFilters();
-                applyFilters();
-            }).catch(function (err) {
-                archiveLoadInProgressKey = null;
-                archiveLoadFailedKey = archiveKey;
-                console.warn('[FIRE] Archive load failed:', err);
-                applyFilters();
-            });
-            return;
+            loads.push(loadArchive(range).then(function () {
+                setLoadIssue('SFIDE', 'archive', null, range);
+            }).catch(function (error) {
+                console.warn('[FIRE] SFIDE archive load failed:', error);
+                setLoadIssue('SFIDE', 'archive', 'SFIDE: archive data could not be fully loaded.', range);
+            }));
         }
+        return Promise.all(loads).then(function () {
+            if (generation !== filterGeneration) return;
+            filtersLoading = false;
+            populateSatelliteFilters();
+            renderFilteredRange(range);
+        });
+    }
 
+    function renderFilteredRange(range) {
         if (!anySourceVisible()) {
             displayFeatures([]);
             var noSourceCountEl = document.getElementById('fire-count');
@@ -1336,7 +1311,7 @@
 
         // Update count
         var countEl = document.getElementById('fire-count');
-        if (countEl) countEl.textContent = filtered.length + ' hotspot' + (filtered.length !== 1 ? 's' : '');
+        if (countEl) countEl.textContent = filtered.length + ' hotspot' + (filtered.length !== 1 ? 's' : '') + (getLoadWarnings().length ? ' (incomplete)' : '');
     }
 
     function getCheckedValues(selector) {
@@ -1466,6 +1441,10 @@
     }
 
     function buildPopup(p, detectionCount) {
+        p = Object.assign({}, p);
+        ['SATELLITE', 'DATASET_LABEL', 'CONFIDENCE_RAW', 'PRODUCT', 'INSTRUMENT', 'DAYNIGHT', 'FIRE_RESULT', 'PROD_COMPLETE', 'PROD_TIMELY'].forEach(function (key) {
+            if (p[key] != null) p[key] = EV.escapeHtml(p[key]);
+        });
         var typeConf = FIRE_TYPE_CONFIG[p.TYPE] || FIRE_TYPE_CONFIG[0];
         var date = parseFeatureDate(p);
         var frp = p.FRP_WOOSTER;
@@ -1573,10 +1552,10 @@
         var value = stream ? stream + '|' + satellite : satellite;
         var className = stream ? 'fire-s3-stream-filter' : 'fire-sat-filter';
         label.innerHTML =
-            '<input type="checkbox" value="' + value + '" class="' + className +
+            '<input type="checkbox" value="' + EV.escapeHtml(value) + '" class="' + className +
             ' fire-filter-child"' + (selected ? ' checked' : '') + '>' +
             '<span class="toolbar-sat-swatch" style="background-color:' + paletteSample(satellite) + ';border-color:' + paletteSample(satellite) + ';"></span>' +
-            '<span>' + getFilterSatelliteLabel(satellite) + '</span>';
+            '<span>' + EV.escapeHtml(getFilterSatelliteLabel(satellite)) + '</span>';
         var checkbox = label.querySelector('input');
         checkbox.addEventListener('change', function () {
             updateProductGroupState(label.closest('.fire-product-group'));
@@ -1782,9 +1761,12 @@
             '  <div class="fire-source-tab" data-source="S3" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="S3"><span class="fire-source-dot s3"></span><span>Sentinel-3</span><small>external</small></div>' +
             '  <div class="fire-source-tab" data-source="MTG_FIR" role="tab" tabindex="0"><input type="checkbox" class="fire-source-toggle" data-source="MTG_FIR"><span class="fire-source-dot mtg-fir"></span><span>MTG-FIR</span><small>EUMETSAT</small></div>' +
             '</div>' +
+            '<div id="fire-range-error" role="alert"></div>' +
+            '<div id="fire-load-status" class="hidden" role="status"><span id="fire-load-message"></span> <button id="fire-retry-loads" type="button" class="toolbar-btn-compact">Retry failed loads</button></div>' +
             '<div id="fire-source-panels" class="fire-source-panels"></div>';
 
         container.appendChild(section);
+        document.getElementById('fire-retry-loads').addEventListener('click', retryFailedLoads);
         var panelWrap = section.querySelector('#fire-source-panels');
 
         var sfideSection = document.createElement('div');
@@ -1913,6 +1895,13 @@
         });
 
         document.getElementById('fire-apply-custom').addEventListener('click', function () {
+            var start = parseEuropeanDateTime(textInputValue('fire-start-time'));
+            var end = parseEuropeanDateTime(textInputValue('fire-end-time'));
+            var error = document.getElementById('fire-range-error');
+            if (!start || !end || start > end) {
+                error.textContent = 'Enter valid UTC dates with the start at or before the end.';
+                return;
+            }
             section.querySelectorAll('.fire-time-btn').forEach(function (b) {
                 b.classList.remove('active', 'bg-blue-100', 'text-blue-700');
                 b.classList.add('bg-gray-100', 'text-gray-700');
@@ -1952,7 +1941,9 @@
     }
     /* ── "All" time — handle as full archive ───────────────────── */
 
-    function getTimeRange() {
+    function getTimeRange() { return selectionRange || resolveTimeRange(); }
+
+    function resolveTimeRange() {
         var activeBtn = document.querySelector('.fire-time-btn.active');
         if (activeBtn) {
             var hours = parseInt(activeBtn.getAttribute('data-hours'));
@@ -1970,10 +1961,9 @@
         if (s && e && s.value && e.value) {
             var start = parseEuropeanDateTime(s.value);
             var end = parseEuropeanDateTime(e.value);
-            if (start && end) return { start: start, end: end };
+            if (start && end && start <= end) return { start: start, end: end };
         }
-        var now = new Date();
-        return { start: new Date(now.getTime() - 6 * 3600000), end: now };
+        return null;
     }
 
     function pad2(n) {
@@ -1988,11 +1978,7 @@
                pad2(date.getUTCMinutes());
     }
 
-    function parseEuropeanDateTime(value) {
-        var m = String(value).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
-        if (!m) return null;
-        return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]));
-    }
+    function parseEuropeanDateTime(value) { return EV.parseUTCInput(value); }
 
     function setDefaultCustomRange() {
         var end = new Date();
@@ -2274,7 +2260,15 @@
                 pointBorderWidth: 2, borderWidth: 2.75, spanGaps: true
             };
         });
+        satelliteTotals = {};
+        filtered.forEach(function (feature) {
+            var p = feature.properties;
+            var label = getSatelliteLabel(p.SATELLITE || 'Unknown') +
+                (p.DATASET === 'S3' ? ' - ' + getS3RetrievalLabel(p.S3_RETRIEVAL || 'standard') : '');
+            satelliteTotals[label] = (satelliteTotals[label] || 0) + 1;
+        });
         series.satelliteDetections = satelliteTotals;
+        series.loadWarnings = getLoadWarnings();
         series.tableRows = tableRows;
         series.tableColumns = [
             { key: 'datetime', label: 'Datetime', defaultVisible: true },
@@ -2379,7 +2373,9 @@
             button.classList.add('bg-gray-100', 'text-gray-700');
         });
         if (params.has('fh')) {
-            var preset = document.querySelector('.fire-time-btn[data-hours="' + params.get('fh') + '"]');
+            var hours = params.get('fh');
+            var preset = ['0', '6', '12', '24', '72', '168'].indexOf(hours) !== -1 ?
+                document.querySelector('.fire-time-btn[data-hours="' + hours + '"]') : null;
             if (preset) {
                 preset.classList.add('active', 'bg-blue-100', 'text-blue-700');
                 preset.classList.remove('bg-gray-100', 'text-gray-700');
@@ -2425,10 +2421,24 @@
     }
     /* ── Public API ────────────────────────────────────────────── */
 
+    function retryFailedLoads() {
+        var button = document.getElementById('fire-retry-loads');
+        if (button) button.disabled = true;
+        var loads = [];
+        if (loadIssues['SFIDE:recent']) loads.push(load72h());
+        if (loadIssues['FIRMS:recent']) loads.push(loadFirmsNrt());
+        if (loadIssues['S3:recent']) loads.push(loadS3Nrt());
+        if (loadIssues['MTG_FIR:recent']) loads.push(loadMtgFirNrt());
+        return Promise.all(loads).then(function () { return applyFilters(); }).finally(function () {
+            if (button) button.disabled = false;
+        });
+    }
+
     EV.fireHotspots = {
         init: function (map, baseUrl) {
             mapRef = map;
             dataBaseUrl = baseUrl;
+            initialLoading = true;
             buildControls(map);
             buildLegend(map);
 
@@ -2465,7 +2475,9 @@
 
             return load72h().then(function () {
                 if (allFeatures.length === 0 && !yearLoaded) {
-                    return loadArchive(getTimeRange());
+                    return loadArchive(getTimeRange()).catch(function () {
+                        setLoadIssue('SFIDE', 'archive', 'SFIDE: archive data could not be loaded.');
+                    });
                 }
             }).then(function () {
                 return loadFirmsNrt();
@@ -2490,15 +2502,17 @@
                 setDefaultCustomRange();
                 populateSatelliteFilters();
                 updateFireControlVisibility();
-                applyFilters();
+                return applyFilters();
             }).catch(function () {
                 console.info('[FIRE] No fire data available.');
                 updateDatabaseLastUpdate();
-            });
+            }).finally(function () { initialLoading = false; });
         },
 
         setVisible: setVisible,
         queryPolygon: queryPolygon,
+        isLoading: function () { return initialLoading || filtersLoading; },
+        getLoadWarnings: getLoadWarnings,
         getShareParams: getShareParams,
         applyShareParams: applyShareParams,
         setAnimationMode: function (active) {
