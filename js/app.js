@@ -62,6 +62,9 @@
             '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/></svg>',
             'Zoom out');
         btnZoomOut.addEventListener('click', function () { map.zoomOut(); });
+        var btn3D = _tbBtn(wrap, '3D', '', 'Explore fire footprints on 90 m terrain');
+        btn3D.id = 'btn-toggle-3d';
+        btn3D.setAttribute('aria-label', 'Switch to 3D terrain view');
 
         // ── Basemap picker
         var basemapWrap = document.createElement('div');
@@ -970,6 +973,7 @@
         if (layer) layer.init(map, DATA_BASE);
     });
     if (EV.pixelGrids) EV.pixelGrids.init(map, DATA_BASE);
+    if (EV.fire3D) EV.fire3D.init(map, DATA_BASE);
     var fireInit = EV.fireHotspots.init(map, DATA_BASE);
     if (EV.mobileUI) EV.mobileUI.init(map);
     if (urlParams.has('src') && fireInit && fireInit.then) {

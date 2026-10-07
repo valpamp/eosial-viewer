@@ -196,6 +196,7 @@ Runtime libraries are loaded from CDNs; no `npm install` is required.
 | Library | Purpose |
 | --- | --- |
 | [Leaflet](https://leafletjs.com/) | Web map framework |
+| [MapLibre GL JS](https://maplibre.org/) | Optional 3D terrain (loaded on demand) |
 | [Leaflet.draw](https://leaflet.github.io/Leaflet.draw/) | Rectangle query tool |
 | [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) | Hotspot clustering |
 | [FlatGeobuf](https://flatgeobuf.org/) | Web vector loading |
@@ -204,6 +205,34 @@ Runtime libraries are loaded from CDNs; no `npm install` is required.
 | [Tailwind CSS](https://tailwindcss.com/) | Application-shell styling |
 
 MP4 export depends on browser MediaRecorder support for H.264 and is normally available in current Microsoft Edge or Google Chrome. WebM remains the fallback.
+
+## Optional 3D terrain
+
+Click **3D** in the map toolbar to drape the selected fire footprints over terrain. Dataset, satellite, time, confidence and FRP filters are shared with 2D. Click a footprint for details. Repeated observations of the same pixel share one footprint; its popup shows the strongest FRP representative and observation count. Missing pixel geometry appears as a point, and approximate sensor footprints remain approximate.
+
+Use **Gran Sasso** or **Vesuvius** to inspect relief, right-drag to rotate/tilt, and **Return to 2D** (or Escape) to resume normal tools. Height defaults to 1x; 1.5x and 2x exaggeration are optional. The camera location is preserved when returning to 2D. WebGL is required; MapLibre loads only when 3D is opened.
+
+Coverage is Italy and surrounding land (6-20 E, 35-48 N), using Copernicus GLO-90 source elevations and an OpenStreetMap basemap. The static Terrarium pyramid contains 2,805 256px PNG tiles at zooms 0-10, about 82 MiB. At zoom 10, the web grid spacing is approximately 100-125 m on the ground; closer views interpolate those heights. GLO-90 is a nominal 90 m digital surface model, including vegetation and structures. Terrain does not improve fire detection geolocation. See [terrain provenance and terms](data/terrain/README.md).
+
+Additional layers, rectangle analysis, animation and exports remain in 2D. This first 3D mode uses its own basemap and does not reproduce those overlays.
+
+Tiles are served from `data/terrain/glo90`. To host them separately, configure a CORS-enabled static host in `js/config.js`:
+
+~~~js
+window.EOSIAL_TERRAIN_URL = 'https://example.com/terrain/glo90';
+~~~
+
+The directory must contain `tiles.json` and the `{z}/{x}/{y}.png` paths. If using an external EOSIAL_DATA_URL without a separate terrain URL, include terrain alongside the other data. No API key or runtime elevation service is needed.
+
+Rebuild using the project conda environment (GDAL and Pillow required):
+
+~~~text
+conda activate eosial-viewer
+python scripts/build_terrain_tiles.py
+~~~
+
+Source files and intermediate rasters are cached under ignored `tmp/terrain-glo90`; allow several GB of local disk space. The source list and extent are recorded in `data/terrain/glo90.json`. Optional `--max-zoom 11` gives a finer rendering grid and larger package without increasing source resolution. Use a separate `--output-dir` when comparing builds.
+
 
 ## Publishing
 
@@ -239,7 +268,7 @@ EOSIAL Laboratory, School of Aerospace Engineering, Sapienza University of Rome<
 Run the focused loading, query, validation, escaping and search checks with Node:
 
 ~~~text
-node --test tests/viewer-regressions.cjs
+node --test tests/viewer-regressions.cjs tests/terrain-regressions.cjs
 ~~~
 
 An optional real-browser smoke check uses synthetic fire data and the normal CDN libraries:
@@ -251,3 +280,11 @@ node tests/browser-smoke.cjs
 It defaults to the local Windows Chromium installation. Set EOSIAL_TEST_BROWSER to another Chromium executable if needed. The check starts a loopback HTTP server and a hidden browser with a temporary profile; it does not change the fire databases.
 
 Failed data loads now show an incomplete-coverage warning and a retry button. Polygon CSV exports include a coverage-warning row when the selected data are incomplete. Location searches run when Enter is pressed.
+
+Terrain encoding and tile alignment checks (in the project conda environment):
+
+~~~text
+python -m unittest discover -s tests -p test_terrain_tiles.py
+~~~
+
+The browser smoke also verifies real local terrain elevation, shared filters, footprint popups and desktop/mobile mode switching. It uses synthetic fire detections and a local basemap fixture; it is not a live-provider integration test.

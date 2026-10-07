@@ -43,7 +43,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
     <!-- App styles -->
-    <link rel="stylesheet" href="css/style.css?v=20261007.1">
+    <link rel="stylesheet" href="css/style.css?v=20261007.2">
 </head>
 <body class="font-sans overflow-hidden bg-gray-100">
 
@@ -129,6 +129,26 @@
 
     <!-- Map -->
     <div id="map"></div>
+    <section id="terrain3d-panel" class="hidden" aria-hidden="true" aria-label="3D fire terrain view">
+        <div id="terrain3d-map"></div>
+        <div class="terrain3d-toolbar">
+            <button id="terrain3d-close" type="button">Return to 2D</button>
+            <strong>Copernicus GLO-90 &middot; 90 m source</strong>
+            <label>Height <select id="terrain3d-exaggeration" aria-label="Terrain height exaggeration">
+                <option value="1" selected>&times;1</option><option value="1.5">&times;1.5</option><option value="2">&times;2</option>
+            </select></label>
+            <button id="terrain3d-reset" type="button">Reset tilt</button>
+            <button data-terrain-place="gran-sasso" type="button">Gran Sasso</button>
+            <button data-terrain-place="vesuvius" type="button">Vesuvius</button>
+        </div>
+        <div class="terrain3d-info">
+            <div id="terrain3d-status" role="status"></div>
+            <div id="terrain3d-count"></div>
+            <div id="terrain3d-legend"></div>
+            <div id="terrain3d-coverage" role="status"></div>
+            <small>Pixel footprints follow the terrain. Drawing, animation and exports are available in 2D.</small>
+        </div>
+    </section>
 
     <!-- Mobile map controls -->
     <nav id="mobile-map-dock" class="mobile-map-dock" aria-label="Map controls">
@@ -331,16 +351,17 @@
     </div>
 
     <!-- App scripts (standard scripts, not ES modules, for compatibility with UMD libs) -->
-    <script src="js/config.js"></script>
+    <script src="js/config.js?v=20261007.2"></script>
     <script src="js/utils.js?v=20261007.1"></script>
-    <script src="js/fire-animation.js?v=20261007.1"></script>
+    <script src="js/fire-animation.js?v=20261007.2"></script>
     <script src="js/timeseries.js?v=20261007.1"></script>
     <script src="js/onboarding.js?v=20260923.1"></script>
     <script src="js/mobile-ui.js?v=20260923.1"></script>
     <script src="js/layers/admin-boundaries.js?v=20260923.1"></script>
     <script src="js/layers/pixel-grids.js?v=20260922.2"></script>
-    <script src="js/layers/fire-hotspots.js?v=20261007.1"></script>
-    <script src="js/app.js?v=20261007.1"></script>
+    <script src="js/layers/fire-hotspots.js?v=20261007.2"></script>
+    <script src="js/fire-3d.js?v=20261007.2"></script>
+    <script src="js/app.js?v=20261007.2"></script>
 
 </body>
 </html>

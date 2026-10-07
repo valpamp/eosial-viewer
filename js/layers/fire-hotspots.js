@@ -1437,6 +1437,7 @@
 
     function displayFeatures(features) {
         displayedFeatures = features || [];
+        EV.emit('fire:display', displayedFeatures);
         renderDisplayedFeatures();
     }
 
@@ -2511,6 +2512,14 @@
 
         setVisible: setVisible,
         queryPolygon: queryPolygon,
+        getDisplayedFeatures: function () { return displayedFeatures.slice(); },
+        getPopup: buildPopup,
+        getPresentation: function (p) {
+            return {
+                color: paletteSample(p.SATELLITE), opacity: pixelFillOpacity(p.FRP_WOOSTER),
+                footprint: EV.pixelGrids.getHotspotFootprint(p.SATELLITE, p.LATITUDE, p.LONGITUDE, p)
+            };
+        },
         isLoading: function () { return initialLoading || filtersLoading; },
         getLoadWarnings: getLoadWarnings,
         getShareParams: getShareParams,

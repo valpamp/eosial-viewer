@@ -2,9 +2,11 @@ Creative Commons Attribution 4.0 International (CC BY 4.0)
 
 Copyright (c) 2025 Valerio Pampanoni, EOSIAL Laboratory, Sapienza University of Rome
 
-This license applies to all data files in this repository, including but not
-limited to the contents of the data/ directory (GeoTIFFs, COGs, GeoJSON,
-manifest files, and any derived datasets).
+This license applies to repository-authored data files and derived datasets.
+Third-party products retain their own terms. In particular, the Copernicus
+GLO-90 terrain derivatives in data/terrain/glo90/ are subject to the
+Copernicus DEM licence, not this CC BY 4.0 grant. See data/terrain/README.md
+for provenance, modifications, attribution and provider licence links.
 
 You are free to:
 

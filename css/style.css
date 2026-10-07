@@ -2639,3 +2639,35 @@ body.dark .fire-product-info-description { color:#ded4d7; }
 .dark #fire-range-error { color: #fca5a5; }
 .dark #fire-load-status { color: #fde68a; background: #451a03; }
 .geocoder-result { display: block; width: 100%; text-align: left; }
+
+/* Optional terrain view; existing dataset controls remain shared. */
+#terrain3d-panel { position: fixed; inset: 0; z-index: 12; background: #dbeafe; }
+#terrain3d-map { position: absolute; inset: 0; }
+.terrain-3d-active #map { visibility: hidden; }
+.terrain3d-toolbar { position: absolute; top: 12px; left: 340px; right: 60px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.terrain3d-toolbar > * { pointer-events: auto; background: #fff; color: #292524; padding: 8px 10px; border-radius: 6px; box-shadow: 0 1px 6px #0003; font-size: 12px; }
+.terrain3d-toolbar button:hover { background: #f3f4f6; }
+.terrain3d-toolbar select { color: #292524; }
+.terrain3d-info { position: absolute; top: 100px; left: 340px; width: min(360px, calc(100vw - 370px)); padding: 10px; border-radius: 8px; background: #fffffff0; color: #292524; font-size: 12px; pointer-events: none; }
+.terrain3d-info small { display: block; margin-top: 6px; }
+#terrain3d-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+#terrain3d-legend span { display: inline-flex; align-items: center; gap: 4px; }
+#terrain3d-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+#terrain3d-coverage, .terrain-error { color: #b45309; }
+#terrain3d-map .maplibregl-popup { z-index: 21; }
+#terrain3d-map .maplibregl-popup-content { color: #292524; font-size: 12px; max-height: 50vh; overflow: auto; }
+#terrain3d-map .maplibregl-popup-content h3 { font-weight: bold; margin-bottom: 6px; }
+#terrain3d-map .maplibregl-popup-content th { text-align: left; padding-right: 10px; }
+body.dark .terrain3d-toolbar > *, body.dark .terrain3d-info { background: #27272af2; color: #f4f4f5; }
+@media (max-width: 760px) {
+    .terrain3d-toolbar { left: 10px; top: 10px; right: 55px; gap: 4px; }
+    .terrain3d-toolbar > * { padding: 6px 8px; }
+    .terrain3d-toolbar strong { display: none; }
+    .terrain3d-info { top: 100px; left: 10px; width: min(300px, calc(100vw - 65px)); }
+    .terrain3d-info small { display: none; }
+    #terrain3d-map .maplibregl-ctrl-bottom-left, #terrain3d-map .maplibregl-ctrl-bottom-right { bottom: 80px; }
+}
+.terrain-3d-active #layer-toggles::before { content: 'Additional layers are available in 2D.'; display: block; font-size: 12px; color: #78716c; }
+.terrain-3d-active #layer-toggles > * { display: none; }
+.terrain-3d-active #btn-copy-link { display: none; }
+.terrain-3d-active [data-mobile-panel="layers"] { display: none; }

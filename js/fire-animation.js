@@ -1237,6 +1237,8 @@
     EV.fireAnimation = {
         init: init,
         open: open,
-        close: close
+        close: close,
+        isActive: function () { return active; },
+        isExporting: function () { return exporting; }
     };
 })();

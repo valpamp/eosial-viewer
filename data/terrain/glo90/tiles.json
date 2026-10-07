@@ -1,0 +1,23 @@
+{
+  "tilejson": "3.0.0",
+  "name": "Copernicus DEM GLO-90",
+  "tiles": [
+    "{z}/{x}/{y}.png"
+  ],
+  "bounds": [
+    6,
+    35,
+    20,
+    48
+  ],
+  "minzoom": 0,
+  "maxzoom": 10,
+  "encoding": "terrarium",
+  "tileSize": 256,
+  "sourceResolutionMeters": 90,
+  "encodedHeightPrecisionMeters": 1,
+  "verticalDatum": "EGM2008 orthometric heights",
+  "attribution": "Copernicus DEM GLO-90 (modified), © DLR e.V. 2010-2014 / © Airbus Defence and Space GmbH 2014-2018",
+  "licenseUrl": "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model",
+  "tileCount": 2805
+}

@@ -6,3 +6,6 @@ shapely
 pyproj
 fiona
 pandas
+
+# Terrain builder also requires matching GDAL Python bindings (use environment.yml).
+Pillow
