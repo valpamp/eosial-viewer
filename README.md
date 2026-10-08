@@ -240,6 +240,10 @@ Source files and intermediate rasters are cached under ignored `tmp/terrain-glo9
 
 ## Publishing
 
+The LFMC raster collection belongs to the planned companion raster viewer and is excluded from this repository's current site. This workstation keeps the removed data, manifest, statistics and update state under ignored `tmp/lfmc-companion/data/lfmc/` for migration. Configure LFMC updater scripts to target the companion repository before resuming publication. The active-fire page does not load `js/layers/lfmc.js`; its legacy module and preparation scripts are retained for reuse.
+
+Fire updaters change recent files and the affected archive chunks incrementally. A Pages deployment still publishes a complete snapshot of the tracked site, including unchanged archives and terrain tiles. Git ignore rules prevent removed LFMC data from being added again. Removing files from the current revision does not erase them from Git history. Historical data should eventually move to separate static storage if the active-fire package approaches the Pages size limit.
+
 The repository is designed for static publication on GitHub Pages. The tracked `.nojekyll` file bypasses Jekyll because no site-generation step is required.
 
 GitHub Pages artifacts have a total size limit. Keep archives chunked and avoid large monolithic aggregates. If the data outgrow Pages, host `data/` on CORS-enabled static/object storage and set the base URL in `js/config.js`:

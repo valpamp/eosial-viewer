@@ -202,7 +202,7 @@ async function until(fn, label) {
     for (const width of [320,390]) {
         await cdp('Emulation.setDeviceMetricsOverride', { width, height:844, deviceScaleFactor:1, mobile:true });
         await delay(100);
-        assert.ok(await evaluate("(()=>{const t=document.querySelector('.terrain3d-label-toggle').getBoundingClientRect();const bar=document.querySelector('.terrain3d-toolbar').getBoundingClientRect();const info=document.querySelector('.terrain3d-info').getBoundingClientRect();return t.left>=0 && t.right<=innerWidth && t.height>=44 && info.top>=bar.bottom;})()"));
+        await until(() => evaluate("(()=>{const t=document.querySelector('.terrain3d-label-toggle').getBoundingClientRect();const bar=document.querySelector('.terrain3d-toolbar').getBoundingClientRect();const info=document.querySelector('.terrain3d-info').getBoundingClientRect();return t.left>=0 && t.right<=innerWidth && t.height>=44 && info.top>=bar.bottom;})()"), 'mobile label layout after resize');
     }
     assert.ok(await evaluate("(()=>{const r=document.getElementById('terrain3d-close').getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && r.bottom<innerHeight;})()"));
     if (process.env.EOSIAL_TEST_SCREENSHOT) {

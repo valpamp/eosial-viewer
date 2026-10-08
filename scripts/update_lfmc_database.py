@@ -118,6 +118,17 @@ def commit_and_push(repo_root: Path, lfmc_dir: Path, git_exe: str) -> None:
     except ValueError:
         rel_output = lfmc_dir
 
+    ignored = subprocess.run(
+        [git_exe, "-C", str(repo_root), "check-ignore", "--no-index", "--quiet", "--", str(rel_output)],
+        capture_output=True,
+        text=True,
+    )
+    if ignored.returncode == 0:
+        raise RuntimeError(
+            "LFMC data are excluded from this repository. Configure the companion "
+            "raster viewer's repository/output paths before using --git."
+        )
+
     status = subprocess.run(
         [git_exe, "-C", str(repo_root), "status", "--porcelain", "--", str(rel_output)],
         check=True,
