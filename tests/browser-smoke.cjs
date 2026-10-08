@@ -48,7 +48,7 @@ async function until(fn, label) {
         if (!fs.existsSync(file) || !fs.statSync(file).isFile()) { response.writeHead(404); return response.end(); }
         const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png' };
         response.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' });
-        if (name === '/js/fire-3d.js') response.end(fs.readFileSync(file, 'utf8').replace('map3D = new maplibregl.Map({', 'map3D = window.__smoke3DMap = new maplibregl.Map({').replace('https://tile.openstreetmap.org/{z}/{x}/{y}.png', '/test-basemap.png?z={z}&x={x}&y={y}'));
+        if (name === '/js/fire-3d.js') response.end(fs.readFileSync(file, 'utf8').replace('map3D = new maplibregl.Map({', 'map3D = window.__smoke3DMap = new maplibregl.Map({').replace('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', process.env.EOSIAL_TEST_LIVE_BASEMAP ? 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}' : '/test-basemap.png?z={z}&x={x}&y={y}').replace('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', process.env.EOSIAL_TEST_LIVE_BASEMAP ? 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}' : '/test-basemap.png?labels=1&z={z}&x={x}&y={y}'));
         else if (name === '/js/app.js') response.end('L.Map.addInitHook(function(){window.__smokeMap=this;});\n' + fs.readFileSync(file, 'utf8'));
         else fs.createReadStream(file).pipe(response);
     });
@@ -111,6 +111,24 @@ async function until(fn, label) {
     assert.equal(await evaluate("EV.fire3D.isActive()"), true);
     assert.match(await evaluate("document.getElementById('terrain3d-count').textContent"), /2 selected detections/);
     assert.equal(await evaluate("__smoke3DMap.getTerrain().exaggeration"), 1);
+    assert.match(await evaluate("__smoke3DMap.getStyle().sources.basemap.attribution"), /Google/);
+    assert.equal(await evaluate("document.getElementById('terrain3d-labels').checked"), false);
+    assert.equal(await evaluate("!!__smoke3DMap.getSource('place-labels')"), false);
+    await evaluate("document.getElementById('terrain3d-labels').click()");
+    await until(() => evaluate("__smoke3DMap.isSourceLoaded('place-labels')"), 'labels overlay loaded');
+    assert.equal(await evaluate("__smoke3DMap.getLayoutProperty('place-labels','visibility')"), 'visible');
+    assert.ok(await evaluate("(()=>{const ids=__smoke3DMap.getStyle().layers.map(l=>l.id);return ids.indexOf('place-labels')<ids.indexOf('fire-fill');})()"));
+    await evaluate("document.getElementById('terrain3d-labels').click()");
+    assert.equal(await evaluate("__smoke3DMap.getLayoutProperty('place-labels','visibility')"), 'none');
+    await evaluate("document.getElementById('terrain3d-labels').click()");
+    await evaluate("document.querySelector('[data-terrain-place=etna]').click()");
+    await until(() => evaluate("!__smoke3DMap.isMoving() && __smoke3DMap.areTilesLoaded() && __smoke3DMap.queryTerrainElevation([15.004,37.751]) > 2500"), 'Etna summit relief');
+    assert.ok(await evaluate("Math.abs(__smoke3DMap.getCenter().lng-15.004)<0.001 && Math.abs(__smoke3DMap.getCenter().lat-37.751)<0.001"));
+    if (process.env.EOSIAL_TEST_SCREENSHOT && process.env.EOSIAL_TEST_LIVE_BASEMAP) {
+        const shot = await cdp('Page.captureScreenshot', { format:'png' });
+        fs.mkdirSync(path.join(root,'tmp'), { recursive:true });
+        fs.writeFileSync(path.join(root,'tmp/etna-satellite.png'), Buffer.from(shot.data,'base64'));
+    }
     await evaluate("document.querySelector('[data-terrain-place=gran-sasso]').click()");
     await until(() => evaluate("!__smoke3DMap.isMoving() && __smoke3DMap.areTilesLoaded() && __smoke3DMap.queryTerrainElevation([13.56,42.45]) > 500"), 'real Gran Sasso relief');
     await evaluate("document.getElementById('terrain3d-exaggeration').value='2';document.getElementById('terrain3d-exaggeration').dispatchEvent(new Event('change'))");
@@ -178,7 +196,14 @@ async function until(fn, label) {
         fs.writeFileSync(path.join(root,'tmp/mobile-dataset-filters.png'), Buffer.from(shot.data,'base64'));
     }
     await evaluate("document.getElementById('mobile-sheet-close').click(); EV.fire3D.open(); EV.fire3D.close(); EV.fire3D.open(); void 0");
-    await until(() => evaluate("!!(__smoke3DMap.getTerrain() && __smoke3DMap.areTilesLoaded())"), 'mobile terrain view');
+    await until(() => evaluate("!!(__smoke3DMap.getStyle() && __smoke3DMap.getTerrain() && __smoke3DMap.areTilesLoaded())"), 'mobile terrain view');
+    assert.equal(await evaluate("document.getElementById('terrain3d-labels').checked"), true);
+    assert.equal(await evaluate("__smoke3DMap.getLayoutProperty('place-labels','visibility')"), 'visible');
+    for (const width of [320,390]) {
+        await cdp('Emulation.setDeviceMetricsOverride', { width, height:844, deviceScaleFactor:1, mobile:true });
+        await delay(100);
+        assert.ok(await evaluate("(()=>{const t=document.querySelector('.terrain3d-label-toggle').getBoundingClientRect();const bar=document.querySelector('.terrain3d-toolbar').getBoundingClientRect();const info=document.querySelector('.terrain3d-info').getBoundingClientRect();return t.left>=0 && t.right<=innerWidth && t.height>=44 && info.top>=bar.bottom;})()"));
+    }
     assert.ok(await evaluate("(()=>{const r=document.getElementById('terrain3d-close').getBoundingClientRect(); return r.left>=0 && r.right<=innerWidth && r.bottom<innerHeight;})()"));
     if (process.env.EOSIAL_TEST_SCREENSHOT) {
         const shot = await cdp('Page.captureScreenshot', { format: 'png' });
@@ -192,7 +217,7 @@ async function until(fn, label) {
     assert.equal(await evaluate("document.querySelector('.fire-source-tabs').getAttribute('aria-orientation')"), 'horizontal');
     assert.ok(await evaluate("(()=>{const r=[...document.querySelectorAll('.fire-source-tab')].map(e=>e.getBoundingClientRect()); return r.every(e=>Math.abs(e.top-r[0].top)<1) && r.every(e=>e.right<=innerWidth);})()"));
     assert.equal(errors.length, 0, JSON.stringify(errors));
-    console.log('Browser smoke passed: startup, invalid dates, MTG-FIR table/animation, incomplete coverage, retry, real GLO-90 relief, 3D filtering, mode return, mobile dataset touch/keyboard controls and overflow at 320-760px.');
+    console.log('Browser smoke passed: startup, invalid dates, MTG-FIR table/animation, incomplete coverage, retry, real GLO-90 relief at Etna/Gran Sasso, Google attribution and labels toggle, 3D filtering, mode return, mobile dataset touch/keyboard controls and overflow at 320-760px.');
     await cdp('Browser.close');
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
     if (socket) socket.close();

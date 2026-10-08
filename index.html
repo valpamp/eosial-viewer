@@ -43,7 +43,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
     <!-- App styles -->
-    <link rel="stylesheet" href="css/style.css?v=20261007.3">
+    <link rel="stylesheet" href="css/style.css?v=20261008.2">
 </head>
 <body class="font-sans overflow-hidden bg-gray-100">
 
@@ -137,9 +137,10 @@
             <label>Height <select id="terrain3d-exaggeration" aria-label="Terrain height exaggeration">
                 <option value="1" selected>&times;1</option><option value="1.5">&times;1.5</option><option value="2">&times;2</option>
             </select></label>
+            <label class="terrain3d-label-toggle"><input id="terrain3d-labels" type="checkbox">Place labels</label>
             <button id="terrain3d-reset" type="button">Reset tilt</button>
             <button data-terrain-place="gran-sasso" type="button">Gran Sasso</button>
-            <button data-terrain-place="vesuvius" type="button">Vesuvius</button>
+            <button data-terrain-place="etna" type="button">Etna</button>
         </div>
         <div class="terrain3d-info">
             <div id="terrain3d-status" role="status"></div>
@@ -360,7 +361,7 @@
     <script src="js/layers/admin-boundaries.js?v=20260923.1"></script>
     <script src="js/layers/pixel-grids.js?v=20260922.2"></script>
     <script src="js/layers/fire-hotspots.js?v=20261007.3"></script>
-    <script src="js/fire-3d.js?v=20261007.2"></script>
+    <script src="js/fire-3d.js?v=20261008.2"></script>
     <script src="js/app.js?v=20261007.2"></script>
 
 </body>

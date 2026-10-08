@@ -2700,3 +2700,7 @@ body.dark .terrain3d-toolbar > *, body.dark .terrain3d-info { background: #27272
     .mobile-sheet-body .fire-filter-row { width: 100%; min-width: 0; padding: 10px 4px; }
     .mobile-sheet-body .fire-product-children .toolbar-pill { width: 100%; max-width: 100%; box-sizing: border-box; }
 }
+
+.terrain3d-label-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; cursor: pointer; }
+.terrain3d-label-toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--sapienza-accent); }
+@media (max-width: 760px) { .terrain3d-label-toggle { min-height: 44px; } }

@@ -97,6 +97,19 @@
         elements.coverage.textContent = warnings.length ? warnings.join(' ') + ' Detections may be incomplete.' : '';
     }
 
+    function syncPlaceLabels() {
+        if (!map3D || !map3D.getLayer('basemap')) return;
+        if (elements.labels.checked && !map3D.getSource('place-labels')) {
+            map3D.addSource('place-labels', { type: 'raster', tileSize: 256, maxzoom: 19,
+                tiles: ['https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}'] });
+            // Keep fire footprints above the imagery labels.
+            map3D.addLayer({ id: 'place-labels', type: 'raster', source: 'place-labels' }, 'fire-fill');
+        }
+        if (map3D.getLayer('place-labels')) {
+            map3D.setLayoutProperty('place-labels', 'visibility', elements.labels.checked ? 'visible' : 'none');
+        }
+    }
+
     function resetView() {
         if (map3D) map3D.easeTo({ pitch: 55, bearing: 0, duration: 400 });
     }
@@ -131,8 +144,8 @@
                 pitch: lastView ? lastView.pitch : 55, bearing: lastView ? lastView.bearing : 0,
                 maxPitch: 75, maxZoom: 17, maxBounds: [[6, 35], [20, 48]], renderWorldCopies: false,
                 style: { version: 8, sources: {
-                    basemap: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256,
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxzoom: 19 },
+                    basemap: { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256,
+                        attribution: '&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google</a>', maxzoom: 19 },
                     elevation: { type: 'raster-dem', tiles: [terrainBase + '{z}/{x}/{y}.png'], tileSize: 256,
                         encoding: 'terrarium', bounds: metadata.bounds, minzoom: metadata.minzoom, maxzoom: metadata.maxzoom,
                         attribution: EV.escapeHtml(metadata.attribution) },
@@ -141,7 +154,7 @@
                     'fire-pixels': { type: 'geojson', data: emptyCollection() }
                 }, layers: [
                     { id: 'basemap', type: 'raster', source: 'basemap' },
-                    { id: 'relief', type: 'hillshade', source: 'relief', paint: { 'hillshade-exaggeration': 0.45 } },
+                    { id: 'relief', type: 'hillshade', source: 'relief', paint: { 'hillshade-exaggeration': 0.15 } },
 
                     { id: 'fire-fill', type: 'fill', source: 'fire-pixels', filter: ['==', ['geometry-type'], 'Polygon'],
                         paint: { 'fill-color': ['get', 'color'], 'fill-opacity': ['get', 'opacity'] } },
@@ -157,6 +170,7 @@
             map3D.addControl(new maplibregl.ScaleControl({ unit: 'metric' }));
             map3D.on('load', function () {
                 map3D.setTerrain({ source: 'elevation', exaggeration: Number(elements.exaggeration.value) });
+                syncPlaceLabels();
                 syncFeatures();
                 setStatus('Drag to pan. Right-drag or use two fingers to rotate and tilt.');
                 EV.pixelGrids.preloadHotspotGrids().then(syncFeatures).catch(function () {
@@ -185,22 +199,31 @@
                 if (popup) popup.remove();
                 popup = new maplibregl.Popup({ maxWidth: '340px' }).setLngLat(event.lngLat).setDOMContent(content).addTo(map3D);
             });
-            resizeObserver = new ResizeObserver(function () { if (map3D) map3D.resize(); });
+            resizeObserver = new ResizeObserver(function () {
+                if (map3D) map3D.resize();
+                var toolbar = elements.panel.querySelector('.terrain3d-toolbar');
+                elements.panel.querySelector('.terrain3d-info').style.top = (toolbar.offsetTop + toolbar.offsetHeight + 10) + 'px';
+            });
             resizeObserver.observe(elements.panel);
+            resizeObserver.observe(elements.panel.querySelector('.terrain3d-toolbar'));
             elements.toggle.textContent = '3D';
         } catch (error) {
+            if (version !== openVersion) return;
             console.warn('[3D]', error);
             close();
             elements.toggle.title = error.message + ' Click to retry.';
             alert(error.message + ' The 2D viewer remains available.');
         } finally {
-            opening = false;
-            elements.toggle.disabled = false;
-            elements.toggle.textContent = '3D';
+            if (version === openVersion) {
+                opening = false;
+                elements.toggle.disabled = false;
+                elements.toggle.textContent = '3D';
+            }
         }
     }
 
     function close() {
+        ++openVersion;
         opening = false;
         if (map3D) {
             var center = map3D.getCenter();
@@ -223,9 +246,10 @@
     EV.fire3D = {
         init: function (map, baseUrl) {
             leafletMap = map; dataBase = baseUrl;
-            ['panel', 'status', 'count', 'legend', 'coverage', 'exaggeration'].forEach(function (name) {
+            ['panel', 'status', 'count', 'legend', 'coverage', 'exaggeration', 'labels'].forEach(function (name) {
                 elements[name] = document.getElementById('terrain3d-' + name);
             });
+            elements.labels.addEventListener('change', syncPlaceLabels);
             elements.toggle = document.getElementById('btn-toggle-3d');
             elements.toggle.addEventListener('click', open);
             document.getElementById('terrain3d-close').addEventListener('click', close);
@@ -236,7 +260,7 @@
             document.querySelectorAll('[data-terrain-place]').forEach(function (button) {
                 button.addEventListener('click', function () {
                     if (!map3D) return;
-                    var place = button.dataset.terrainPlace === 'vesuvius' ? [14.43, 40.82] : [13.56, 42.45];
+                    var place = button.dataset.terrainPlace === 'etna' ? [15.004, 37.751] : [13.56, 42.45];
                     map3D.flyTo({ center: place, zoom: 11, pitch: 60, bearing: -20, duration: 1000 });
                 });
             });
