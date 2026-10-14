@@ -1,10 +1,10 @@
 {
-  "generated": "2026-10-14T11:30:21.940215+00:00",
+  "generated": "2026-10-14T12:00:21.031327+00:00",
   "source": "Sentinel-3 SLSTR NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-10-13T21:14:51+00:00",
-  "feature_count": 36,
+  "latest_hotspot": "2026-10-14T09:28:45+00:00",
+  "feature_count": 85,
   "files": [
     {
       "path": "s3/S3_FRP_S3A_ITA_20261011202213.fgb",
@@ -109,6 +109,36 @@
       },
       "products": {
         "S3B_SL_2_FRP____20261013T203509_20261013T203809_20261013T212028_0179_125_328______MAR_O_NR_003.SEN3": 6
+      }
+    },
+    {
+      "path": "s3/S3_FRP_S3A_ITA_20261014092445.fgb",
+      "format": "fgb",
+      "label": "S3_FRP_S3A_ITA_20261014092445",
+      "date": "2026-10-14",
+      "start": "2026-10-14T09:27:05+00:00",
+      "end": "2026-10-14T09:27:53+00:00",
+      "count": 10,
+      "satellites": {
+        "S3A": 10
+      },
+      "products": {
+        "S3A_SL_2_FRP____20261014T092445_20261014T092745_20261014T112626_0179_145_093______MAR_O_NR_003.SEN3": 10
+      }
+    },
+    {
+      "path": "s3/S3_FRP_S3A_ITA_20261014092745.fgb",
+      "format": "fgb",
+      "label": "S3_FRP_S3A_ITA_20261014092745",
+      "date": "2026-10-14",
+      "start": "2026-10-14T09:28:01+00:00",
+      "end": "2026-10-14T09:28:45+00:00",
+      "count": 39,
+      "satellites": {
+        "S3A": 39
+      },
+      "products": {
+        "S3A_SL_2_FRP____20261014T092745_20261014T093045_20261014T112444_0179_145_093______MAR_O_NR_003.SEN3": 39
       }
     }
   ]
