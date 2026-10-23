@@ -1,71 +1,11 @@
 {
-  "generated": "2026-10-22T23:30:21.009427+00:00",
+  "generated": "2026-10-23T00:00:21.261495+00:00",
   "source": "Sentinel-3 SLSTR NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
   "latest_hotspot": "2026-10-22T20:41:16+00:00",
-  "feature_count": 68,
+  "feature_count": 36,
   "files": [
-    {
-      "path": "s3/S3_FRP_S3A_ITA_20261019201443.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3A_ITA_20261019201443",
-      "date": "2026-10-19",
-      "start": "2026-10-19T20:17:08+00:00",
-      "end": "2026-10-19T20:17:38+00:00",
-      "count": 7,
-      "satellites": {
-        "S3A": 7
-      },
-      "products": {
-        "S3A_SL_2_FRP____20261019T201443_20261019T201743_20261019T210145_0179_145_171______MAR_O_NR_003.SEN3": 7
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20261019095707.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20261019095707",
-      "date": "2026-10-19",
-      "start": "2026-10-19T09:59:32+00:00",
-      "end": "2026-10-19T09:59:33+00:00",
-      "count": 19,
-      "satellites": {
-        "S3B": 19
-      },
-      "products": {
-        "S3B_SL_2_FRP____20261019T095707_20261019T100007_20261019T115811_0179_126_022______MAR_O_NR_003.SEN3": 19
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20261019211702.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20261019211702",
-      "date": "2026-10-19",
-      "start": "2026-10-19T21:19:34+00:00",
-      "end": "2026-10-19T21:19:34+00:00",
-      "count": 3,
-      "satellites": {
-        "S3B": 3
-      },
-      "products": {
-        "S3B_SL_2_FRP____20261019T211702_20261019T212002_20261019T220558_0179_126_029______MAR_O_NR_003.SEN3": 3
-      }
-    },
-    {
-      "path": "s3/S3_FRP_S3B_ITA_20261019212002.fgb",
-      "format": "fgb",
-      "label": "S3_FRP_S3B_ITA_20261019212002",
-      "date": "2026-10-19",
-      "start": "2026-10-19T21:21:10+00:00",
-      "end": "2026-10-19T21:21:10+00:00",
-      "count": 3,
-      "satellites": {
-        "S3B": 3
-      },
-      "products": {
-        "S3B_SL_2_FRP____20261019T212002_20261019T212302_20261019T220548_0179_126_029______MAR_O_NR_003.SEN3": 3
-      }
-    },
     {
       "path": "s3/S3_FRP_S3A_ITA_20261020100936.fgb",
       "format": "fgb",
