@@ -1,13 +1,13 @@
 {
-  "generated": "2026-10-27T16:00:06.062344+00:00",
-  "latest_hotspot": "2026-10-27T13:16:00+00:00",
+  "generated": "2026-10-27T16:30:06.390438+00:00",
+  "latest_hotspot": "2026-10-27T14:27:00+00:00",
   "latest_by_product": {
-    "modis-c6.1": "2026-10-27T08:03:00+00:00",
-    "noaa-20-viirs-c2": "2026-10-27T10:51:00+00:00",
+    "modis-c6.1": "2026-10-27T14:27:00+00:00",
+    "noaa-20-viirs-c2": "2026-10-27T12:34:00+00:00",
     "noaa-21-viirs-c2": "2026-10-27T13:16:00+00:00",
     "suomi-npp-viirs-c2": "2026-10-27T12:12:00+00:00"
   },
-  "feature_count": 332,
+  "feature_count": 364,
   "files": [
     "firms/FIRMS_ITA_2026297.fgb",
     "firms/FIRMS_ITA_2026298.fgb",
