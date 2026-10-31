@@ -1,17 +1,12 @@
 {
-  "generated": "2026-10-30T23:30:22.186326+00:00",
+  "generated": "2026-10-31T00:00:24.815674+00:00",
   "latest_hotspot": "2026-10-30T20:33:49+00:00",
   "latest_by_satellite": {
     "S3A": "2026-10-30T20:33:49+00:00",
     "S3B": "2026-10-29T20:21:34+00:00"
   },
-  "feature_count": 108,
+  "feature_count": 82,
   "files": [
-    "s3/S3_FRP_S3A_ITA_20261027085019.fgb",
-    "s3/S3_FRP_S3A_ITA_20261027200713.fgb",
-    "s3/S3_FRP_S3B_ITA_20261027094936.fgb",
-    "s3/S3_FRP_S3B_ITA_20261027210931.fgb",
-    "s3/S3_FRP_S3B_ITA_20261027211231.fgb",
     "s3/S3_FRP_S3A_ITA_20261028100207.fgb",
     "s3/S3_FRP_S3A_ITA_20261028212501.fgb",
     "s3/S3_FRP_S3B_ITA_20261028092325.fgb",
