@@ -1,14 +1,13 @@
 {
-  "generated": "2026-11-06T23:30:06.151003+00:00",
+  "generated": "2026-11-07T00:00:07.215411+00:00",
   "latest_hotspot": "2026-11-06T13:27:00+00:00",
   "latest_by_product": {
     "modis-c6.1": "2026-11-04T08:22:00+00:00",
     "noaa-20-viirs-c2": "2026-11-06T01:21:00+00:00",
     "noaa-21-viirs-c2": "2026-11-06T13:27:00+00:00"
   },
-  "feature_count": 92,
+  "feature_count": 66,
   "files": [
-    "firms/FIRMS_ITA_2026307.fgb",
     "firms/FIRMS_ITA_2026308.fgb",
     "firms/FIRMS_ITA_2026309.fgb",
     "firms/FIRMS_ITA_2026310.fgb"
