@@ -1,13 +1,12 @@
 {
-  "generated": "2026-11-10T23:30:09.188242+00:00",
+  "generated": "2026-11-11T00:00:10.254967+00:00",
   "latest_hotspot": "2026-11-09T02:06:00+00:00",
   "latest_by_product": {
     "noaa-20-viirs-c2": "2026-11-09T02:06:00+00:00",
     "noaa-21-viirs-c2": "2026-11-09T01:11:00+00:00"
   },
-  "feature_count": 57,
+  "feature_count": 31,
   "files": [
-    "firms/FIRMS_ITA_2026311.fgb",
     "firms/FIRMS_ITA_2026312.fgb",
     "firms/FIRMS_ITA_2026313.fgb"
   ]
