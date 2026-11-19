@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-19T05:00:09.481430+00:00",
+  "generated": "2026-11-19T05:30:09.818412+00:00",
   "format": "fgb",
   "archive_period": "week",
   "months": [
@@ -778,7 +778,7 @@
       "label": "2026 week 47",
       "start": "2026-11-16T06:08:00+00:00",
       "end": "2026-11-19T03:38:00+00:00",
-      "count": 111,
+      "count": 112,
       "files": {
         "fgb": "archive/sfide_2026_W47.fgb"
       }
