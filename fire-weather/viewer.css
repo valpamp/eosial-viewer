@@ -60,6 +60,7 @@
 .weather-ticks span:first-child { transform: none; }
 .weather-ticks span:last-child { transform: translateX(-100%); }
 #weather-map { min-height: 0; min-width: 0; }
+#weather-map.drawing-area { touch-action: none; }
 .fire-weather .map-toolbar > .toolbar-btn { display: flex; }
 #tool-status {
     position: absolute;

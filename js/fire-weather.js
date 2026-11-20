@@ -431,15 +431,22 @@
     const measurePoints = [];
     let measureLine;
     let measureTotal = 0;
-    let drawing;
     let activeTool;
     let tool;
+    const mapElement = map.getContainer();
+    const selectionStyle = { color: '#5f1724', weight: 2, fillOpacity: 0.1, interactive: false };
+    let firstCorner;
+    let gesture;
+    let previewRectangle;
+    let ignoreAreaClick = false;
 
     function setTool(button, mode, text = '') {
-        if (drawing) {
-            const previous = drawing;
-            drawing = null;
-            previous.disable();
+        if (tool === 'area') {
+            if (gesture && mapElement.hasPointerCapture(gesture.id)) mapElement.releasePointerCapture(gesture.id);
+            gesture = firstCorner = null;
+            previewRectangle?.remove();
+            previewRectangle = null;
+            map.dragging.enable();
         }
         if (activeTool) {
             activeTool.classList.remove('active');
@@ -451,11 +458,69 @@
             button.classList.add('active');
             button.setAttribute('aria-pressed', 'true');
         }
-        if (mode === 'measure') map.doubleClickZoom.disable();
+        if (mode === 'area') map.dragging.disable();
+        if (mode === 'measure' || mode === 'area') map.doubleClickZoom.disable();
         else map.doubleClickZoom.enable();
         document.body.classList.toggle('querying', Boolean(mode));
+        mapElement.classList.toggle('drawing-area', mode === 'area');
         feedback.textContent = text;
     }
+
+    function selectArea(bounds) {
+        setTool();
+        marker?.remove();
+        marker = point = null;
+        areaLayer?.remove();
+        areaLayer = L.rectangle(bounds, selectionStyle).addTo(map);
+        area = bounds;
+        newSelection();
+        loadHistory();
+    }
+
+    function movedFromStart(event) {
+        return Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 4;
+    }
+
+    mapElement.addEventListener('pointerdown', event => {
+        ignoreAreaClick = false;
+        if (tool !== 'area' || !event.isPrimary || event.button !== 0 ||
+            event.target.closest('.leaflet-control, .leaflet-popup')) return;
+        gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, start: map.mouseEventToLatLng(event) };
+        mapElement.setPointerCapture(event.pointerId);
+        event.preventDefault();
+    }, true);
+    mapElement.addEventListener('pointermove', event => {
+        if (tool !== 'area' || !event.isPrimary || (gesture && gesture.id !== event.pointerId)) return;
+        const start = firstCorner || (gesture && movedFromStart(event) && gesture.start);
+        if (!start) return;
+        const bounds = L.latLngBounds(start, map.mouseEventToLatLng(event));
+        if (previewRectangle) previewRectangle.setBounds(bounds);
+        else previewRectangle = L.rectangle(bounds, selectionStyle).addTo(map);
+    });
+    mapElement.addEventListener('pointerup', event => {
+        if (gesture?.id !== event.pointerId) return;
+        const start = firstCorner || gesture.start;
+        const end = map.mouseEventToLatLng(event);
+        const dragged = movedFromStart(event);
+        gesture = null;
+        ignoreAreaClick = true;
+        if ((firstCorner || dragged) && start.lat !== end.lat && start.lng !== end.lng) {
+            selectArea(L.latLngBounds(start, end));
+        } else {
+            firstCorner = start;
+            feedback.textContent = 'Select the opposite corner to finish the rectangle.';
+        }
+    });
+    mapElement.addEventListener('pointercancel', event => {
+        if (gesture?.id === event.pointerId) setTool();
+    });
+    mapElement.addEventListener('click', event => {
+        // A release that finishes a rectangle can also generate a click on the map.
+        if (ignoreAreaClick && event.detail && !event.target.closest('.leaflet-control, .leaflet-popup')) {
+            ignoreAreaClick = false;
+            event.stopImmediatePropagation();
+        }
+    }, true);
 
     function selectPoint(latlng) {
         area = null;
@@ -553,9 +618,7 @@
         areaButton.onclick = () => {
             closeMenus();
             if (tool === 'area') return setTool();
-            setTool(areaButton, 'area', 'Drag a rectangle to summarize LFMC.');
-            drawing = new L.Draw.Rectangle(map, { shapeOptions: { color: '#5f1724', weight: 2, fillOpacity: 0.1 } });
-            drawing.enable();
+            setTool(areaButton, 'area', 'Drag and release, or select two opposite corners.');
         };
         dark.onclick = () => {
             closeMenus();
@@ -589,22 +652,6 @@
     });
     map.on('dblclick', () => {
         if (tool === 'measure') setTool(null, null, feedback.textContent.split(' · ')[0]);
-    });
-    map.on('draw:created', ({ layer: selection }) => {
-        if (tool !== 'area') return;
-        if (marker) marker.remove();
-        marker = null;
-        point = null;
-        if (areaLayer) areaLayer.remove();
-        areaLayer = selection.addTo(map);
-        area = areaLayer.getBounds();
-        newSelection();
-        loadHistory();
-    });
-    map.on('draw:drawstop', () => {
-        if (tool !== 'area') return;
-        drawing = null;
-        setTool(null, null, area ? feedback.textContent : '');
     });
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape' && tool) setTool();
