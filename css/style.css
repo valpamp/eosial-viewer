@@ -635,6 +635,8 @@ body.querying .leaflet-container { cursor: crosshair !important; }
     pointer-events: none;
 }
 
+.map-toolbar-menu { position: relative; }
+
 /* Basemap dropdown */
 .basemap-dropdown {
     display: none;
