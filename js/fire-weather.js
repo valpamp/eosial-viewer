@@ -117,17 +117,31 @@
         tickBar.append(tick);
     }
 
-    function reader(record) {
+    function reader(record, retry) {
         if (cache.has(record.raster)) return cache.get(record.raster);
-        const pending = GeoTIFF.fromUrl(asset(record.raster), {
-            allowFullFile: false, blockSize: 16384, cacheSize: 32
-        }).catch(error => {
-            cache.delete(record.raster);
-            throw error;
-        });
+        // Keep the chart's range reads separate from map tiles and full downloads in the HTTP cache.
+        const url = new URL(asset(record.raster));
+        url.searchParams.set('lfmc', retry ? 'analysis-retry' : 'analysis');
+        const pending = GeoTIFF.fromUrl(url.href, {
+            allowFullFile: false, blockSize: 65536, cacheSize: 32
+        }).then(file => file.getImage());
         cache.set(record.raster, pending);
         if (cache.size > 8) cache.delete(cache.keys().next().value);
         return pending;
+    }
+
+    async function readSelection(record, read, isCurrent) {
+        for (let attempt = 0; attempt < 2 && isCurrent(); attempt++) {
+            const image = reader(record, attempt > 0);
+            try {
+                const raster = await image;
+                return isCurrent() ? await read(raster) : null;
+            } catch (error) {
+                if (cache.get(record.raster) === image) cache.delete(record.raster);
+                if (attempt === 1) throw error;
+            }
+        }
+        return null;
     }
 
     const displaySize = new URLSearchParams(location.search).get('detail') === 'low' ? 128 : 256;
@@ -218,21 +232,19 @@
         }
     });
 
-    async function pixel(record, { lat, lng }) {
+    async function pixel(image, record, { lat, lng }) {
         const [west, south, east, north] = record.bounds;
         if (lng < west || lng >= east || lat <= south || lat > north) return null;
-        const image = await (await reader(record)).getImage();
         const [dx, dy] = image.getResolution();
         const x = Math.floor((lng - west) / dx);
         const y = Math.floor((lat - north) / dy);
         const [value] = await image.readRasters({
-            window: [x, y, x + 1, y + 1], samples: [0], interleave: true
+            window: [x, y, x + 1, y + 1], samples: [0], interleave: true, signal: AbortSignal.timeout(20000)
         });
         return value === noData ? null : value;
     }
 
-    async function summarize(record, area, isCurrent) {
-        const image = await (await reader(record)).getImage();
+    async function summarize(image, record, area, isCurrent) {
         const [west, , , north] = record.bounds;
         const [dx, dy] = image.getResolution();
         const firstCol = Math.max(0, Math.ceil((area.getWest() - west) / dx - 0.5));
@@ -242,13 +254,16 @@
         if (firstCol >= lastCol || firstRow >= lastRow) return null;
 
         const counts = new Uint32Array(noData);
+        const tileHeight = image.getTileHeight();
         let count = 0;
         let sum = 0;
-        for (let row = firstRow; row < lastRow; row += 256) {
+        for (let row = firstRow; row < lastRow;) {
             if (row > firstRow) await new Promise(resolve => setTimeout(resolve, 0));
             if (!isCurrent()) return null;
+            const nextRow = Math.min((Math.floor(row / tileHeight) + 1) * tileHeight, lastRow);
             const values = await image.readRasters({
-                window: [firstCol, row, lastCol, Math.min(row + 256, lastRow)], samples: [0], interleave: true
+                window: [firstCol, row, lastCol, nextRow], samples: [0], interleave: true,
+                signal: AbortSignal.timeout(20000)
             });
             for (const value of values) {
                 if (value === noData) continue;
@@ -256,6 +271,7 @@
                 count++;
                 sum += value;
             }
+            row = nextRow;
         }
         if (!count) return null;
         // Linear percentiles over valid pixels at their native display resolution.
@@ -292,11 +308,14 @@
         if ((!point && !area) || !current) return;
         const version = ++clickVersion;
         const field = element('pixel');
+        const record = current;
         const selectedArea = area;
+        const location = point;
+        const isCurrent = () => version === clickVersion;
         field.textContent = selectedArea ? 'Reading area…' : 'Reading pixel…';
         try {
-            const value = selectedArea ? await summarize(current, selectedArea, () => version === clickVersion) :
-                await pixel(current, point);
+            const value = await readSelection(record, image => selectedArea ?
+                summarize(image, record, selectedArea, isCurrent) : pixel(image, record, location), isCurrent);
             if (version === clickVersion) {
                 if (value === null) field.textContent = 'No LFMC estimate here for this composite.';
                 else if (selectedArea) field.textContent = `Median ${value.median}% · Mean ${value.mean.toFixed(1)}% · ${value.count.toLocaleString()} valid pixels`;
@@ -356,12 +375,24 @@
         const selectedArea = area;
         const isCurrent = () => version === historyVersion;
         const dates = composites.slice().reverse();
+        let checked = 0;
+        const showProgress = () => {
+            feedback.textContent = `Reading LFMC time series · ${checked} of ${dates.length} composites checked`;
+        };
         readingHistory = true;
-        feedback.textContent = 'Reading LFMC composites…';
+        showProgress();
         history.disabled = true;
         const entries = await EV.mapSettledLimit(dates, selectedArea ? 2 : 4, async record => {
-            if (!isCurrent()) return null;
-            return selectedArea ? summarize(record, selectedArea, isCurrent) : pixel(record, location);
+            try {
+                return await readSelection(record, image => selectedArea ?
+                    summarize(image, record, selectedArea, isCurrent) : pixel(image, record, location), isCurrent);
+            } catch (error) {
+                if (isCurrent()) console.warn(`Could not read LFMC composite ${record.start}`, error);
+                throw error;
+            } finally {
+                checked++;
+                if (isCurrent()) showProgress();
+            }
         });
         if (!isCurrent()) return;
         readingHistory = false;
