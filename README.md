@@ -4,6 +4,12 @@ EOSIAL Active Fire Viewer is an interactive web GIS for exploring and comparing 
 
 **Live viewer:** [https://valpamp.github.io/eosial-viewer/](https://valpamp.github.io/eosial-viewer/)
 
+## Fire Weather Viewer
+
+The [Fire Weather Viewer](https://valpamp.github.io/eosial-viewer/fire-weather/) displays 8-day Suomi NPP VIIRS live fuel moisture content estimates across the Western USA. Its optional **Globe-LFMC 2.0 sampling sites** layer shows historical field locations from [Yebra et al. (2024)](https://doi.org/10.6084/m9.figshare.25413790.v1). The [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) GeoJSON subset contains one point per published location inside the map's study area, with the original site name and state or region.
+
+## Active Fire Viewer
+
 The application is focused exclusively on active-fire products. It combines EOSIAL detections from geostationary Meteosat imagery with independent products from NASA, Copernicus, and EUMETSAT.
 
 ## Data sources
@@ -240,7 +246,15 @@ Source files and intermediate rasters are cached under ignored `tmp/terrain-glo9
 
 ## Publishing
 
-The LFMC raster collection belongs to the planned companion raster viewer and is excluded from this repository's current site. This workstation keeps the removed data, manifest, statistics and update state under ignored `tmp/lfmc-companion/data/lfmc/` for migration. Configure LFMC updater scripts to target the companion repository before resuming publication. The active-fire page does not load `js/layers/lfmc.js`; its legacy module and preparation scripts are retained for reuse.
+The [Fire Weather Viewer](fire-weather/) displays Western USA eight-day Suomi NPP VIIRS LFMC composites. It shares zoom, basemaps, location search and map export controls with the Active Fire Viewer. The right-hand toolbar includes point and rectangular area time series, distance measurement, dark mode and PNG export. Time series open in the shared graph window. The area chart shows the mean and the 25th–75th percentile band of valid pixels per composite. The sidebar includes date selection, opacity and GeoTIFF downloads.
+
+The Fire Weather Viewer defaults to [USGS Topographic](https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer) in grayscale and the Desert to Forest palette. The same grayscale basemap is also available in the Active Fire Viewer. The color palette menu also offers RdYlGn and RdYlBu. All three use the same 30–250% display range. Desert to Forest transitions to green at 100%. Values outside the display range use the endpoint colors, and queries and downloads retain their whole-percent values. The standard palettes and selected green stops use [ColorBrewer](https://colorbrewer2.org/), copyright 2002 Cynthia Brewer, Mark Harrower, and The Pennsylvania State University, under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+
+The rasters and manifest are served by a separate GitHub Pages project configured through `EOSIAL_LFMC_DATA_URL` in `js/config.js`. The raster host must support HTTP Range responses. The local production workflow prepares the archive, preserving full-precision predictions privately and publishing whole-percent Cloud Optimized GeoTIFFs. The website source contains the browser code and existing active-fire data. Regional LFMC rasters are published as a separate rolling artifact.
+
+To preview locally, serve this repository with a static web server. Open `/fire-weather/?data=/lfmc-preview/` if that server also serves a staged LFMC snapshot at `/lfmc-preview/` and supports byte ranges. The query override is available on localhost.
+
+Add `detail=low` to the Fire Weather Viewer URL to use half-resolution display tiles. The standard view renders tiles in a web worker. Both settings use the original-resolution data for point and area queries and GeoTIFF downloads.
 
 Fire updaters change recent files and the affected archive chunks incrementally. A Pages deployment still publishes a complete snapshot of the tracked site, including unchanged archives and terrain tiles. Git ignore rules prevent removed LFMC data from being added again. Removing files from the current revision does not erase them from Git history. Historical data should eventually move to separate static storage if the active-fire package approaches the Pages size limit.
 

@@ -1,5 +1,5 @@
 /**
- * EOSIAL Active Fire Viewer — timeseries chart module
+ * EOSIAL viewers — shared timeseries chart module
  *
  * Draws Chart.js timeseries in the #ts-modal.
  * Supports single-value series and multi-metric series (mean/median/IQR).
@@ -35,6 +35,7 @@
         document.getElementById('ts-modal-title').textContent = title;
         info.innerHTML = opts.info || '';
         modal.classList.remove('hidden');
+        if (modal.tagName === 'DIALOG' && !modal.open) modal.showModal();
         animationData = opts.animation || null;
         setupTable(opts);
         setViewMode('chart');
@@ -83,6 +84,7 @@
                 },
                 {
                     label: 'IQR (Q25–Q75)',
+                    csvLabel: 'Q75',
                     data: series.map(function (d) { return d.q75; }),
                     borderColor: 'rgba(99,102,241,0.3)',
                     backgroundColor: 'rgba(99,102,241,0.12)',
@@ -103,6 +105,7 @@
                     hidden: false,
                 }
             ];
+            if (opts.showMedian === false) datasets.splice(1, 1);
         } else {
             // Single-value series
             datasets = [{
@@ -110,7 +113,7 @@
                 data: series.map(function (d) { return d.value; }),
                 borderColor: opts.color || '#2563eb',
                 backgroundColor: colorWithAlpha(opts.color || '#2563eb', 0.14),
-                fill: true,
+                fill: opts.fill !== false,
                 tension: 0.25,
                 pointRadius: 4,
                 pointHoverRadius: 6,
@@ -118,6 +121,7 @@
         }
 
         datasets = datasets.map(function (dataset) {
+            if (opts.tension !== undefined) dataset = Object.assign({}, dataset, { tension: opts.tension });
             return Object.assign({
                 borderWidth: 2.5,
                 borderCapStyle: 'round',
@@ -197,6 +201,12 @@
                             label: function (ctx) {
                                 if (ctx.parsed.y == null) return '';
                                 var suffix = opts.unit ? ' ' + opts.unit : '';
+                                if (ctx.dataset.label === 'IQR (Q25–Q75)') {
+                                    var lower = ctx.chart.data.datasets[ctx.datasetIndex + 1]?.data[ctx.dataIndex];
+                                    if (lower != null) {
+                                        return 'IQR: ' + formatNumber(lower) + '–' + formatNumber(ctx.parsed.y) + suffix;
+                                    }
+                                }
                                 return ctx.dataset.label + ': ' + formatNumber(ctx.parsed.y) + suffix;
                             }
                         },
@@ -227,6 +237,7 @@
                             maxRotation: 0,
                             minRotation: 0,
                             autoSkip: true,
+                            source: opts.tickSource || 'auto',
                             maxTicksLimit: xTickLimit,
                             stepSize: timeAxis.stepSize,
                             color: '#344256',
@@ -567,7 +578,9 @@
 
     /** Close modal */
     function closeModal() {
-        document.getElementById('ts-modal').classList.add('hidden');
+        var modal = document.getElementById('ts-modal');
+        if (modal.tagName === 'DIALOG' && modal.open) modal.close();
+        modal.classList.add('hidden');
         if (chart) { chart.destroy(); chart = null; }
     }
     function openAnimationView() {
@@ -619,11 +632,11 @@
     function downloadChartCSV() {
         if (!chart) return;
         var datasets = chart.data.datasets;
-        // Collect visible datasets; skip the internal Q25 fill-target series
+        // Export both bounds of any visible interquartile range.
         var visible = [];
         for (var i = 0; i < datasets.length; i++) {
-            if (datasets[i].label !== 'Q25' && !chart.getDatasetMeta(i).hidden) {
-                visible.push({ label: datasets[i].label, data: datasets[i].data });
+            if (chart.isDatasetVisible(i)) {
+                visible.push({ label: datasets[i].csvLabel || datasets[i].label, data: datasets[i].data });
             }
         }
         if (!visible.length) return;
@@ -679,21 +692,23 @@
     // Wire close button
     document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('ts-modal-close').addEventListener('click', closeModal);
-        document.getElementById('ts-modal').addEventListener('click', function (e) {
+        var modal = document.getElementById('ts-modal');
+        modal.addEventListener('click', function (e) {
             if (e.target === this) closeModal();
         });
-        document.getElementById('ts-chart-tab').addEventListener('click', function () {
+        modal.addEventListener('close', function () { modal.classList.add('hidden'); });
+        document.getElementById('ts-chart-tab')?.addEventListener('click', function () {
             setViewMode('chart');
         });
-        document.getElementById('ts-table-tab').addEventListener('click', function () {
+        document.getElementById('ts-table-tab')?.addEventListener('click', function () {
             setViewMode('table');
         });
-        document.getElementById('ts-animation-tab').addEventListener('click', openAnimationView);
-        document.getElementById('ts-table-prev').addEventListener('click', function () {
+        document.getElementById('ts-animation-tab')?.addEventListener('click', openAnimationView);
+        document.getElementById('ts-table-prev')?.addEventListener('click', function () {
             tablePage -= 1;
             renderTable(true);
         });
-        document.getElementById('ts-table-next').addEventListener('click', function () {
+        document.getElementById('ts-table-next')?.addEventListener('click', function () {
             tablePage += 1;
             renderTable(true);
         });
