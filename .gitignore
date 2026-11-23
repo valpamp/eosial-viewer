@@ -37,5 +37,5 @@ data/fire/sfide_aggregate_1Y.*
 # FGB is the deployed 72h SFIDE format; avoid re-adding stale GeoJSON duplicates.
 data/fire/sfide_aggregate_72h.geojson
 
-# LFMC belongs to the companion raster viewer; keep it out of this site's deployment.
+# Regional LFMC data is deployed to its own Pages project.
 /data/lfmc/

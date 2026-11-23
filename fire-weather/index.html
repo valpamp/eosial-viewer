@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EOSIAL Fire Weather Viewer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="viewer.css?v=20261120.6">
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script defer id="geotiff-library" src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script defer src="../js/config.js"></script>
+    <script defer src="../js/utils.js"></script>
+    <script defer src="../js/map-toolbar.js?v=20261120.5"></script>
+    <script defer src="../js/timeseries.js?v=20261120"></script>
+    <script defer src="../js/lfmc-render.js?v=20261120.7"></script>
+    <script defer src="../js/fire-weather.js?v=20261120.10"></script>
+</head>
+<body class="fire-weather">
+    <aside class="weather-panel" aria-label="LFMC controls">
+        <div class="weather-controls">
+            <header>
+                <h1>EOSIAL Fire Weather Viewer</h1>
+                <a href="../">Active Fire Viewer</a>
+                <p>Western USA · Suomi NPP VIIRS</p>
+            </header>
+            <label for="composite">LFMC composite</label>
+            <select id="composite" disabled></select>
+            <label for="opacity">Map opacity</label>
+            <input id="opacity" type="range" min="0" max="1" value="0.8" step="0.05">
+            <label for="color-scheme">Color palette</label>
+            <select id="color-scheme">
+                <option value="rdylgn">RdYlGn · Red–Yellow–Green</option>
+                <option value="rdylbu">RdYlBu · Red–Yellow–Blue</option>
+                <option value="desert" selected>Desert to Forest</option>
+            </select>
+            <div class="weather-legend" aria-label="LFMC color scale, percentage of dry mass">
+                <strong>LFMC (% dry mass)</strong>
+                <div class="weather-gradient"></div>
+                <div class="weather-ticks" aria-label="30 or lower, 60, 100, 150, 200, 250 or higher"></div>
+            </div>
+            <label class="weather-site-toggle" for="field-sites">
+                <input type="checkbox" id="field-sites"> Globe-LFMC 2.0 sampling sites
+            </label>
+            <p id="field-site-source" hidden>Historical field sampling locations. <a href="https://doi.org/10.6084/m9.figshare.25413790.v1">Yebra et al. (2024), CC0</a></p>
+            <p id="field-site-status" role="status"></p>
+            <p id="weather-status" role="status">Loading available composites…</p>
+            <p id="coverage"></p>
+            <a id="download" hidden>Download GeoTIFF</a>
+            <a id="provenance" hidden>Map provenance</a>
+            <section>
+                <h2 id="query-heading">Inspect a pixel</h2>
+                <p id="pixel" role="status">Click on the map to check the LFMC estimate.</p>
+                <button id="history" type="button" disabled>Show LFMC chart</button>
+            </section>
+            <nav class="weather-resources" aria-label="Map resources">
+                <a href="https://valpamp.github.io/lfmc-multisensor/">Models and documentation</a>
+                <a href="https://doi.org/10.3390/rs18213744">Methods and citation</a>
+                <a href="https://github.com/valpamp/lfmc-multisensor/blob/main/OUTPUT_TERMS.md">Output terms</a>
+            </nav>
+        </div>
+        <footer class="weather-footer">
+            <a class="weather-brand" href="https://ici.web.uniroma1.it/it/eosial-earth-observation-satellite-images-applications-lab"
+               target="_blank" rel="noopener noreferrer" title="Visit our lab website">
+                <img src="../images/EOSIAL_banner.png" alt="EOSIAL Laboratory">
+            </a>
+            <p>
+                <a href="https://it.linkedin.com/in/valerio-pampanoni">Valerio Pampanoni, PhD</a><br>
+                <a href="mailto:valerio.pampanoni@uniroma1.it">Contact for inquiries</a><br>
+                EOSIAL Laboratory<br>
+                School of Aerospace Engineering<br>
+                Sapienza University
+            </p>
+        </footer>
+    </aside>
+    <main id="weather-map" aria-label="Live fuel moisture map">
+        <div id="tool-status" role="status" data-html2canvas-ignore></div>
+    </main>
+    <dialog id="ts-modal" class="lfmc-chart-modal hidden" aria-labelledby="ts-modal-title">
+        <div class="lfmc-chart-card">
+            <div class="lfmc-chart-header">
+                <h3 id="ts-modal-title">LFMC time series</h3>
+                <button id="ts-modal-close" type="button" aria-label="Close chart" autofocus>×</button>
+            </div>
+            <div class="lfmc-chart-body">
+                <div id="ts-chart-panel"><canvas id="ts-chart" role="img" aria-label="LFMC over time"></canvas></div>
+                <p id="ts-info"></p>
+            </div>
+            <div class="lfmc-chart-footer">
+                <button id="ts-save-csv" type="button">Download CSV</button>
+                <button id="ts-save-png" type="button">Save as PNG</button>
+            </div>
+        </div>
+    </dialog>
+</body>
+</html>

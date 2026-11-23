@@ -23,203 +23,46 @@
     });
     if (EV.fireAnimation) EV.fireAnimation.init(map);
 
-    // Basemaps
-    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-    });
-    var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        attribution: '&copy; Google',
-        maxZoom: 20,
-    });
-    var topoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenTopoMap',
-        maxZoom: 17,
-    });
-    // Default basemap
-    osm.addTo(map);
-
-    var basemaps = {
-        'OpenStreetMap': osm,
-        'Satellite (Google)': googleHybrid,
-        'Topographic': topoMap
-    };
+    var basemaps = EV.mapBasemaps();
+    basemaps.OpenStreetMap.addTo(map);
     // Unified toolbar (replaces separate zoom / layers / geocoder controls)
     var toolbar = L.control({ position: 'topright' });
     toolbar.onAdd = function () {
         var wrap = L.DomUtil.create('div', 'map-toolbar leaflet-bar');
-        L.DomEvent.disableClickPropagation(wrap);
-        L.DomEvent.disableScrollPropagation(wrap);
-
-        // ── Zoom In
-        var btnZoomIn = _tbBtn(wrap, '+',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>',
-            'Zoom in');
-        btnZoomIn.addEventListener('click', function () { map.zoomIn(); });
-
-        // ── Zoom Out
-        var btnZoomOut = _tbBtn(wrap, '\u2212',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"/></svg>',
-            'Zoom out');
-        btnZoomOut.addEventListener('click', function () { map.zoomOut(); });
-        var btn3D = _tbBtn(wrap, '3D', '', 'Explore fire footprints on 90 m terrain');
-        btn3D.id = 'btn-toggle-3d';
-        btn3D.setAttribute('aria-label', 'Switch to 3D terrain view');
-
-        // ── Basemap picker
-        var basemapWrap = document.createElement('div');
-        basemapWrap.style.position = 'relative';
-        wrap.appendChild(basemapWrap);
-
-        var btnLayers = _tbBtn(basemapWrap, '',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
-            'Basemaps');
-
-        var dropdown = document.createElement('div');
-        dropdown.className = 'basemap-dropdown';
-        basemapWrap.appendChild(dropdown);
-
-        var activeBasemap = 'OpenStreetMap';
-        Object.keys(basemaps).forEach(function (name) {
-            var opt = document.createElement('button');
-            opt.className = 'basemap-option' + (name === activeBasemap ? ' active' : '');
-            opt.textContent = name;
-            opt.addEventListener('click', function () {
-                Object.keys(basemaps).forEach(function (k) { map.removeLayer(basemaps[k]); });
-                basemaps[name].addTo(map);
-                activeBasemap = name;
-                dropdown.querySelectorAll('.basemap-option').forEach(function (el) {
-                    el.classList.toggle('active', el.textContent === name);
-                });
-                dropdown.classList.remove('open');
-            });
-            dropdown.appendChild(opt);
-        });
-
-        btnLayers.addEventListener('click', function () {
-            dropdown.classList.toggle('open');
-            geocoderWrap.classList.remove('open');
-        });
-
-        // ── Search (geocoder)
-        var searchWrap = document.createElement('div');
-        searchWrap.style.position = 'relative';
-        wrap.appendChild(searchWrap);
-
-        var btnSearch = _tbBtn(searchWrap, '',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>',
-            'Search location');
-
-        var geocoderWrap = document.createElement('div');
-        geocoderWrap.className = 'toolbar-geocoder';
-        searchWrap.appendChild(geocoderWrap);
-
-        var searchInput = document.createElement('input');
-        searchInput.type = 'text';
-        searchInput.placeholder = 'Search location...';
-        geocoderWrap.appendChild(searchInput);
-
-        var resultsDiv = document.createElement('div');
-        resultsDiv.className = 'geocoder-results';
-        geocoderWrap.appendChild(resultsDiv);
-
-        searchInput.placeholder = 'Search location, then press Enter';
-        var locationSearch = EV.createLocationSearch();
-        searchInput.addEventListener('input', function () {
-            locationSearch.cancel();
-            resultsDiv.textContent = '';
-        });
-        searchInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                locationSearch.cancel();
-                geocoderWrap.classList.remove('open');
-                searchInput.value = '';
-                resultsDiv.textContent = '';
-                return;
-            }
-            if (e.key !== 'Enter' || e.isComposing || searchInput.value.trim().length < 3) return;
-            e.preventDefault();
-            resultsDiv.textContent = 'Searching...';
-            locationSearch.search(searchInput.value).then(function (data) {
-                if (data === null) return;
-                resultsDiv.textContent = data.length ? '' : 'No locations found.';
-                data.forEach(function (result) {
-                    if (!result.boundingbox || result.boundingbox.length !== 4) return;
-                    var values = result.boundingbox.map(Number);
-                    if (!values.every(Number.isFinite)) return;
-                    var item = document.createElement('button');
-                    item.type = 'button';
-                    item.className = 'geocoder-result';
-                    item.textContent = result.display_name;
-                    item.addEventListener('click', function () {
-                        locationSearch.cancel();
-                        map.fitBounds([[values[0], values[2]], [values[1], values[3]]]);
-                        geocoderWrap.classList.remove('open');
-                        searchInput.value = '';
-                        resultsDiv.textContent = '';
-                    });
-                    resultsDiv.appendChild(item);
-                });
-            }).catch(function (error) {
-                console.warn('[Search]', error);
-                resultsDiv.textContent = 'Search unavailable. Please try again.';
-            });
-        });
-
-        btnSearch.addEventListener('click', function () {
-            geocoderWrap.classList.toggle('open');
-            dropdown.classList.remove('open');
-            if (geocoderWrap.classList.contains('open')) {
-                setTimeout(function () { searchInput.focus(); }, 50);
-            }
+        var closeMenus = EV.addMapToolbarBase(map, wrap, basemaps, function () {
+            var button = EV.mapToolButton(wrap, '3D', 'Explore fire footprints on 90 m terrain');
+            button.id = 'btn-toggle-3d';
+            button.setAttribute('aria-label', 'Switch to 3D terrain view');
         });
 
         // ── Query Point
-        var btnQueryPt = _tbBtn(wrap, '',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3" stroke-width="2"/></svg>',
-            'Query point timeseries');
+        var btnQueryPt = EV.mapToolButton(wrap, 'point', 'Query point timeseries');
         btnQueryPt.id = 'btn-draw-point';
         btnQueryPt.addEventListener('click', function () {
-            dropdown.classList.remove('open');
-            geocoderWrap.classList.remove('open');
+            closeMenus();
         });
 
         // ── Query Polygon
-        var btnQueryPoly = _tbBtn(wrap, '',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h6v6H9z" stroke-dasharray="2,2"/></svg>',
-            'Query polygon timeseries');
+        var btnQueryPoly = EV.mapToolButton(wrap, 'area', 'Query polygon timeseries');
         btnQueryPoly.id = 'btn-draw-polygon';
         btnQueryPoly.addEventListener('click', function () {
-            dropdown.classList.remove('open');
-            geocoderWrap.classList.remove('open');
+            closeMenus();
         });
 
         // ── Dark mode toggle
-        var btnDark = _tbBtn(wrap, '',
-            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>',
-            'Toggle dark mode');
+        var btnDark = EV.mapToolButton(wrap, 'dark', 'Toggle dark mode');
         btnDark.addEventListener('click', function () {
             document.body.classList.toggle('dark');
             btnDark.classList.toggle('active', document.body.classList.contains('dark'));
-            dropdown.classList.remove('open');
-            geocoderWrap.classList.remove('open');
+            closeMenus();
         });
 
         // ── Measure distance
-        var btnMeasure = _tbBtn(wrap, '',
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
-            '<rect x="1" y="6" width="22" height="12" rx="1" transform="rotate(-45 12 12)"/>' +
-            '<line x1="6.5" y1="10" x2="6.5" y2="14" transform="rotate(-45 12 12)"/>' +
-            '<line x1="10" y1="10" x2="10" y2="12.5" transform="rotate(-45 12 12)"/>' +
-            '<line x1="13.5" y1="10" x2="13.5" y2="14" transform="rotate(-45 12 12)"/>' +
-            '<line x1="17" y1="10" x2="17" y2="12.5" transform="rotate(-45 12 12)"/>' +
-            '</svg>',
-            'Measure distance');
+        var btnMeasure = EV.mapToolButton(wrap, 'measure', 'Measure distance');
 
         btnMeasure.addEventListener('click', function () {
             toggleMeasure(btnMeasure);
-            dropdown.classList.remove('open');
-            geocoderWrap.classList.remove('open');
+            closeMenus();
         });
 
         // ── Screenshot
@@ -227,11 +70,7 @@
         ssWrap.style.position = 'relative';
         wrap.appendChild(ssWrap);
 
-        var btnScreenshot = _tbBtn(ssWrap, '',
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>' +
-            '<circle cx="12" cy="13" r="4"/></svg>',
-            'Take screenshot');
+        var btnScreenshot = EV.mapToolButton(ssWrap, 'camera', 'Take screenshot');
 
         var ssDropdown = document.createElement('div');
         ssDropdown.className = 'ss-dropdown';
@@ -295,29 +134,18 @@
 
         btnScreenshot.addEventListener('click', function () {
             ssDropdown.classList.toggle('open');
-            dropdown.classList.remove('open');
-            geocoderWrap.classList.remove('open');
+            closeMenus();
         });
 
         // Close dropdowns when clicking elsewhere on the map
         map.on('click', function () {
-            dropdown.classList.remove('open');
-            geocoderWrap.classList.remove('open');
+            closeMenus();
             ssDropdown.classList.remove('open');
         });
 
         return wrap;
     };
     toolbar.addTo(map);
-
-    function _tbBtn(parent, text, svgHtml, title) {
-        var btn = document.createElement('button');
-        btn.className = 'toolbar-btn';
-        btn.title = title || '';
-        btn.innerHTML = svgHtml || text;
-        parent.appendChild(btn);
-        return btn;
-    }
 
     /* ── Measure distance tool ─────────────────────────────────── */
 
@@ -541,20 +369,9 @@
         var scale = opts.scale || 1;
         var title = opts.title || '';
 
-        var mapEl = document.getElementById('map');
         var currentBounds = map.getBounds();
 
-        html2canvas(mapEl, {
-            useCORS:    true,
-            allowTaint: false,
-            scale:      scale,
-            backgroundColor: null,
-            logging:    false,
-            onclone: function (clonedDoc) {
-                var tb = clonedDoc.querySelector('.map-toolbar');
-                if (tb) tb.style.display = 'none';
-            }
-        }).then(function (canvas) {
+        EV.captureMap(map, scale).then(function (canvas) {
             var srcCanvas, finalBounds, offX, offY;
 
             if (cropRect) {
