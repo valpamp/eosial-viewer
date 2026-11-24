@@ -1,10 +1,10 @@
 {
-  "generated": "2026-11-24T13:00:05.476278+00:00",
+  "generated": "2026-11-24T13:30:05.137762+00:00",
   "source": "NASA FIRMS NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
-  "latest_hotspot": "2026-11-24T02:25:00+00:00",
-  "feature_count": 168,
+  "latest_hotspot": "2026-11-24T11:10:00+00:00",
+  "feature_count": 169,
   "files": [
     {
       "path": "firms/FIRMS_ITA_2026325.fgb",
@@ -67,14 +67,14 @@
       "label": "FIRMS_ITA_2026328",
       "date": "2026-11-24",
       "start": "2026-11-24T00:43:00+00:00",
-      "end": "2026-11-24T02:25:00+00:00",
-      "count": 29,
+      "end": "2026-11-24T11:10:00+00:00",
+      "count": 30,
       "products": {
-        "noaa-21-viirs-c2": 15,
+        "noaa-21-viirs-c2": 16,
         "noaa-20-viirs-c2": 14
       },
       "satellites": {
-        "N21": 15,
+        "N21": 16,
         "N20": 14
       }
     }
