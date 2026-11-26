@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-26T03:00:09.056146+00:00",
+  "generated": "2026-11-26T03:30:09.041252+00:00",
   "source": "NASA FIRMS NRT external dataset",
   "format": "fgb",
   "recent_days": 4,
@@ -58,6 +58,17 @@
         "N20": 5,
         "N21": 2
       }
+    },
+    {
+      "path": "firms/FIRMS_ITA_2026330.fgb",
+      "format": "fgb",
+      "label": "FIRMS_ITA_2026330",
+      "date": "2026-11-26",
+      "start": null,
+      "end": null,
+      "count": 0,
+      "products": {},
+      "satellites": {}
     }
   ]
 }
